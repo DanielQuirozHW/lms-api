@@ -6,21 +6,35 @@ on:
   pull_request:
     branches: [develop, main]
 
+# Force all actions to run on Node.js 24 runtime
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
+  # ----------------------------------------------------------------
+  # Unit tests — no real database or Redis required.
+  # All env vars are fake values that satisfy Zod validation only.
+  # Real infrastructure secrets belong in a future integration-test job.
+  # ----------------------------------------------------------------
   ci:
     name: Lint, Test & Build
     runs-on: ubuntu-latest
 
     env:
       NODE_ENV: test
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      REDIS_HOST: ${{ secrets.REDIS_HOST }}
-      REDIS_PORT: ${{ secrets.REDIS_PORT }}
-      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      # Fake values — satisfy Zod's url() / min(1) rules without any
+      # real service. Unit tests mock all infrastructure calls.
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+
+      # 32-char test-only secrets — never used in production.
+      JWT_SECRET: ci-test-jwt-secret-key-for-ci-only!!
       JWT_EXPIRES_IN: 7d
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-key-for-ci!!
       JWT_REFRESH_EXPIRES_IN: 30d
+
       CORS_ORIGINS: http://localhost:3001
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
@@ -33,7 +47,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

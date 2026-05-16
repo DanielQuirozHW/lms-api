@@ -101,6 +101,7 @@ model Lesson {
   progress LessonProgress[]
 
   @@unique([courseId, order])
+  @@index([courseId])
   @@map("lessons")
 }
 
@@ -118,6 +119,8 @@ model Enrollment {
   progress LessonProgress[]
 
   @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
   @@map("enrollments")
 }
 
@@ -132,6 +135,7 @@ model LessonProgress {
   lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
   @@map("lesson_progress")
 }
 
@@ -149,6 +153,8 @@ model ForumThread {
   author User        @relation(fields: [authorId], references: [id])
   posts  ForumPost[]
 
+  @@index([courseId])
+  @@index([authorId])
   @@map("forum_threads")
 }
 
@@ -166,6 +172,8 @@ model ForumPost {
   parent  ForumPost?  @relation("PostReplies", fields: [parentId], references: [id])
   replies ForumPost[] @relation("PostReplies")
 
+  @@index([threadId])
+  @@index([authorId])
   @@map("forum_posts")
 }
 
@@ -180,5 +188,8 @@ model Message {
   sender   User @relation("SentMessages", fields: [senderId], references: [id])
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
 
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([senderId, receiverId])
   @@map("messages")
 }

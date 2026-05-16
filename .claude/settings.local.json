@@ -25,7 +25,8 @@
       "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/lms\" npx prisma *)",
       "Bash(pnpm build *)",
       "Bash(pnpm test *)",
-      "Bash(npx jest *)"
+      "Bash(npx jest *)",
+      "Bash(grep -n '$ZodStringFormatInternals\\\\|output.*string\\\\|string.*output' /c/LMS/lms-api/node_modules/zod/v4/core/schemas.d.ts)"
     ]
   }
 }

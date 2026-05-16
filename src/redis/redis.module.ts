@@ -8,7 +8,7 @@ import type { AppConfig } from '../config/configuration';
   providers: [
     {
       provide: RedisService,
-      useFactory: (config: ConfigService<AppConfig>) => {
+      useFactory: (config: ConfigService<AppConfig>): RedisService => {
         return new RedisService({
           host: config.get('redis.host', { infer: true }),
           port: config.get('redis.port', { infer: true }),

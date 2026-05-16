@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
 import { HealthModule } from './health/health.module';
@@ -21,11 +22,11 @@ import type { AppConfig } from './config/configuration';
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
-      load: [() => configuration(validate(process.env as Record<string, unknown>))],
+      load: [(): AppConfig => configuration(validate(process.env as Record<string, unknown>))],
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService<AppConfig>) => ({
+      useFactory: (config: ConfigService<AppConfig>): ThrottlerModuleOptions => ({
         throttlers: [
           {
             ttl: config.get('throttle.ttl', { infer: true }) ?? 60000,

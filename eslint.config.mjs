@@ -33,6 +33,8 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      // NestJS modules, controllers, and gateways are intentionally empty decorated classes.
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
       'no-console': 'warn',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },

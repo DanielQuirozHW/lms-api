@@ -26,18 +26,12 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinThread')
-  handleJoinThread(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() threadId: string,
-  ): void {
+  handleJoinThread(@ConnectedSocket() client: Socket, @MessageBody() threadId: string): void {
     void client.join(`thread:${threadId}`);
   }
 
   @SubscribeMessage('leaveThread')
-  handleLeaveThread(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() threadId: string,
-  ): void {
+  handleLeaveThread(@ConnectedSocket() client: Socket, @MessageBody() threadId: string): void {
     void client.leave(`thread:${threadId}`);
   }
 }

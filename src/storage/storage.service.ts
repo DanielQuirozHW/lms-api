@@ -53,11 +53,9 @@ export class StorageService {
   }
 
   async getPresignedDownloadUrl(key: string, expiresIn = 3600): Promise<string> {
-    return getSignedUrl(
-      this.client,
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-      { expiresIn },
-    );
+    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
+      expiresIn,
+    });
   }
 
   getPublicUrl(key: string): string {

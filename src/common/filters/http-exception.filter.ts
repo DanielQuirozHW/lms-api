@@ -36,10 +36,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
         error = exception.message;
-      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      } else {
+        // exceptionResponse is narrowed to object (non-null) by TypeScript
         const body = exceptionResponse as Record<string, unknown>;
-        message = (body['message'] as string | string[]) ?? exception.message;
-        error = (body['error'] as string) ?? exception.message;
+        const rawMessage = body['message'];
+        const rawError = body['error'];
+
+        if (typeof rawMessage === 'string') {
+          message = rawMessage;
+        } else if (Array.isArray(rawMessage)) {
+          message = rawMessage.filter((item: unknown): item is string => typeof item === 'string');
+        }
+
+        if (typeof rawError === 'string') {
+          error = rawError;
+        }
       }
     } else if (exception instanceof Error) {
       this.logger.error(exception.message, exception.stack);

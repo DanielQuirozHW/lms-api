@@ -5,7 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().min(1).max(65535).default(3000),
   API_PREFIX: z.string().default('api/v1'),
 
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
 
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().min(1).max(65535).default(6379),

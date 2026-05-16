@@ -20,8 +20,12 @@ export class RedisService extends Redis implements OnModuleDestroy {
       retryStrategy: (times) => Math.min(times * 50, 2000),
     });
 
-    this.on('connect', () => this.logger.log('Redis connected'));
-    this.on('error', (err: Error) => this.logger.error('Redis error', err.message));
+    this.on('connect', () => {
+      this.logger.log('Redis connected');
+    });
+    this.on('error', (err: Error) => {
+      this.logger.error('Redis error', err.message);
+    });
   }
 
   async onModuleDestroy(): Promise<void> {
