@@ -9,7 +9,7 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "types": ["jest", "node"],
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
@@ -24,11 +24,11 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "paths": {
-      "@config/*": ["src/config/*"],
-      "@common/*": ["src/common/*"],
-      "@modules/*": ["src/modules/*"],
-      "@prisma-service": ["src/prisma/prisma.service"],
-      "@redis-service": ["src/redis/redis.service"]
+      "@config/*": ["./src/config/*"],
+      "@common/*": ["./src/common/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@prisma-service": ["./src/prisma/prisma.service"],
+      "@redis-service": ["./src/redis/redis.service"]
     }
   }
 }

@@ -26,7 +26,8 @@
       "Bash(pnpm build *)",
       "Bash(pnpm test *)",
       "Bash(npx jest *)",
-      "Bash(grep -n '$ZodStringFormatInternals\\\\|output.*string\\\\|string.*output' /c/LMS/lms-api/node_modules/zod/v4/core/schemas.d.ts)"
+      "Bash(grep -n '$ZodStringFormatInternals\\\\|output.*string\\\\|string.*output' /c/LMS/lms-api/node_modules/zod/v4/core/schemas.d.ts)",
+      "Bash(npx tsc *)"
     ]
   }
 }
