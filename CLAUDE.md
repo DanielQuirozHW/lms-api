@@ -237,6 +237,16 @@ hotfix/<short-description>     # urgent production fix
 
 Examples: `feature/jwt-refresh-rotation`, `fix/enrollment-duplicate-check`, `hotfix/cors-header-missing`
 
+### Automated commit validation
+
+Commits are validated automatically via Husky git hooks:
+
+- **pre-commit** — runs `lint-staged`: ESLint (auto-fix) + Prettier on every staged `*.ts` file
+- **commit-msg** — runs `commitlint`: enforces Conventional Commits format, allowed types, and 100-char header limit
+
+If either hook fails, the commit is aborted. Fix the reported issue, re-stage, and retry.
+The hooks are installed automatically when you run `pnpm install` (via the `prepare` script).
+
 ### PR rules
 
 - PRs target `develop` (not `main`)
