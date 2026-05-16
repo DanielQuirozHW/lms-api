@@ -1,6 +1,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
@@ -50,6 +51,18 @@ async function bootstrap(): Promise<void> {
 
   const port = config.get('port', { infer: true }) ?? 3000;
   const env = config.get('nodeEnv', { infer: true }) ?? 'development';
+
+  if (env !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('LMS API')
+      .setDescription('Learning Management System REST API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log('Swagger UI available at /api/docs');
+  }
 
   await app.listen(port);
   logger.log(`Application running on port ${String(port)} [${env}]`);
