@@ -10,6 +10,10 @@ export interface FindCoursesParams {
   take?: number;
 }
 
+export type CourseWithCount = Course & {
+  _count: { lessons: number; enrollments: number };
+};
+
 @Injectable()
 export class CoursesRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -36,8 +40,21 @@ export class CoursesRepository {
     return this.prisma.course.findUnique({ where: { id } });
   }
 
+  findByIdWithCount(id: string): Promise<CourseWithCount | null> {
+    return this.prisma.course.findUnique({
+      where: { id },
+      include: { _count: { select: { lessons: true, enrollments: true } } },
+    });
+  }
+
   findBySlug(slug: string): Promise<Course | null> {
     return this.prisma.course.findUnique({ where: { slug } });
+  }
+
+  countActiveEnrollments(courseId: string): Promise<number> {
+    return this.prisma.enrollment.count({
+      where: { courseId, status: 'ACTIVE' },
+    });
   }
 
   create(data: Prisma.CourseCreateInput): Promise<Course> {
