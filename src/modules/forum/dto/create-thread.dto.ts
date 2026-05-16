@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateThreadDto {
   @IsString()
@@ -6,6 +6,6 @@ export class CreateThreadDto {
   title!: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   courseId?: string;
 }

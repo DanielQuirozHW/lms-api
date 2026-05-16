@@ -190,6 +190,15 @@ describe('AuthService', () => {
       await expect(service.refresh(mockRefreshToken)).rejects.toThrow(UnauthorizedException);
       expect(redisService.del).not.toHaveBeenCalled();
     });
+
+    it('should throw UnauthorizedException when user no longer exists after token validation', async () => {
+      jwtService.verify.mockReturnValue(refreshPayload);
+      redisService.get.mockResolvedValue('1');
+      authRepository.findById.mockResolvedValue(null);
+
+      await expect(service.refresh(mockRefreshToken)).rejects.toThrow(UnauthorizedException);
+      expect(redisService.del).toHaveBeenCalledWith(`rt:user-123:${mockJti}`);
+    });
   });
 
   describe('logout', () => {
@@ -209,6 +218,34 @@ describe('AuthService', () => {
 
       await expect(service.logout('user-123', 'expired.token')).resolves.not.toThrow();
       expect(redisService.del).not.toHaveBeenCalled();
+    });
+
+    it('should not revoke token when it belongs to a different user', async () => {
+      const otherUserPayload = { sub: 'other-user-id', jti: mockJti, type: 'refresh' as const };
+      jwtService.verify.mockReturnValue(otherUserPayload);
+
+      await service.logout('user-123', mockRefreshToken);
+
+      expect(redisService.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('me', () => {
+    it('should return user profile without passwordHash', async () => {
+      authRepository.findById.mockResolvedValue(mockUser);
+
+      const result = await service.me('user-123');
+
+      expect(authRepository.findById).toHaveBeenCalledWith('user-123');
+      expect(result.id).toBe('user-123');
+      expect(result.email).toBe(mockUser.email);
+      expect(result).not.toHaveProperty('passwordHash');
+    });
+
+    it('should throw UnauthorizedException when user does not exist', async () => {
+      authRepository.findById.mockResolvedValue(null);
+
+      await expect(service.me('nonexistent-id')).rejects.toThrow(UnauthorizedException);
     });
   });
 });

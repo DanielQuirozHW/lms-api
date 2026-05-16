@@ -1,6 +1,6 @@
-import { IsString } from 'class-validator';
+import { IsUUID } from 'class-validator';
 
 export class CreateEnrollmentDto {
-  @IsString()
+  @IsUUID()
   courseId!: string;
 }

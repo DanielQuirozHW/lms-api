@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { ForumRepository } from './forum.repository';
 
 @Injectable()
 export class ForumService {
-  constructor(protected readonly prisma: PrismaService) {}
+  constructor(protected readonly forumRepository: ForumRepository) {}
 }

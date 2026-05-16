@@ -45,6 +45,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Exchange a refresh token for new token pair' })
   @ApiResponse({ status: 200, description: 'Tokens refreshed', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation failed' })

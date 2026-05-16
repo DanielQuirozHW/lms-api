@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import type { AppConfig } from '../../config/configuration';
 import { RedisService } from '../../redis/redis.service';
-import type { AuthenticatedUser, JwtPayload, RefreshTokenPayload } from './auth.entity';
+import type { JwtPayload, RefreshTokenPayload } from './auth.entity';
 import { AuthRepository } from './auth.repository';
 import type { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
@@ -24,6 +24,7 @@ export class AuthService {
     private readonly config: ConfigService<AppConfig>,
   ) {}
 
+  /** Creates a new user account and returns a JWT token pair. Throws 409 if email is already in use. */
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     const existing = await this.authRepository.findByEmail(dto.email);
     if (existing) {
@@ -39,6 +40,7 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  /** Validates credentials and returns a JWT token pair. Throws 401 on bad email or wrong password. */
   async login(dto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.authRepository.findByEmail(dto.email);
     if (!user) {
@@ -51,6 +53,7 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  /** Rotates the refresh token — revokes the old one and issues a new token pair. Throws 401 if revoked or expired. */
   async refresh(refreshToken: string): Promise<AuthResponseDto> {
     let payload: RefreshTokenPayload;
     try {
@@ -75,6 +78,7 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  /** Revokes the refresh token. Silently succeeds if the token is already expired or belongs to another user. */
   async logout(userId: string, refreshToken: string): Promise<void> {
     try {
       const payload = this.jwtService.verify<RefreshTokenPayload>(refreshToken, {
@@ -88,16 +92,13 @@ export class AuthService {
     }
   }
 
+  /** Returns the profile of the currently authenticated user. Throws 401 if the user record no longer exists. */
   async me(userId: string): Promise<UserResponseDto> {
     const user = await this.authRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
     return this.toUserResponse(user);
-  }
-
-  getCurrentUser(user: AuthenticatedUser): AuthenticatedUser {
-    return user;
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponseDto> {

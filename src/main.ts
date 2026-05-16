@@ -1,14 +1,32 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, type NestApplication } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { json, urlencoded } from 'express';
+import type { ServerOptions } from 'socket.io';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import type { AppConfig } from './config/configuration';
 import helmet from 'helmet';
+
+class SocketIoCorsAdapter extends IoAdapter {
+  constructor(
+    app: NestApplication,
+    private readonly origins: string[],
+  ) {
+    super(app);
+  }
+
+  createIOServer(port: number, options?: ServerOptions): unknown {
+    return super.createIOServer(port, {
+      ...options,
+      cors: { origin: this.origins, credentials: true },
+    });
+  }
+}
 
 const BODY_SIZE_LIMIT = '10mb';
 
@@ -31,6 +49,8 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
+
+  app.useWebSocketAdapter(new SocketIoCorsAdapter(app as NestApplication, corsOrigins));
 
   const apiPrefix = config.get('apiPrefix', { infer: true }) ?? 'api/v1';
   app.setGlobalPrefix(apiPrefix);

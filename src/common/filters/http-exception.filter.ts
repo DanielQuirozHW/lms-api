@@ -1,11 +1,15 @@
 import {
   ArgumentsHost,
+  BadRequestException,
   Catch,
+  ConflictException,
   ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
 
 interface ErrorResponse {
@@ -16,6 +20,12 @@ interface ErrorResponse {
   timestamp: string;
 }
 
+const PRISMA_ERROR_MAP: Partial<Record<string, () => HttpException>> = {
+  P2002: () => new ConflictException('A record with that value already exists'),
+  P2025: () => new NotFoundException('Record not found'),
+  P2003: () => new BadRequestException('Related record not found'),
+};
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -25,19 +35,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const mapped = this.mapException(exception);
+
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Internal server error';
     let error = 'Internal Server Error';
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
+    if (mapped instanceof HttpException) {
+      status = mapped.getStatus();
+      const exceptionResponse = mapped.getResponse();
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-        error = exception.message;
+        error = mapped.message;
       } else {
-        // exceptionResponse is narrowed to object (non-null) by TypeScript
         const body = exceptionResponse as Record<string, unknown>;
         const rawMessage = body['message'];
         const rawError = body['error'];
@@ -52,8 +63,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           error = rawError;
         }
       }
-    } else if (exception instanceof Error) {
-      this.logger.error(exception.message, exception.stack);
+    } else if (mapped instanceof Error) {
+      this.logger.error(mapped.message, mapped.stack);
     }
 
     const body: ErrorResponse = {
@@ -65,5 +76,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
 
     response.status(status).json(body);
+  }
+
+  private mapException(exception: unknown): unknown {
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      const factory = PRISMA_ERROR_MAP[exception.code];
+      if (factory) return factory();
+      this.logger.error(`Unhandled Prisma error ${exception.code}`, exception.message);
+    }
+    return exception;
   }
 }

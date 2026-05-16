@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+import type { ICacheStore } from '../common/interfaces/cache-store.interface';
 
 interface RedisConfig {
   host: string | undefined;
@@ -8,7 +9,7 @@ interface RedisConfig {
 }
 
 @Injectable()
-export class RedisService extends Redis implements OnModuleDestroy {
+export class RedisService extends Redis implements ICacheStore, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
 
   constructor(config: RedisConfig) {

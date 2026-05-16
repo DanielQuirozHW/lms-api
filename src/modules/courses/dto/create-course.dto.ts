@@ -1,5 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
-import { CourseStatus } from '@prisma/client';
+import { IsOptional, IsString, IsUrl, IsUUID, MinLength } from 'class-validator';
 
 export class CreateCourseDto {
   @IsString()
@@ -15,10 +14,6 @@ export class CreateCourseDto {
   coverUrl?: string;
 
   @IsOptional()
-  @IsEnum(CourseStatus)
-  status?: CourseStatus;
-
-  @IsOptional()
-  @IsString()
+  @IsUUID()
   categoryId?: string;
 }

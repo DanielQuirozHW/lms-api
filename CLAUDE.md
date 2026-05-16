@@ -361,3 +361,318 @@ After any schema change: `pnpm prisma:migrate` (dev) or `pnpm prisma:generate` (
 - DTOs use `class-validator`; `whitelist: true` + `forbidNonWhitelisted: true` is global
 - No `console.log` in source — use NestJS `Logger`
 - All API responses in English
+- JSDoc on public service methods: one-line summary only. Skip if the method name is fully self-documenting. Required when there is a non-obvious behavior (e.g., silent success on expired token, side effects like token rotation).
+- `CreateXxxDto` must never include `status`, `role`, or any field that sets an entity's lifecycle state — those belong in dedicated update/transition endpoints only. Courses always start as `DRAFT`; users always start as `STUDENT`.
+
+### PrismaService pattern
+
+`PrismaService` does not use `process.env` directly. It is instantiated via a factory provider in `PrismaModule` that injects `ConfigService`. This ensures the database URL goes through the same Zod-validated config as all other environment variables:
+
+```typescript
+// prisma.module.ts — factory pattern (do not revert to class provider)
+{
+  provide: PrismaService,
+  useFactory: (config: ConfigService<AppConfig>): PrismaService =>
+    new PrismaService(config.get('database.url', { infer: true }) as string),
+  inject: [ConfigService],
+}
+```
+
+---
+
+## Development Patterns
+
+### Adding a new module — step-by-step checklist
+
+Follow this order exactly. Skipping steps causes TypeScript errors or silent runtime failures.
+
+**Step 1 — Entity type** (`<domain>.entity.ts`)
+
+Re-export the Prisma type. If the model does not exist yet, define a plain interface with a TODO.
+
+```typescript
+// src/modules/courses/courses.entity.ts
+import type { Course } from '@prisma/client';
+export type CourseEntity = Course;
+```
+
+**Step 2 — DTOs** (`dto/`)
+
+- `create-<domain>.dto.ts` — all required fields with class-validator decorators
+- `update-<domain>.dto.ts` — always `PartialType(CreateDto)`, never copy-paste
+- `<domain>-response.dto.ts` — the shape the API returns; never include `passwordHash` or any secret field
+
+**Step 3 — Repository** (`<domain>.repository.ts`)
+
+Inject `PrismaService` with `private readonly`. Return Prisma types. Use `Prisma.XxxCreateInput` / `Prisma.XxxUpdateInput` for writes. Use `$transaction([findMany, count])` for paginated lists.
+
+**Step 4 — Service** (`<domain>.service.ts`)
+
+Inject the repository with `private readonly` (not PrismaService directly). Map every returned entity through a private `map(entity): ResponseDto` method. Throw NestJS HTTP exceptions — never raw `Error`.
+
+**Step 5 — Controller** (`<domain>.controller.ts`)
+
+Inject the service with `private readonly`. Use `ParseUUIDPipe` on every UUID path param. Use explicit return types. Add `@HttpCode(HttpStatus.NO_CONTENT)` on DELETE. Add `@Roles()` on every write endpoint.
+
+**Step 6 — Module** (`<domain>.module.ts`)
+
+Register service and repository in `providers`. Export only the service. Import `JwtModule.register({})` only if the module has a WebSocket gateway.
+
+**Step 7 — Register in `app.module.ts`**
+
+Add the module to the `imports` array.
+
+**Step 8 — Tests** (`<domain>.service.spec.ts`)
+
+Mock the repository with `jest.fn()`. Cover: not-found throws `NotFoundException`, create calls repository correctly, list returns paginated result.
+
+**Step 9 — Build**
+
+Run `pnpm build` and fix all TypeScript errors before continuing.
+
+---
+
+### Repository structure
+
+```typescript
+@Injectable()
+export class CoursesRepository {
+  constructor(private readonly prisma: PrismaService) {} // always private
+
+  // Paginated list — return [data, total] tuple, never throw
+  async findMany(params: FindCoursesParams): Promise<[Course[], number]> {
+    const where: Prisma.CourseWhereInput = {
+      ...(params.status && { status: params.status }),
+      ...(params.instructorId && { instructorId: params.instructorId }),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.course.findMany({
+        where,
+        skip: params.skip,
+        take: params.take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.course.count({ where }),
+    ]);
+    return [data, total];
+  }
+
+  // Single lookup — return T | null, never throw
+  findById(id: string): Promise<Course | null> {
+    return this.prisma.course.findUnique({ where: { id } });
+  }
+
+  // Writes — use Prisma input types for compile-time safety
+  create(data: Prisma.CourseCreateInput): Promise<Course> {
+    return this.prisma.course.create({ data });
+  }
+
+  update(id: string, data: Prisma.CourseUpdateInput): Promise<Course> {
+    return this.prisma.course.update({ where: { id }, data });
+  }
+
+  delete(id: string): Promise<Course> {
+    return this.prisma.course.delete({ where: { id } });
+  }
+}
+```
+
+**Repository rules:**
+- Never throw — return `null` on miss; let the service decide whether that is an error
+- Never contain business logic — only Prisma calls
+- Never accept raw DTOs as parameters — use typed objects or `Prisma.XxxInput`
+- Every `findMany` must have a `take` limit — either from pagination params or a hardcoded constant
+- `GlobalExceptionFilter` handles P2002→409, P2025→404, P2003→400 automatically
+
+---
+
+### DTO validation — field type map
+
+| Field type | Required decorators |
+|---|---|
+| Any UUID (FK, id) | `@IsUUID()` |
+| Free-form string | `@IsString()` + `@MinLength(n)` |
+| Email | `@IsEmail()` |
+| Enum | `@IsEnum(TheEnum)` |
+| Integer | `@IsInt()` + `@Min(0)` |
+| Float | `@IsNumber()` |
+| Boolean | `@IsBoolean()` |
+| URL | `@IsUrl()` |
+| Optional field | `@IsOptional()` — always the first decorator |
+| UUID array | `@IsArray()` + `@IsUUID('4', { each: true })` |
+
+**The most common mistake:** using `@IsString()` on a UUID field. It accepts any string including garbage input. Always use `@IsUUID()` for any field that holds a cuid/uuid.
+
+---
+
+### Service — error handling pattern
+
+```typescript
+@Injectable()
+export class CoursesService {
+  constructor(private readonly coursesRepository: CoursesRepository) {}
+
+  async findById(id: string): Promise<CourseResponseDto> {
+    const course = await this.coursesRepository.findById(id);
+    if (!course) throw new NotFoundException('Course not found');
+    return this.map(course);
+  }
+
+  async create(instructorId: string, dto: CreateCourseDto): Promise<CourseResponseDto> {
+    const course = await this.coursesRepository.create({
+      ...dto,
+      slug: slugify(dto.title),
+      instructor: { connect: { id: instructorId } },
+    });
+    return this.map(course);
+    // P2002 (duplicate slug) → automatically becomes 409 via GlobalExceptionFilter
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.findById(id); // throws 404 if not found before attempting delete
+    await this.coursesRepository.delete(id);
+  }
+
+  private map(course: Course): CourseResponseDto {
+    // explicit mapping ensures only intended fields are returned
+    return {
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      status: course.status,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt,
+    };
+  }
+}
+```
+
+**Error rules:**
+- Repositories return `null` on miss; services throw `NotFoundException`
+- Prisma unique violations (P2002) bubble up and are caught by `GlobalExceptionFilter` → 409
+- Never catch-and-re-throw with raw stack traces
+- Never throw `InternalServerErrorException` manually — let unhandled exceptions propagate to the filter
+
+---
+
+### Controller — endpoint pattern
+
+```typescript
+@ApiTags('Courses')
+@Controller('courses')
+export class CoursesController {
+  constructor(private readonly coursesService: CoursesService) {} // private once implemented
+
+  @Get()
+  findAll(@Query() pagination: PaginationDto): Promise<PaginatedResult<CourseResponseDto>> {
+    return this.coursesService.findAll(pagination);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<CourseResponseDto> {
+    return this.coursesService.findById(id);
+  }
+
+  @Post()
+  @Roles('INSTRUCTOR', 'ADMIN')
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateCourseDto,
+  ): Promise<CourseResponseDto> {
+    return this.coursesService.create(user.id, dto);
+  }
+
+  @Patch(':id')
+  @Roles('INSTRUCTOR', 'ADMIN')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourseDto,
+  ): Promise<CourseResponseDto> {
+    return this.coursesService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.coursesService.remove(id);
+  }
+}
+```
+
+**Controller rules:**
+- `ParseUUIDPipe` on every UUID path param — never bare `@Param('id') id: string`
+- `@Roles()` on every write endpoint (POST, PATCH, PUT, DELETE)
+- `@HttpCode(HttpStatus.NO_CONTENT)` on DELETE — `ResponseInterceptor` skips wrapping on 204
+- Never re-fetch the user from DB in the controller — use `@CurrentUser()` which returns the JWT payload
+- Never put business logic in controllers — delegate entirely to the service
+
+---
+
+### Cross-module data access
+
+When module B needs data owned by module A:
+
+```typescript
+// ✅ Correct — import the module, inject the service
+@Module({
+  imports: [CoursesModule], // CoursesModule exports CoursesService
+  providers: [EnrollmentsService, EnrollmentsRepository],
+})
+export class EnrollmentsModule {}
+
+// In EnrollmentsService:
+constructor(
+  private readonly enrollmentsRepository: EnrollmentsRepository,
+  private readonly coursesService: CoursesService, // ✅ service, not repository
+) {}
+```
+
+```typescript
+// ❌ Wrong — never inject another module's repository
+constructor(private readonly coursesRepository: CoursesRepository) {}
+```
+
+Only export services from modules. Repositories are internal implementation details.
+
+---
+
+### WebSocket gateway pattern
+
+Gateways that need JWT authentication must import `JwtModule.register({})` in their module and inject `JwtService` + `ConfigService`. Never put CORS config on the `@WebSocketGateway` decorator — CORS is applied globally by `SocketIoCorsAdapter` in `main.ts`.
+
+```typescript
+@WebSocketGateway({ namespace: '/forum' }) // no cors: option here
+export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService<AppConfig>,
+  ) {}
+
+  handleConnection(client: Socket): void {
+    const user = this.authenticate(client);
+    if (!user) { client.disconnect(); return; }
+    (client.data as Record<string, unknown>)['user'] = user;
+  }
+
+  // token from handshake.auth.token OR Authorization header
+  private authenticate(client: Socket): AuthenticatedUser | null { ... }
+}
+```
+
+---
+
+### Common mistakes to avoid
+
+| Mistake | Consequence | Fix |
+|---|---|---|
+| `@IsString()` on a UUID field | Accepts garbage, SQL strings, anything | `@IsUUID()` |
+| Bare `@Param('id') id: string` | Accepts non-UUID strings, no 400 on bad input | `@Param('id', ParseUUIDPipe) id: string` |
+| Injecting `PrismaService` in a service | Breaks testability, violates repository pattern | Inject the domain repository |
+| Returning raw Prisma objects | May expose `passwordHash` or future sensitive fields | Always map through `private map()` |
+| `protected readonly` after adding methods | TS6138 suppressed — hides real accidental usage | Change to `private readonly` |
+| Missing `@HttpCode(204)` on DELETE | Returns 200 with `{ data: null }` instead of empty 204 | Add `@HttpCode(HttpStatus.NO_CONTENT)` |
+| Unbounded `findMany` without `take` | DoS vector on large tables | Add `take` from `PaginationDto` or a constant |
+| Exporting a repository from its module | Breaks encapsulation; other modules bypass the service layer | Export only the service |
+| `cors:` option on `@WebSocketGateway` | Ignored — CORS is controlled by `SocketIoCorsAdapter` | Remove it; configure in `main.ts` |
+| No `@Throttle()` on credential endpoints | Brute-force possible | `@Throttle({ default: { limit: 5, ttl: 60000 } })` |

@@ -1,7 +1,7 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, IsUUID, MinLength } from 'class-validator';
 
 export class SendMessageDto {
-  @IsString()
+  @IsUUID()
   receiverId!: string;
 
   @IsString()
