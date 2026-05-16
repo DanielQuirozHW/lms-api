@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CoursesModule } from './modules/courses/courses.module';
@@ -29,6 +32,7 @@ import type { AppConfig } from './config/configuration';
       useFactory: (config: ConfigService<AppConfig>): ThrottlerModuleOptions => ({
         throttlers: [
           {
+            name: 'default',
             ttl: config.get('throttle.ttl', { infer: true }) ?? 60000,
             limit: config.get('throttle.limit', { infer: true }) ?? 100,
           },
@@ -46,6 +50,11 @@ import type { AppConfig } from './config/configuration';
     EnrollmentsModule,
     ForumModule,
     MessagesModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
