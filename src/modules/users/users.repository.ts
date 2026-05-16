@@ -6,6 +6,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll(skip: number, take: number): Promise<[User[], number]> {
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({ skip, take, orderBy: { createdAt: 'desc' } }),
+      this.prisma.user.count(),
+    ]);
+    return [data, total];
+  }
+
   findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
