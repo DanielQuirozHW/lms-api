@@ -1,0 +1,146 @@
+# ============================================================
+# Dependencies
+# ============================================================
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# ============================================================
+# Build outputs
+# ============================================================
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ============================================================
+# Environment files — NEVER commit secrets
+# .env.example is safe and should be committed
+# ============================================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.env.*.local
+
+# ============================================================
+# Prisma generated client (regenerated via pnpm prisma:generate)
+# ============================================================
+generated/
+/generated/
+src/generated/
+
+# ============================================================
+# Logs
+# ============================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================================
+# Test & coverage
+# ============================================================
+coverage/
+.nyc_output/
+test-results/
+junit.xml
+
+# ============================================================
+# OS files — Windows
+# ============================================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# ============================================================
+# OS files — macOS
+# ============================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ============================================================
+# OS files — Linux
+# ============================================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================
+# Editors — VSCode
+# ============================================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.code-workspace
+
+# ============================================================
+# Editors — JetBrains / WebStorm / IntelliJ
+# ============================================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# ============================================================
+# Editors — Vim / Emacs / Nano
+# ============================================================
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+*.orig
+
+# ============================================================
+# Docker
+# ============================================================
+docker-volumes/
+.docker/
+
+# ============================================================
+# Misc
+# ============================================================
+*.pid
+*.seed
+*.pid.lock
+.cache/
+.temp/
+.tmp/
+tmp/
+temp/

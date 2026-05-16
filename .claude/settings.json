@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npx prisma *)",
+      "Bash(npx jest *)",
+      "Bash(node --version)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(mkdir -p *)",
+      "Bash(ls *)",
+      "Bash(find /c/LMS/lms-api/src *)",
+      "Bash(find /c/LMS/lms-api/prisma *)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git push --force *)",
+      "Bash(rm -rf /*)",
+      "Bash(curl *)",
+      "Bash(wget *)"
+    ]
+  }
+}

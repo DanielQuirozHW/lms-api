@@ -1,0 +1,40 @@
+{
+  "recommendations": [
+    // TypeScript & JavaScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+
+    // Prisma
+    "Prisma.prisma",
+
+    // NestJS / Node
+    "christian-kohler.npm-intellisense",
+    "formulahendry.auto-rename-tag",
+
+    // REST API testing
+    "humao.rest-client",
+
+    // Environment files
+    "mikestead.dotenv",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // YAML (GitHub Actions, docker-compose)
+    "redhat.vscode-yaml",
+
+    // Spell checker
+    "streetsidesoftware.code-spell-checker",
+
+    // UI / DX
+    "pkief.material-icon-theme",
+    "usernamehw.errorlens",
+    "oderwat.indent-rainbow",
+    "aaron-bond.better-comments"
+  ]
+}

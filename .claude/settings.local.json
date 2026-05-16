@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/LMS/**)",
+      "Bash(find . -maxdepth 2 -type f -name \"package.json\")",
+      "Bash(git -C /c/LMS/lms-api log --oneline)",
+      "Bash(git *)",
+      "Bash(npm --version)",
+      "Bash(pnpm --version)",
+      "Bash(npx @nestjs/cli --version)",
+      "Bash(nest new *)",
+      "Bash(npx @nestjs/cli new lms-api-temp --skip-git --package-manager pnpm --strict)",
+      "Bash(cp -r /c/LMS/lms-api-temp/. /c/LMS/lms-api/)",
+      "Bash(rm -rf /c/LMS/lms-api-temp)",
+      "Bash(cp /c/LMS/lms-api-temp/package.json /c/LMS/lms-api/)",
+      "Bash(cp /c/LMS/lms-api-temp/tsconfig.json /c/LMS/lms-api/)",
+      "Bash(cp /c/LMS/lms-api-temp/nest-cli.json /c/LMS/lms-api/)",
+      "Bash(cp /c/LMS/lms-api-temp/eslint.config.mjs /c/LMS/lms-api/)",
+      "Bash(cp /c/LMS/lms-api-temp/.prettierrc /c/LMS/lms-api/)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm approve-builds *)",
+      "Bash(pkill -f \"pnpm approve-builds\")",
+      "Bash(npx prisma *)",
+      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/lms\" npx prisma *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm test *)",
+      "Bash(npx jest *)"
+    ]
+  }
+}
