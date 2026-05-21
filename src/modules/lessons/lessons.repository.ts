@@ -8,7 +8,7 @@ export class LessonsRepository {
 
   findByCourseId(courseId: string): Promise<Lesson[]> {
     return this.prisma.lesson.findMany({
-      where: { courseId },
+      where: { module: { courseId } },
       orderBy: { order: 'asc' },
     });
   }
@@ -29,10 +29,10 @@ export class LessonsRepository {
     return this.prisma.lesson.delete({ where: { id } });
   }
 
-  async reorder(courseId: string, orderedIds: string[]): Promise<void> {
+  async reorder(_courseId: string, orderedIds: string[]): Promise<void> {
     await this.prisma.$transaction(
       orderedIds.map((id, index) =>
-        this.prisma.lesson.update({ where: { id, courseId }, data: { order: index + 1 } }),
+        this.prisma.lesson.update({ where: { id }, data: { order: index + 1 } }),
       ),
     );
   }

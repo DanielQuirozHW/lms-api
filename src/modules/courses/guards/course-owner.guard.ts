@@ -19,7 +19,7 @@ export class CourseOwnerGuard implements CanActivate {
     const user = request.user;
     const courseId = request.params['id'] as string;
 
-    if (user.role === UserRole.ADMIN) return true;
+    if (user.roles.includes(UserRole.ADMIN)) return true;
 
     const course = await this.coursesRepository.findById(courseId);
     if (!course) throw new NotFoundException('Course not found');

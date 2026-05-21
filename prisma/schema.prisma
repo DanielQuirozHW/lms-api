@@ -6,6 +6,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
 enum UserRole {
   STUDENT
   INSTRUCTOR
@@ -31,27 +33,80 @@ enum LessonType {
   ASSIGNMENT
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
-  avatarUrl    String?  @map("avatar_url")
-  role         UserRole @default(STUDENT)
-  isVerified   Boolean  @default(false) @map("is_verified")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SINGLE_CHOICE
+  TRUE_FALSE
+  SHORT_TEXT
+  LONG_TEXT
+}
 
-  taughtCourses    Course[]      @relation("CourseInstructor")
-  enrollments      Enrollment[]
-  threads          ForumThread[]
-  posts            ForumPost[]
-  sentMessages     Message[]     @relation("SentMessages")
-  receivedMessages Message[]     @relation("ReceivedMessages")
+enum GradingType {
+  AUTOMATIC
+  MANUAL
+}
+
+enum RatingScale {
+  STARS_5
+  NUMERIC_10
+  NUMERIC_100
+}
+
+enum NotificationType {
+  ENROLLMENT
+  NEW_LESSON
+  FORUM_REPLY
+  ASSIGNMENT_GRADED
+  QUIZ_PASSED
+  QUIZ_FAILED
+  COURSE_COMPLETED
+  ANNOUNCEMENT
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  firstName    String     @map("first_name")
+  lastName     String     @map("last_name")
+  avatarUrl    String?    @map("avatar_url")
+  roles        UserRole[] @default([STUDENT])
+  isVerified   Boolean    @default(false) @map("is_verified")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  notificationSettings NotificationSettings?
+  taughtCourses        Course[]              @relation("CourseInstructor")
+  enrollments          Enrollment[]
+  notifications        Notification[]
+  threads              ForumThread[]
+  posts                ForumPost[]
+  postVotes            ForumPostVote[]
+  sentMessages         Message[]             @relation("SentMessages")
+  receivedMessages     Message[]             @relation("ReceivedMessages")
+  courseRatings        CourseRating[]
+  announcements        Announcement[]        @relation("AnnouncementInstructor")
+  gradedSubmissions    Submission[]          @relation("SubmissionGrader")
 
   @@map("users")
 }
+
+model NotificationSettings {
+  id                      String  @id @default(cuid())
+  userId                  String  @unique @map("user_id")
+  emailOnEnrollment       Boolean @default(true) @map("email_on_enrollment")
+  emailOnNewLesson        Boolean @default(true) @map("email_on_new_lesson")
+  emailOnForumReply       Boolean @default(true) @map("email_on_forum_reply")
+  emailOnAssignmentGraded Boolean @default(true) @map("email_on_assignment_graded")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+// ─── Course ───────────────────────────────────────────────────────────────────
 
 model Category {
   id      String   @id @default(cuid())
@@ -75,35 +130,227 @@ model Course {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  instructor  User          @relation("CourseInstructor", fields: [instructorId], references: [id])
-  category    Category?     @relation(fields: [categoryId], references: [id])
-  lessons     Lesson[]
-  enrollments Enrollment[]
-  threads     ForumThread[]
+  instructor    User            @relation("CourseInstructor", fields: [instructorId], references: [id])
+  category      Category?       @relation(fields: [categoryId], references: [id])
+  settings      CourseSettings?
+  modules       CourseModule[]
+  enrollments   Enrollment[]
+  ratings       CourseRating[]
+  threads       ForumThread[]
+  announcements Announcement[]
 
+  @@index([instructorId])
+  @@index([categoryId])
+  @@index([status])
   @@map("courses")
 }
 
-model Lesson {
-  id        String     @id @default(cuid())
-  title     String
-  courseId  String     @map("course_id")
-  order     Int
-  type      LessonType @default(TEXT)
-  content   String?
-  videoUrl  String?    @map("video_url")
-  duration  Int?
-  isPreview Boolean    @default(false) @map("is_preview")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+model CourseSettings {
+  id                  String      @id @default(cuid())
+  courseId            String      @unique @map("course_id")
+  enrollmentStartDate DateTime?   @map("enrollment_start_date")
+  enrollmentEndDate   DateTime?   @map("enrollment_end_date")
+  courseStartDate     DateTime?   @map("course_start_date")
+  hasModules          Boolean     @default(true) @map("has_modules")
+  forumEnabled        Boolean     @default(true) @map("forum_enabled")
+  forumPublic         Boolean     @default(false) @map("forum_public")
+  certificateEnabled  Boolean     @default(false) @map("certificate_enabled")
+  ratingEnabled       Boolean     @default(true) @map("rating_enabled")
+  ratingScale         RatingScale @default(STARS_5) @map("rating_scale")
+  maxEnrollments      Int?        @map("max_enrollments")
+  isSequential        Boolean     @default(false) @map("is_sequential")
 
-  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  progress LessonProgress[]
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("course_settings")
+}
+
+model CourseModule {
+  id              String   @id @default(cuid())
+  courseId        String   @map("course_id")
+  title           String
+  description     String?
+  order           Int
+  isPublished     Boolean  @default(false) @map("is_published")
+  unlockAfterDays Int?     @map("unlock_after_days")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
 
   @@unique([courseId, order])
   @@index([courseId])
+  @@map("course_modules")
+}
+
+// ─── Lesson ───────────────────────────────────────────────────────────────────
+
+model Lesson {
+  id          String     @id @default(cuid())
+  moduleId    String     @map("module_id")
+  title       String
+  order       Int
+  type        LessonType @default(TEXT)
+  content     String?
+  videoUrl    String?    @map("video_url")
+  duration    Int?
+  isPreview   Boolean    @default(false) @map("is_preview")
+  isPublished Boolean    @default(false) @map("is_published")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  module             CourseModule        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  quizSettings       QuizSettings?
+  assignmentSettings AssignmentSettings?
+  questions          Question[]
+  resources          LessonResource[]
+  progress           LessonProgress[]
+  quizAttempts       QuizAttempt[]
+  submissions        Submission[]
+
+  @@unique([moduleId, order])
+  @@index([moduleId])
   @@map("lessons")
 }
+
+model LessonResource {
+  id        String   @id @default(cuid())
+  lessonId  String   @map("lesson_id")
+  title     String
+  url       String
+  type      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_resources")
+}
+
+// ─── Quiz ─────────────────────────────────────────────────────────────────────
+
+model QuizSettings {
+  id               String  @id @default(cuid())
+  lessonId         String  @unique @map("lesson_id")
+  maxAttempts      Int?    @map("max_attempts")
+  passingScore     Int?    @map("passing_score")
+  blocksProgress   Boolean @default(false) @map("blocks_progress")
+  shuffleQuestions Boolean @default(false) @map("shuffle_questions")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_settings")
+}
+
+model Question {
+  id       String       @id @default(cuid())
+  lessonId String       @map("lesson_id")
+  text     String
+  type     QuestionType
+  order    Int
+  points   Int          @default(1)
+
+  lesson  Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  options QuestionOption[]
+  answers QuizAnswer[]
+
+  @@unique([lessonId, order])
+  @@index([lessonId])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String  @id @default(cuid())
+  questionId String  @map("question_id")
+  text       String
+  isCorrect  Boolean @default(false) @map("is_correct")
+  order      Int
+
+  question Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  QuizAnswer[]
+
+  @@unique([questionId, order])
+  @@index([questionId])
+  @@map("question_options")
+}
+
+model QuizAttempt {
+  id            String    @id @default(cuid())
+  enrollmentId  String    @map("enrollment_id")
+  lessonId      String    @map("lesson_id")
+  score         Float?
+  attemptNumber Int       @map("attempt_number")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+
+  enrollment Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answers    QuizAnswer[]
+
+  @@unique([enrollmentId, lessonId, attemptNumber])
+  @@index([enrollmentId])
+  @@index([lessonId])
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id               String  @id @default(cuid())
+  attemptId        String  @map("attempt_id")
+  questionId       String  @map("question_id")
+  selectedOptionId String? @map("selected_option_id")
+  textAnswer       String? @map("text_answer")
+
+  attempt        QuizAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("quiz_answers")
+}
+
+// ─── Assignment ───────────────────────────────────────────────────────────────
+
+model AssignmentSettings {
+  id                  String      @id @default(cuid())
+  lessonId            String      @unique @map("lesson_id")
+  gradingType         GradingType @default(MANUAL) @map("grading_type")
+  maxScore            Int         @map("max_score")
+  passingScore        Int?        @map("passing_score")
+  dueDate             DateTime?   @map("due_date")
+  allowLateSubmission Boolean     @default(false) @map("allow_late_submission")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("assignment_settings")
+}
+
+model Submission {
+  id            String    @id @default(cuid())
+  enrollmentId  String    @map("enrollment_id")
+  lessonId      String    @map("lesson_id")
+  content       String
+  fileUrl       String?   @map("file_url")
+  submittedAt   DateTime  @default(now()) @map("submitted_at")
+  attemptNumber Int       @map("attempt_number")
+  grade         Int?
+  feedback      String?
+  gradedById    String?   @map("graded_by_id")
+  gradedAt      DateTime? @map("graded_at")
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  gradedBy   User?      @relation("SubmissionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([enrollmentId, lessonId, attemptNumber])
+  @@index([enrollmentId])
+  @@index([lessonId])
+  @@index([gradedById])
+  @@map("submissions")
+}
+
+// ─── Enrollment & Progress ────────────────────────────────────────────────────
 
 model Enrollment {
   id          String           @id @default(cuid())
@@ -114,9 +361,11 @@ model Enrollment {
   enrolledAt  DateTime         @default(now()) @map("enrolled_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
-  user     User             @relation(fields: [userId], references: [id])
-  course   Course           @relation(fields: [courseId], references: [id])
-  progress LessonProgress[]
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course           @relation(fields: [courseId], references: [id])
+  progress     LessonProgress[]
+  quizAttempts QuizAttempt[]
+  submissions  Submission[]
 
   @@unique([userId, courseId])
   @@index([userId])
@@ -128,7 +377,10 @@ model LessonProgress {
   id             String    @id @default(cuid())
   enrollmentId   String    @map("enrollment_id")
   lessonId       String    @map("lesson_id")
+  isLocked       Boolean   @default(false) @map("is_locked")
+  startedAt      DateTime? @map("started_at")
   completedAt    DateTime? @map("completed_at")
+  lastWatchedAt  DateTime? @map("last_watched_at")
   watchedSeconds Int?      @map("watched_seconds")
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -138,6 +390,8 @@ model LessonProgress {
   @@index([enrollmentId])
   @@map("lesson_progress")
 }
+
+// ─── Forum ────────────────────────────────────────────────────────────────────
 
 model ForumThread {
   id        String   @id @default(cuid())
@@ -149,8 +403,8 @@ model ForumThread {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  course Course?     @relation(fields: [courseId], references: [id])
-  author User        @relation(fields: [authorId], references: [id])
+  course Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   posts  ForumPost[]
 
   @@index([courseId])
@@ -159,23 +413,99 @@ model ForumThread {
 }
 
 model ForumPost {
-  id        String   @id @default(cuid())
-  threadId  String   @map("thread_id")
-  authorId  String   @map("author_id")
-  content   String
-  parentId  String?  @map("parent_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  threadId         String   @map("thread_id")
+  authorId         String   @map("author_id")
+  content          String
+  parentId         String?  @map("parent_id")
+  isAcceptedAnswer Boolean  @default(false) @map("is_accepted_answer")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  thread  ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  author  User        @relation(fields: [authorId], references: [id])
-  parent  ForumPost?  @relation("PostReplies", fields: [parentId], references: [id])
-  replies ForumPost[] @relation("PostReplies")
+  thread  ForumThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author  User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  ForumPost?     @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies ForumPost[]    @relation("PostReplies")
+  votes   ForumPostVote[]
 
   @@index([threadId])
   @@index([authorId])
   @@map("forum_posts")
 }
+
+model ForumPostVote {
+  id     String @id @default(cuid())
+  postId String @map("post_id")
+  userId String @map("user_id")
+  value  Int
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("forum_post_votes")
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+
+model Announcement {
+  id           String   @id @default(cuid())
+  courseId     String   @map("course_id")
+  instructorId String   @map("instructor_id")
+  title        String
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor User   @relation("AnnouncementInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([instructorId])
+  @@map("announcements")
+}
+
+// ─── Ratings ─────────────────────────────────────────────────────────────────
+
+model CourseRating {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  score     Float
+  review    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("course_ratings")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String           @map("user_id")
+  type          NotificationType
+  title         String
+  body          String
+  isRead        Boolean          @default(false) @map("is_read")
+  referenceId   String?          @map("reference_id")
+  referenceType String?          @map("reference_type")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
 
 model Message {
   id         String    @id @default(cuid())
@@ -185,8 +515,8 @@ model Message {
   readAt     DateTime? @map("read_at")
   createdAt  DateTime  @default(now()) @map("created_at")
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id])
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@index([senderId])
   @@index([receiverId])

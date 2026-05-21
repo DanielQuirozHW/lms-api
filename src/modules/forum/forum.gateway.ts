@@ -63,7 +63,7 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = this.jwtService.verify<JwtPayload>(raw, {
         secret: this.config.get('jwt.secret', { infer: true }),
       });
-      return { id: payload.sub, email: payload.email, role: payload.role };
+      return { id: payload.sub, email: payload.email, roles: payload.roles };
     } catch {
       this.logger.warn(`Forum client rejected: ${client.id} — invalid token`);
       return null;

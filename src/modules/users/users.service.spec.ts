@@ -15,7 +15,7 @@ const mockUser: User = {
   passwordHash: '$2b$12$hashed',
   firstName: 'John',
   lastName: 'Doe',
-  role: 'STUDENT',
+  roles: ['STUDENT'],
   avatarUrl: null,
   isVerified: false,
   createdAt: new Date('2024-01-01'),

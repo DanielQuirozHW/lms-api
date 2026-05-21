@@ -128,8 +128,8 @@ export class CoursesService {
       categoryId: course.categoryId,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
-      lessonsCount: course._count.lessons,
-      enrollmentsCount: course._count.enrollments,
+      lessonsCount: course.lessonsCount,
+      enrollmentsCount: course.enrollmentsCount,
     };
   }
 }

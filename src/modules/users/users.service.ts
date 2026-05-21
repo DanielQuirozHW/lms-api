@@ -85,7 +85,7 @@ export class UsersService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role,
+      roles: user.roles,
       avatarUrl: user.avatarUrl,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
@@ -98,7 +98,7 @@ export class UsersService {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role,
+      roles: user.roles,
       avatarUrl: user.avatarUrl,
     };
   }

@@ -22,7 +22,8 @@ const mockCourse: Course = {
 
 const mockCourseWithCount: CourseWithCount = {
   ...mockCourse,
-  _count: { lessons: 5, enrollments: 10 },
+  lessonsCount: 5,
+  enrollmentsCount: 10,
 };
 
 describe('CoursesService', () => {

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 export class UserResponseDto {
   @ApiProperty({ example: 'clxyz123' })
@@ -14,8 +14,8 @@ export class UserResponseDto {
   @ApiProperty({ example: 'Doe' })
   lastName!: string;
 
-  @ApiProperty({ enum: ['STUDENT', 'INSTRUCTOR', 'ADMIN'], example: 'STUDENT' })
-  role!: UserRole;
+  @ApiProperty({ enum: UserRole, isArray: true, example: ['STUDENT'] })
+  roles!: UserRole[];
 
   @ApiProperty({ example: 'https://cdn.example.com/avatar.jpg', nullable: true })
   avatarUrl!: string | null;
