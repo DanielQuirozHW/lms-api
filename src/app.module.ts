@@ -10,6 +10,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CoursesModule } from './modules/courses/courses.module';
+import { CourseModulesModule } from './modules/course-modules/course-modules.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { ForumModule } from './modules/forum/forum.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
@@ -46,6 +47,7 @@ import type { AppConfig } from './config/configuration';
     AuthModule,
     UsersModule,
     CoursesModule,
+    CourseModulesModule,
     LessonsModule,
     EnrollmentsModule,
     ForumModule,
