@@ -13,6 +13,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 import type { AppConfig } from '../../config/configuration';
 import type { AuthenticatedUser, JwtPayload } from '../auth/auth.entity';
+import { MessagesService } from './messages.service';
 
 @WebSocketGateway({ namespace: '/messages' })
 export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -24,6 +25,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService<AppConfig>,
+    private readonly messagesService: MessagesService,
   ) {}
 
   handleConnection(client: Socket): void {
@@ -33,6 +35,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       return;
     }
     (client.data as Record<string, unknown>)['user'] = user;
+    void client.join(`user:${user.id}`);
     this.logger.log(`Messages client connected: ${client.id} (user: ${user.id})`);
   }
 
@@ -41,10 +44,30 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('sendMessage')
-  handleMessage(
-    @ConnectedSocket() _client: Socket,
-    @MessageBody() _payload: { receiverId: string; content: string },
-  ): void {}
+  async handleSendMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { receiverId: string; content: string },
+  ): Promise<void> {
+    const user = (client.data as Record<string, unknown>)['user'] as AuthenticatedUser;
+    const message = await this.messagesService.send(user.id, payload.receiverId, {
+      content: payload.content,
+    });
+    this.emitToUser(payload.receiverId, 'newMessage', message);
+  }
+
+  @SubscribeMessage('markRead')
+  async handleMarkRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { senderId: string },
+  ): Promise<void> {
+    const user = (client.data as Record<string, unknown>)['user'] as AuthenticatedUser;
+    await this.messagesService.markConversationRead(user.id, payload.senderId);
+    this.emitToUser(payload.senderId, 'messagesRead', { by: user.id });
+  }
+
+  emitToUser(userId: string, event: string, data: unknown): void {
+    this.server.to(`user:${userId}`).emit(event, data);
+  }
 
   private authenticate(client: Socket): AuthenticatedUser | null {
     const raw =
