@@ -1,20 +1,64 @@
 import { Injectable } from '@nestjs/common';
-import type { Lesson, Prisma } from '@prisma/client';
+import type {
+  AssignmentSettings,
+  Lesson,
+  LessonResource,
+  Prisma,
+  QuizSettings,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export type LessonWithDetails = Lesson & {
+  resources: LessonResource[];
+  quizSettings: QuizSettings | null;
+  assignmentSettings: AssignmentSettings | null;
+};
 
 @Injectable()
 export class LessonsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findByCourseId(courseId: string): Promise<Lesson[]> {
+  findByModuleId(moduleId: string, publishedOnly?: boolean): Promise<Lesson[]> {
     return this.prisma.lesson.findMany({
-      where: { module: { courseId } },
+      where: {
+        moduleId,
+        ...(publishedOnly && { isPublished: true }),
+      },
       orderBy: { order: 'asc' },
     });
   }
 
   findById(id: string): Promise<Lesson | null> {
     return this.prisma.lesson.findUnique({ where: { id } });
+  }
+
+  findByIdWithDetails(id: string): Promise<LessonWithDetails | null> {
+    return this.prisma.lesson.findUnique({
+      where: { id },
+      include: {
+        resources: { orderBy: { createdAt: 'asc' } },
+        quizSettings: true,
+        assignmentSettings: true,
+      },
+    });
+  }
+
+  async getMaxOrder(moduleId: string): Promise<number> {
+    const result = await this.prisma.lesson.aggregate({
+      where: { moduleId },
+      _max: { order: true },
+    });
+    return result._max.order ?? 0;
+  }
+
+  countProgress(lessonId: string): Promise<number> {
+    return this.prisma.lessonProgress.count({ where: { lessonId } });
+  }
+
+  isEnrolled(userId: string, courseId: string): Promise<boolean> {
+    return this.prisma.enrollment
+      .findFirst({ where: { userId, courseId, status: 'ACTIVE' } })
+      .then((e) => e !== null);
   }
 
   create(data: Prisma.LessonCreateInput): Promise<Lesson> {
@@ -29,11 +73,21 @@ export class LessonsRepository {
     return this.prisma.lesson.delete({ where: { id } });
   }
 
-  async reorder(_courseId: string, orderedIds: string[]): Promise<void> {
+  async reorder(items: { id: string; order: number }[]): Promise<void> {
     await this.prisma.$transaction(
-      orderedIds.map((id, index) =>
-        this.prisma.lesson.update({ where: { id }, data: { order: index + 1 } }),
-      ),
+      items.map(({ id, order }) => this.prisma.lesson.update({ where: { id }, data: { order } })),
     );
+  }
+
+  createResource(data: Prisma.LessonResourceCreateInput): Promise<LessonResource> {
+    return this.prisma.lessonResource.create({ data });
+  }
+
+  findResourceById(id: string): Promise<LessonResource | null> {
+    return this.prisma.lessonResource.findUnique({ where: { id } });
+  }
+
+  deleteResource(id: string): Promise<LessonResource> {
+    return this.prisma.lessonResource.delete({ where: { id } });
   }
 }
