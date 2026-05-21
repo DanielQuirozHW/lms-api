@@ -105,6 +105,10 @@ export class EnrollmentsRepository {
     });
   }
 
+  findActiveByUserAndCourse(userId: string, courseId: string): Promise<Enrollment | null> {
+    return this.prisma.enrollment.findFirst({ where: { userId, courseId, status: 'ACTIVE' } });
+  }
+
   updateStatus(id: string, status: EnrollmentStatus, completedAt?: Date): Promise<Enrollment> {
     return this.prisma.enrollment.update({
       where: { id },

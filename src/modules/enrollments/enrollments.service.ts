@@ -151,6 +151,12 @@ export class EnrollmentsService {
     );
   }
 
+  /** Returns true when the user has an active enrollment in the course. */
+  async isEnrolled(userId: string, courseId: string): Promise<boolean> {
+    const e = await this.enrollmentsRepository.findActiveByUserAndCourse(userId, courseId);
+    return e !== null;
+  }
+
   /** Manually marks an active enrollment as completed (admin only). */
   async complete(id: string): Promise<EnrollmentResponseDto> {
     const enrollment = await this.enrollmentsRepository.findById(id);
