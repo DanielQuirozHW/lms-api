@@ -15,6 +15,7 @@ import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { ForumModule } from './modules/forum/forum.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -52,6 +53,7 @@ import type { AppConfig } from './config/configuration';
     EnrollmentsModule,
     ForumModule,
     MessagesModule,
+    NotificationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
