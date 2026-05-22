@@ -1,6 +1,48 @@
 # CLAUDE.md
 
+⚠️ Always read `MISTAKES.md` before generating any code in this project.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+## Before implementing any feature — 5-step checklist
+
+1. **Read `MISTAKES.md`** — check whether the feature touches any pattern that has caused a vulnerability before (BOLA, session management, WebSocket input, Redis usage, visibility filtering).
+2. **Read the relevant skill** — identify which `.claude/skills/` file applies and read it before writing code.
+3. **Verify the parent resource ownership chain** — if the feature operates on a nested resource (lesson/module/enrollment), write down the full chain before touching any repository method.
+4. **Plan unit tests first** — identify the NotFoundException, ForbiddenException, and ConflictException cases before implementing the happy path.
+5. **Run `/security-review` on the new files** — after generating, run a security review before marking the task complete.
+
+---
+
+## Available Skills
+
+Skills are reference documents in `.claude/skills/`. Read the relevant skill before writing code in that area.
+
+| Skill | File | Use when |
+|---|---|---|
+| NestJS Security | `.claude/skills/nestjs-security.md` | Writing guards, JWT handling, WebSocket auth, ownership checks, Redis token management |
+| Prisma Patterns | `.claude/skills/prisma-patterns.md` | Writing repository methods, schema changes, migrations, transactions |
+| NestJS Architecture | `.claude/skills/nestjs-patterns.md` | Creating modules, deciding where logic lives, wiring dependencies, cross-module access |
+| API Design | `.claude/skills/api-design.md` | Designing endpoints, choosing HTTP status codes, pagination, Swagger docs |
+| Error Handling | `.claude/skills/error-handling.md` | Exception handling, logging, filters, what to log vs. omit |
+
+---
+
+## Available Commands
+
+Commands live in `.claude/commands/`. Invoke with `/command-name <arguments>`.
+
+| Command | Description |
+|---|---|
+| `/new-module <ModuleName>` | Generate a complete NestJS module with all 9 files (entity, DTOs, repository, service, controller, module, spec) |
+| `/security-review <path>` | Full OWASP + LMS BOLA + WebSocket + business logic security audit |
+| `/code-review <path>` | Architecture, TypeScript, SOLID, naming, async patterns, tests |
+| `/pre-commit-check <path>` | Scan for secrets, console.log, any type, missing pipes, arch violations |
+| `/post-generate-check <path>` | Verify generated module is wired: AppModule, providers, exports, Swagger, pipes |
+| `/new-dto <DtoName> [field:type...]` | Create a validated DTO with class-validator decorators |
+| `/db-migration <description>` | Safe Prisma migration: risk assessment, SQL preview, rollback docs |
 
 ## Project
 
@@ -259,55 +301,17 @@ The hooks are installed automatically when you run `pnpm install` (via the `prep
 
 ## Custom commands
 
-Custom commands live in `.claude/commands/`. Invoke with `/command-name <arguments>`.
+See the **Available Commands** table at the top of this file for the full list. All commands live in `.claude/commands/`.
 
-### `/new-module <ModuleName>`
-
-Creates a complete NestJS module: entity, DTOs (create/update/response), repository, service, controller, module file, and unit tests.
-
+Usage examples:
 ```
-/new-module Course
-/new-module ForumThread
-```
-
-After running: register the new module in `src/app.module.ts`, then run `pnpm build` to verify.
-
-### `/new-dto <DtoName> [field:type ...]`
-
-Creates a validated DTO with `class-validator` and `class-transformer` decorators.
-
-```
-/new-dto CreateUserDto email:string firstName:string lastName:string password:string role:enum
-/new-dto UpdateCourseDto title:string? description:string? price:number?
-```
-
-Trailing `?` marks optional fields.
-
-### `/security-review <path>`
-
-Reviews a file or module for security vulnerabilities: auth bypass, unvalidated inputs, sensitive data exposure, SQL injection risks, missing rate limits.
-
-```
+/new-module Payments
 /security-review src/modules/auth
-/security-review src/modules/users/users.controller.ts
-```
-
-### `/db-migration <description>`
-
-Guides through creating a Prisma migration safely: risk assessment, SQL preview, rollback documentation.
-
-```
-/db-migration add price column to courses table
-/db-migration rename user.name to firstName and lastName
-```
-
-### `/code-review <path>`
-
-Reviews code for SOLID principles, TypeScript correctness, NestJS conventions, performance, and security.
-
-```
 /code-review src/modules/enrollments
-/code-review src/modules/auth/auth.service.ts
+/pre-commit-check src/modules/courses
+/post-generate-check src/modules/payments
+/db-migration add price column to courses table
+/new-dto CreatePaymentDto amount:number courseId:uuid
 ```
 
 ---
@@ -321,7 +325,7 @@ Reviews code for SOLID principles, TypeScript correctness, NestJS conventions, p
 | `REDIS_PORT` | ✅ | Redis port (default 6379) |
 | `REDIS_PASSWORD` | | Redis password (blank for local) |
 | `JWT_SECRET` | ✅ | Min 32 chars — signs access tokens |
-| `JWT_EXPIRES_IN` | ✅ | e.g. `7d` |
+| `JWT_EXPIRES_IN` | ✅ | e.g. `15m` — access token lifetime |
 | `JWT_REFRESH_SECRET` | ✅ | Min 32 chars — signs refresh tokens |
 | `JWT_REFRESH_EXPIRES_IN` | ✅ | e.g. `30d` |
 | `CORS_ORIGINS` | ✅ | Comma-separated allowed origins |

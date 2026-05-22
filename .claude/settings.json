@@ -9,7 +9,6 @@
       "Bash(git log *)",
       "Bash(git diff *)",
       "Bash(git add *)",
-      "Bash(git commit *)",
       "Bash(git branch *)",
       "Bash(git checkout *)",
       "Bash(git stash *)",
@@ -19,11 +18,15 @@
       "Bash(find /c/LMS/lms-api/prisma *)"
     ],
     "deny": [
-      "Bash(git push *)",
-      "Bash(git push --force *)",
-      "Bash(rm -rf /*)",
+      "Bash(rm -rf*)",
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(git push --force*)",
       "Bash(curl *)",
-      "Bash(wget *)"
+      "Bash(wget *)",
+      "Bash(DROP TABLE*)",
+      "Bash(DELETE FROM*)",
+      "Bash(pnpm prisma migrate reset*)"
     ]
   }
 }

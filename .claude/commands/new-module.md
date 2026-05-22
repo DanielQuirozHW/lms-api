@@ -1,14 +1,32 @@
-Generate a complete NestJS module for **$ARGUMENTS** following the patterns established in `src/modules/auth/` (the reference implementation).
+Generate a complete NestJS module for **$ARGUMENTS**.
 
-Use kebab-case for the folder name and file names, PascalCase for class names. Create all files under `src/modules/<domain>/`.
+Before generating: read `MISTAKES.md` and `.claude/skills/nestjs-patterns.md`.
+
+Use kebab-case for folder and file names, PascalCase for class names. Create all files under `src/modules/<domain>/`. Use the `auth` module as the reference implementation for patterns.
 
 ---
 
-## Files to create
+## Step-by-step checklist
 
-### 1. `<domain>.entity.ts`
+Generate files in this exact order:
 
-Re-export the Prisma model type. If the Prisma model does not exist yet, define a plain interface and add a `// TODO: replace with Prisma type after migration` comment.
+1. `<domain>.entity.ts`
+2. `dto/create-<domain>.dto.ts`
+3. `dto/update-<domain>.dto.ts`
+4. `dto/<domain>-response.dto.ts`
+5. `<domain>.repository.ts`
+6. `<domain>.service.ts`
+7. `<domain>.controller.ts`
+8. `<domain>.module.ts`
+9. `<domain>.service.spec.ts`
+
+After all files are created: register in `app.module.ts`, run `pnpm build`, fix all errors.
+
+---
+
+## File 1: `<domain>.entity.ts`
+
+Re-export the Prisma type. If the Prisma model does not exist yet, define a plain interface.
 
 ```typescript
 import type { Course } from '@prisma/client';
@@ -17,52 +35,87 @@ export type CourseEntity = Course;
 
 ---
 
-### 2. `dto/create-<domain>.dto.ts`
+## File 2: `dto/create-<domain>.dto.ts`
 
-All user-supplied fields must have class-validator decorators. Apply this type map without exception:
+All user-supplied fields must have class-validator decorators. Apply without exception:
 
-| Field type | Decorators |
+| Field type | Required decorators |
 |---|---|
-| UUID (any FK or id) | `@IsUUID()` |
-| String | `@IsString()` + `@MinLength(n)` |
+| UUID / CUID (any FK) | `@IsUUID()` |
+| Free-form string | `@IsString()` + `@MinLength(n)` |
 | Email | `@IsEmail()` |
 | Enum | `@IsEnum(TheEnum)` |
 | Integer | `@IsInt()` + `@Min(0)` |
-| URL | `@IsUrl()` |
+| Float | `@IsNumber()` |
 | Boolean | `@IsBoolean()` |
-| Optional | `@IsOptional()` first, then type decorator |
+| URL | `@IsUrl()` |
+| Optional (any type) | `@IsOptional()` as first decorator, then type decorator |
+| UUID array | `@IsArray()` + `@IsUUID('4', { each: true })` |
 
-Never use `@IsString()` on a UUID field. Never leave a field without at least one decorator.
-
----
-
-### 3. `dto/update-<domain>.dto.ts`
-
-Always extend `PartialType`. Never copy-paste fields from the create DTO.
+**Never** use `@IsString()` on a UUID/CUID field. **Never** include `id`, `createdAt`, `updatedAt`, `status`, or `role` in a create DTO.
 
 ```typescript
-import { PartialType } from '@nestjs/mapped-types';
-import { Create$ARGUMENTSDto } from './create-$ARGUMENTS.dto';
-export class Update$ARGUMENTSDto extends PartialType(Create$ARGUMENTSDto) {}
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { LessonType } from '@prisma/client';
+
+export class CreateLessonDto {
+  @ApiProperty({ example: 'Introduction to Variables' })
+  @IsString()
+  @MinLength(3)
+  title!: string;
+
+  @ApiProperty({ enum: LessonType })
+  @IsEnum(LessonType)
+  type!: LessonType;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  order?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  content?: string;
+}
 ```
 
 ---
 
-### 4. `dto/<domain>-response.dto.ts`
+## File 3: `dto/update-<domain>.dto.ts`
 
-Plain class with only the fields the API should return. Rules:
-- Never include `passwordHash`, internal tokens, or raw IDs that expose implementation details
-- Always include `id`, `createdAt`, `updatedAt`
-- Use `@ApiProperty()` on every field (Swagger is configured globally)
+Always extend `PartialType`. Import from `@nestjs/swagger` to inherit `@ApiProperty` decorators.
 
 ```typescript
-import { ApiProperty } from '@nestjs/swagger';
+import { PartialType } from '@nestjs/swagger';
+import { CreateLessonDto } from './create-lesson.dto';
 
-export class CourseResponseDto {
+export class UpdateLessonDto extends PartialType(CreateLessonDto) {}
+```
+
+---
+
+## File 4: `dto/<domain>-response.dto.ts`
+
+Map only the fields the API should return. Always include `id`, `createdAt`, `updatedAt`. Never include `passwordHash`, internal tokens, or FK IDs that expose implementation details.
+
+```typescript
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { LessonType } from '@prisma/client';
+
+export class LessonResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty() moduleId!: string;
   @ApiProperty() title!: string;
-  @ApiProperty() slug!: string;
-  @ApiProperty({ enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'] }) status!: CourseStatus;
+  @ApiProperty() order!: number;
+  @ApiProperty({ enum: LessonType }) type!: LessonType;
+  @ApiPropertyOptional() content!: string | null;
+  @ApiPropertyOptional() videoUrl!: string | null;
+  @ApiPropertyOptional() duration!: number | null;
+  @ApiProperty() isPreview!: boolean;
+  @ApiProperty() isPublished!: boolean;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
@@ -70,126 +123,135 @@ export class CourseResponseDto {
 
 ---
 
-### 5. `<domain>.repository.ts`
+## File 5: `<domain>.repository.ts`
 
-Inject `PrismaService` with **`private readonly`** (not `protected`). Return raw Prisma types — mapping to response DTOs is the service's responsibility.
+Inject `PrismaService` with `private readonly`. Return raw Prisma types — mapping to DTOs is the service's job. Never throw — return `null` on miss. Never accept raw DTOs as parameters.
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import type { Course, Prisma } from '@prisma/client';
+import type { Lesson, LessonResource, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface FindCoursesParams {
-  status?: CourseStatus;
+export interface FindLessonsParams {
+  moduleId: string;
+  publishedOnly?: boolean;
   skip?: number;
   take?: number;
 }
 
 @Injectable()
-export class CoursesRepository {
+export class LessonsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(params: FindCoursesParams): Promise<[Course[], number]> {
-    const where: Prisma.CourseWhereInput = {
-      ...(params.status && { status: params.status }),
+  async findMany(params: FindLessonsParams): Promise<[Lesson[], number]> {
+    const where: Prisma.LessonWhereInput = {
+      moduleId: params.moduleId,
+      ...(params.publishedOnly && { isPublished: true }),
     };
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.course.findMany({
+    return this.prisma.$transaction([
+      this.prisma.lesson.findMany({
         where,
         skip: params.skip,
-        take: params.take,
-        orderBy: { createdAt: 'desc' },
+        take: params.take ?? 100,
+        orderBy: { order: 'asc' },
       }),
-      this.prisma.course.count({ where }),
+      this.prisma.lesson.count({ where }),
     ]);
-    return [data, total];
   }
 
-  findById(id: string): Promise<Course | null> {
-    return this.prisma.course.findUnique({ where: { id } });
+  // Always scope to parent — never findUnique by id alone for nested resources
+  findByIdInModule(
+    id: string,
+    moduleId: string,
+  ): Promise<(Lesson & { module: { courseId: string } }) | null> {
+    return this.prisma.lesson.findFirst({
+      where: { id, moduleId },
+      include: { module: { select: { courseId: true } } },
+    });
   }
 
-  create(data: Prisma.CourseCreateInput): Promise<Course> {
-    return this.prisma.course.create({ data });
+  create(data: Prisma.LessonCreateInput): Promise<Lesson> {
+    return this.prisma.lesson.create({ data });
   }
 
-  update(id: string, data: Prisma.CourseUpdateInput): Promise<Course> {
-    return this.prisma.course.update({ where: { id }, data });
+  update(id: string, data: Prisma.LessonUpdateInput): Promise<Lesson> {
+    return this.prisma.lesson.update({ where: { id }, data });
   }
 
-  delete(id: string): Promise<Course> {
-    return this.prisma.course.delete({ where: { id } });
+  delete(id: string): Promise<Lesson> {
+    return this.prisma.lesson.delete({ where: { id } });
   }
 }
 ```
 
-Repository rules:
-- Never throw — return `null` on not-found; let the service throw `NotFoundException`
-- Never contain business logic
-- Every `findMany` must have a `take` parameter (from pagination or a hardcoded constant)
-- `GlobalExceptionFilter` maps P2002→409, P2025→404, P2003→400 automatically
-
 ---
 
-### 6. `<domain>.service.ts`
+## File 6: `<domain>.service.ts`
 
-Inject the repository with **`private readonly`**. Map entities to response DTOs via a private `map()` method — never return raw Prisma objects. Throw NestJS HTTP exceptions.
+Inject the repository with `private readonly`. Map all Prisma entities through `private map()`. Throw NestJS HTTP exceptions — never raw `Error`. Verify ownership chain before every write.
 
 ```typescript
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { paginate, PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
-import { CoursesRepository } from './courses.repository';
-import { CourseResponseDto } from './dto/course-response.dto';
-import type { CreateCourseDto } from './dto/create-course.dto';
-import type { UpdateCourseDto } from './dto/update-course.dto';
-import type { Course } from '@prisma/client';
+import type { Lesson } from '@prisma/client';
+import type { CreateLessonDto } from './dto/create-lesson.dto';
+import type { LessonResponseDto } from './dto/lesson-response.dto';
+import type { UpdateLessonDto } from './dto/update-lesson.dto';
+import { LessonsRepository } from './lessons.repository';
 
 @Injectable()
-export class CoursesService {
-  constructor(private readonly coursesRepository: CoursesRepository) {}
+export class LessonsService {
+  constructor(private readonly lessonsRepository: LessonsRepository) {}
 
-  async findAll(pagination: PaginationDto): Promise<PaginatedResult<CourseResponseDto>> {
-    const [courses, total] = await this.coursesRepository.findMany({
-      skip: pagination.skip,
-      take: pagination.limit,
-    });
-    return paginate(courses.map((c) => this.map(c)), total, pagination);
-  }
-
-  async findById(id: string): Promise<CourseResponseDto> {
-    const course = await this.coursesRepository.findById(id);
-    if (!course) throw new NotFoundException('Course not found');
-    return this.map(course);
-  }
-
-  async create(instructorId: string, dto: CreateCourseDto): Promise<CourseResponseDto> {
-    const course = await this.coursesRepository.create({
+  async create(courseId: string, moduleId: string, dto: CreateLessonDto): Promise<LessonResponseDto> {
+    // Verify module belongs to this course before creating
+    const module = await this.lessonsRepository.findModuleByCourseId(moduleId, courseId);
+    if (!module) throw new NotFoundException('Module not found');
+    const lesson = await this.lessonsRepository.create({
       title: dto.title,
-      slug: dto.title.toLowerCase().replace(/\s+/g, '-'),
-      instructor: { connect: { id: instructorId } },
+      type: dto.type,
+      order: dto.order ?? 1,
+      module: { connect: { id: moduleId } },
     });
-    return this.map(course);
+    return this.map(lesson);
   }
 
-  async update(id: string, dto: UpdateCourseDto): Promise<CourseResponseDto> {
-    await this.findById(id); // 404 if not found before updating
-    const course = await this.coursesRepository.update(id, dto);
-    return this.map(course);
+  async update(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    dto: UpdateLessonDto,
+  ): Promise<LessonResponseDto> {
+    // Full ownership chain verification
+    const existing = await this.lessonsRepository.findByIdInModule(lessonId, moduleId);
+    if (!existing || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
+    const lesson = await this.lessonsRepository.update(lessonId, dto);
+    return this.map(lesson);
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id); // 404 if not found before deleting
-    await this.coursesRepository.delete(id);
+  async remove(courseId: string, moduleId: string, lessonId: string): Promise<void> {
+    const existing = await this.lessonsRepository.findByIdInModule(lessonId, moduleId);
+    if (!existing || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
+    await this.lessonsRepository.delete(lessonId);
   }
 
-  private map(course: Course): CourseResponseDto {
+  private map(lesson: Lesson): LessonResponseDto {
     return {
-      id: course.id,
-      title: course.title,
-      slug: course.slug,
-      status: course.status,
-      createdAt: course.createdAt,
-      updatedAt: course.updatedAt,
+      id: lesson.id,
+      moduleId: lesson.moduleId,
+      title: lesson.title,
+      order: lesson.order,
+      type: lesson.type,
+      content: lesson.content,
+      videoUrl: lesson.videoUrl,
+      duration: lesson.duration,
+      isPreview: lesson.isPreview,
+      isPublished: lesson.isPublished,
+      createdAt: lesson.createdAt,
+      updatedAt: lesson.updatedAt,
     };
   }
 }
@@ -197,146 +259,189 @@ export class CoursesService {
 
 ---
 
-### 7. `<domain>.controller.ts`
+## File 7: `<domain>.controller.ts`
 
-Inject the service with **`private readonly`**. Apply `ParseUUIDPipe` on every UUID path param. Add `@HttpCode(HttpStatus.NO_CONTENT)` on DELETE. Apply `@Roles()` on every write endpoint.
+Routing only. `ParseUUIDPipe` on every UUID param. `@Roles()` on every write. `@HttpCode(204)` on DELETE. Never re-fetch the user from DB — use `@CurrentUser()`.
 
 ```typescript
 import {
   Body, Controller, Delete, Get, HttpCode, HttpStatus,
   Param, ParseUUIDPipe, Patch, Post, Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
-import { CoursesService } from './courses.service';
-import { CourseResponseDto } from './dto/course-response.dto';
-import { CreateCourseDto } from './dto/create-course.dto';
-import { UpdateCourseDto } from './dto/update-course.dto';
+import { LessonsService } from './lessons.service';
+import { CreateLessonDto } from './dto/create-lesson.dto';
+import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { LessonResponseDto } from './dto/lesson-response.dto';
 
-@ApiTags('Courses')
-@Controller('courses')
-export class CoursesController {
-  constructor(private readonly coursesService: CoursesService) {}
-
-  @Get()
-  findAll(@Query() pagination: PaginationDto): Promise<PaginatedResult<CourseResponseDto>> {
-    return this.coursesService.findAll(pagination);
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<CourseResponseDto> {
-    return this.coursesService.findById(id);
-  }
+@ApiTags('Lessons')
+@ApiBearerAuth()
+@Controller('courses/:courseId/modules/:moduleId/lessons')
+export class LessonsController {
+  constructor(private readonly lessonsService: LessonsService) {}
 
   @Post()
   @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Create a lesson in a module' })
+  @ApiResponse({ status: 201, type: LessonResponseDto })
   create(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: CreateCourseDto,
-  ): Promise<CourseResponseDto> {
-    return this.coursesService.create(user.id, dto);
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Body() dto: CreateLessonDto,
+  ): Promise<LessonResponseDto> {
+    return this.lessonsService.create(courseId, moduleId, dto);
   }
 
-  @Patch(':id')
+  @Patch(':lessonId')
   @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Update a lesson' })
+  @ApiResponse({ status: 200, type: LessonResponseDto })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCourseDto,
-  ): Promise<CourseResponseDto> {
-    return this.coursesService.update(id, dto);
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Body() dto: UpdateLessonDto,
+  ): Promise<LessonResponseDto> {
+    return this.lessonsService.update(courseId, moduleId, lessonId, dto);
   }
 
-  @Delete(':id')
+  @Delete(':lessonId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('INSTRUCTOR', 'ADMIN')
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.coursesService.remove(id);
+  @ApiOperation({ summary: 'Delete a lesson' })
+  @ApiResponse({ status: 204 })
+  remove(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+  ): Promise<void> {
+    return this.lessonsService.remove(courseId, moduleId, lessonId);
   }
 }
 ```
 
 ---
 
-### 8. `<domain>.module.ts`
+## File 8: `<domain>.module.ts`
 
-Register service and repository in `providers`. Export only the service (repositories are internal). Import `JwtModule.register({})` only if the module includes a WebSocket gateway.
+Register service and repository in `providers`. Export only the service. Import `JwtModule.register({})` only if the module has a WebSocket gateway.
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { CoursesController } from './courses.controller';
-import { CoursesRepository } from './courses.repository';
-import { CoursesService } from './courses.service';
+import { LessonsController } from './lessons.controller';
+import { LessonsRepository } from './lessons.repository';
+import { LessonsService } from './lessons.service';
 
 @Module({
-  controllers: [CoursesController],
-  providers: [CoursesService, CoursesRepository],
-  exports: [CoursesService], // never export the repository
+  controllers: [LessonsController],
+  providers: [LessonsService, LessonsRepository],
+  exports: [LessonsService],
 })
-export class CoursesModule {}
+export class LessonsModule {}
 ```
 
 ---
 
-### 9. `<domain>.service.spec.ts`
+## File 9: `<domain>.service.spec.ts`
 
-Mock the repository with `jest.fn()`. Test the service in isolation — no database, no Prisma.
+Mock the repository with `jest.fn()`. Test in isolation — no database, no Prisma.
 
 ```typescript
 import { NotFoundException } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { CoursesRepository } from './courses.repository';
-import { CoursesService } from './courses.service';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { LessonsRepository } from './lessons.repository';
+import { LessonsService } from './lessons.service';
 
-describe('CoursesService', () => {
-  let service: CoursesService;
-  let repository: jest.Mocked<CoursesRepository>;
+const mockLesson = {
+  id: 'lesson-1',
+  moduleId: 'module-1',
+  title: 'Intro',
+  order: 1,
+  type: 'VIDEO',
+  content: null,
+  videoUrl: null,
+  duration: null,
+  isPreview: false,
+  isPublished: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+describe('LessonsService', () => {
+  let service: LessonsService;
+  let repo: jest.Mocked<Pick<LessonsRepository, 'create' | 'findByIdInModule' | 'update' | 'delete' | 'findModuleByCourseId'>>;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        CoursesService,
-        {
-          provide: CoursesRepository,
-          useValue: {
-            findMany: jest.fn(),
-            findById: jest.fn(),
-            create: jest.fn(),
-            update: jest.fn(),
-            delete: jest.fn(),
-          },
-        },
-      ],
+    repo = {
+      create: jest.fn(),
+      findByIdInModule: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findModuleByCourseId: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [LessonsService, { provide: LessonsRepository, useValue: repo }],
     }).compile();
 
-    service = module.get(CoursesService);
-    repository = module.get(CoursesRepository);
+    service = module.get<LessonsService>(LessonsService);
   });
 
-  describe('findById', () => {
-    it('throws NotFoundException when course does not exist', async () => {
-      repository.findById.mockResolvedValue(null);
-      await expect(service.findById('nonexistent-id')).rejects.toThrow(NotFoundException);
-    });
-
-    it('returns mapped response DTO when course exists', async () => {
-      const mockCourse = { id: '1', title: 'Test', slug: 'test', status: 'DRAFT', createdAt: new Date(), updatedAt: new Date() };
-      repository.findById.mockResolvedValue(mockCourse as any);
-      const result = await service.findById('1');
-      expect(result.id).toBe('1');
-      expect(result.title).toBe('Test');
-    });
-  });
+  afterEach(() => jest.clearAllMocks());
 
   describe('create', () => {
-    it('calls repository.create with correct data', async () => {
-      const dto = { title: 'New Course' };
-      const mockCourse = { id: '1', title: 'New Course', slug: 'new-course', status: 'DRAFT', createdAt: new Date(), updatedAt: new Date() };
-      repository.create.mockResolvedValue(mockCourse as any);
-      await service.create('instructor-id', dto as any);
-      expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ title: 'New Course' }));
+    it('throws NotFoundException when module does not belong to course', async () => {
+      repo.findModuleByCourseId.mockResolvedValue(null);
+      await expect(service.create('course-1', 'module-1', { title: 'Test', type: 'VIDEO' }))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('creates lesson when module belongs to course', async () => {
+      repo.findModuleByCourseId.mockResolvedValue({ id: 'module-1' });
+      repo.create.mockResolvedValue(mockLesson as any);
+      const result = await service.create('course-1', 'module-1', { title: 'Test', type: 'VIDEO' });
+      expect(result.id).toBe('lesson-1');
+      expect(result).not.toHaveProperty('module');
+    });
+  });
+
+  describe('update', () => {
+    it('throws NotFoundException when lesson does not belong to module/course', async () => {
+      repo.findByIdInModule.mockResolvedValue(null);
+      await expect(service.update('course-1', 'module-1', 'lesson-1', { title: 'New' }))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when module belongs to different course', async () => {
+      repo.findByIdInModule.mockResolvedValue({ ...mockLesson, module: { courseId: 'other-course' } } as any);
+      await expect(service.update('course-1', 'module-1', 'lesson-1', { title: 'New' }))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('updates lesson when ownership chain is valid', async () => {
+      repo.findByIdInModule.mockResolvedValue({ ...mockLesson, module: { courseId: 'course-1' } } as any);
+      repo.update.mockResolvedValue({ ...mockLesson, title: 'New' } as any);
+      const result = await service.update('course-1', 'module-1', 'lesson-1', { title: 'New' });
+      expect(result.title).toBe('New');
+    });
+  });
+
+  describe('remove', () => {
+    it('throws NotFoundException when lesson does not exist', async () => {
+      repo.findByIdInModule.mockResolvedValue(null);
+      await expect(service.remove('course-1', 'module-1', 'lesson-1')).rejects.toThrow(NotFoundException);
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes lesson when ownership chain is valid', async () => {
+      repo.findByIdInModule.mockResolvedValue({ ...mockLesson, module: { courseId: 'course-1' } } as any);
+      repo.delete.mockResolvedValue(mockLesson as any);
+      await service.remove('course-1', 'module-1', 'lesson-1');
+      expect(repo.delete).toHaveBeenCalledWith('lesson-1');
     });
   });
 });
@@ -344,9 +449,10 @@ describe('CoursesService', () => {
 
 ---
 
-## After creating the files
+## After creating all files
 
 1. Add `<Domain>Module` to `imports` in `src/app.module.ts`
 2. If a new Prisma model is needed: update `prisma/schema.prisma`, run `pnpm prisma:migrate`, then `pnpm prisma:generate`
 3. Run `pnpm build` — fix all TypeScript errors
 4. Run `pnpm test` — all tests must pass
+5. Run `/post-generate-check src/modules/<domain>` to verify wiring

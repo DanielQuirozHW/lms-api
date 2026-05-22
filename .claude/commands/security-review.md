@@ -1,136 +1,191 @@
 Perform a security review of **$ARGUMENTS**.
 
-Read the specified file(s) and analyse them against the checklist below. For each finding report:
-**[SEVERITY]** `file:line` — description → fix
+Before starting: read `MISTAKES.md` and `.claude/skills/nestjs-security.md`. Every item in MISTAKES.md represents a real vulnerability found in this codebase — check for recurrence.
 
-Severity levels: **Critical** / **High** / **Medium** / **Low**
+Read the target file(s) thoroughly, then evaluate every section below. Report every finding as:
 
----
+```
+[SEVERITY] file:line
+Issue: <what is wrong>
+Fix: <concrete code change or pattern>
+MISTAKES.md ref: <[NNN] if applicable>
+```
 
-## Project-specific context
-
-This is a NestJS 11 API with:
-- Global guards: `ThrottlerGuard` → `JwtAuthGuard` → `RolesGuard` (in that order, via `APP_GUARD`)
-- Global pipes: `ValidationPipe` with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
-- Global filter: `GlobalExceptionFilter` — maps Prisma P2002→409, P2025→404, P2003→400; swallows stack traces
-- Global interceptors: `LoggingInterceptor`, `ResponseInterceptor` (skips wrapping on 204)
-- Auth: JWT access tokens (15 min) + refresh tokens stored in Redis (7 days), rotated on use
-- IDs: Prisma CUID (`@id @default(cuid())`) — must be validated with `@IsUUID()` in DTOs
+Severity levels: **CRITICAL** / **HIGH** / **MEDIUM** / **LOW** / **INFORMATIONAL**
 
 ---
 
-## Checklist
+## Project context
 
-### 1. Authentication & Authorization
+NestJS 11 LMS API. Global guard chain: `ThrottlerGuard → JwtAuthGuard → RolesGuard`. Global pipe: `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`. Global filter: `GlobalExceptionFilter` (maps P2002→409, P2025→404, P2003→400). Auth: JWT access (15m) + refresh tokens in Redis (30d), rotated on use. IDs: Prisma CUID.
 
-- [ ] Routes that need no auth are marked `@Public()` — not "unprotected by accident"
-- [ ] Routes that need auth have NO `@Public()` and no manual token check
-- [ ] `@Roles()` is applied to every write endpoint (POST, PATCH, PUT, DELETE) — not just admin endpoints
-- [ ] Role checks use `@Roles()` guard only — never `if (user.role !== 'ADMIN')` inside the handler
-- [ ] JWT secret is never hardcoded — always read from `ConfigService<AppConfig>`
-- [ ] Refresh token endpoint (`POST /auth/refresh`) has `@Throttle({ default: { limit: 5, ttl: 60000 } })`
-- [ ] WebSocket gateways verify the JWT in `handleConnection` and call `client.disconnect()` on failure
+---
 
-### 2. Input Validation — DTOs
+## OWASP Top 10 Checklist
 
-- [ ] Every controller method that receives a body uses a typed DTO — no `@Body() body: any`
-- [ ] Every controller method that receives query params uses a typed DTO — no `@Query() q: any`
-- [ ] **UUID fields use `@IsUUID()`** — `@IsString()` is NOT acceptable for any FK or id field
-- [ ] Optional UUID fields use `@IsOptional()` + `@IsUUID()` — not `@IsOptional()` + `@IsString()`
-- [ ] String fields have `@MinLength(n)` where a minimum length makes sense
-- [ ] Enum fields use `@IsEnum(TheEnum)` — not `@IsString()`
-- [ ] Array fields have `@IsArray()` + element-level decorators (`@IsUUID('4', { each: true })`)
-- [ ] Update DTOs extend `PartialType(CreateDto)` — not manually redeclared with all-optional fields
+### A01 — Broken Access Control
 
-### 3. Input Validation — Path Parameters
+- [ ] All write endpoints have `@Roles()` applied
+- [ ] All UUID path params use `ParseUUIDPipe`
+- [ ] Resource lookups verify the complete parent ownership chain — not just top-level (see [001])
+- [ ] Non-PUBLISHED resources return 404 (not 403) to unauthorized viewers (see [007])
+- [ ] Self-operation checks: vote/rate/review/enrollment checks `resource.ownerId !== user.id` (see [008])
+- [ ] Instructor self-enrollment is blocked (see [008])
+- [ ] Deleted/archived resources are inaccessible without explicit admin flag
 
-- [ ] Every UUID path param uses `ParseUUIDPipe`: `@Param('id', ParseUUIDPipe) id: string`
-- [ ] No bare `@Param('id') id: string` without pipe — accepts any string including injection attempts
-- [ ] Non-UUID path params are validated against an explicit allowlist in the service
+### A02 — Cryptographic Failures
 
-### 4. SQL / Prisma Safety
-
-- [ ] No `prisma.$queryRaw` or `prisma.$executeRaw` with string interpolation
-- [ ] If raw queries exist, they use tagged template literals: `` prisma.$queryRaw`SELECT ... WHERE id = ${id}` ``
-- [ ] `orderBy` values are never built dynamically from user input without a hardcoded allowlist
-- [ ] Compound unique lookups use the Prisma compound key syntax: `{ where: { userId_courseId: { userId, courseId } } }`
-
-### 5. Sensitive Data Exposure
-
-- [ ] `passwordHash` is never included in any response DTO
-- [ ] Services always map through a private `map()` method — never `return rawPrismaObject`
-- [ ] No `logger.log(user)` or similar full-object logging of entities
-- [ ] `GlobalExceptionFilter` does not expose stack traces (verify it only logs, never returns, the stack)
-- [ ] No secrets in comments, strings, or `.env` files committed to the repo
-
-### 6. Rate Limiting
-
-- [ ] Auth endpoints (login, register, refresh) have `@Throttle({ default: { limit: 5, ttl: 60000 } })`
-- [ ] File upload endpoints have a body size limit (global limit in `main.ts` is `10mb`)
-- [ ] No `findMany` call in any repository is unbounded — every list query has a `take` parameter
-
-### 7. Mass Assignment
-
-- [ ] `whitelist: true` strips unknown fields globally — but DTOs must exist for it to work
-- [ ] Update DTOs do not allow `id`, `createdAt`, `updatedAt`, or `role` to be updated (unless admin)
-- [ ] `UsersRepository.update` accepts `Prisma.UserUpdateInput` — verify callers never pass `role` from user input
-- [ ] `CoursesRepository.update` accepts `Prisma.CourseUpdateInput` — verify `instructorId` is not user-settable
-
-### 8. CORS & Headers
-
-- [ ] `helmet()` is applied in `main.ts` (it is — verify it has not been removed)
-- [ ] CORS `origin` in `main.ts` uses `config.get('cors.origins')` — never hardcoded `'*'`
-- [ ] `@WebSocketGateway` decorators have no `cors:` option — CORS is handled by `SocketIoCorsAdapter`
-
-### 9. Error Handling
-
-- [ ] All async service methods propagate exceptions — no swallowed `catch` blocks that hide failures
-- [ ] No controller methods `throw new Error(...)` — only NestJS HTTP exceptions
-- [ ] `GlobalExceptionFilter.catch` does not call `response.json()` with the raw Prisma error
-- [ ] Logout and other token-invalidation paths have try/catch that swallows expired-token errors (expected behavior)
-
-### 10. Cryptography & Secrets
-
-- [ ] Passwords hashed with `bcrypt` at cost 12 — verify `BCRYPT_ROUNDS` constant
+- [ ] Passwords hashed with bcrypt cost ≥ 12 (`BCRYPT_ROUNDS = 12`)
+- [ ] JWT secrets minimum 32 characters, validated by Zod in `env.validation.ts`
 - [ ] Refresh token JTI uses `crypto.randomUUID()` — not `Math.random()`
-- [ ] JWT secrets have minimum length enforced by Zod in `src/config/env.validation.ts`
-- [ ] R2 storage keys are sanitized before use — never `user.originalFilename` directly as the S3 key
+- [ ] Timing attack prevention: `bcrypt.compare` always runs even on missing email (see [005])
+- [ ] No secrets hardcoded in source — all from `ConfigService<AppConfig>`
+- [ ] R2/S3 object keys are never user-supplied filenames directly
 
-### 11. WebSocket-Specific
+### A03 — Injection
 
-- [ ] Room names (`thread:${threadId}`) use validated UUIDs — `threadId` comes from a validated DTO
-- [ ] Gateway event handlers validate their `@MessageBody()` payload — use typed DTOs, not `any`
-- [ ] Broadcast events are scoped to the correct room — no `server.emit()` that reaches all connected clients
+- [ ] No `$queryRaw` or `$executeRaw` with string interpolation — must use tagged template literals
+- [ ] No dynamic `orderBy` from user input without an explicit allowlist
+- [ ] File path construction never uses user input directly
+- [ ] No `eval()`, `new Function()`, or dynamic code execution
 
-### 12. Repository Pattern Integrity
+### A04 — Insecure Design
 
-- [ ] No service injects `PrismaService` directly — only via its domain repository
-- [ ] No controller injects a repository — only via the service
-- [ ] No module exports a repository — only services are exported
+- [ ] Enrollment flow checks course is PUBLISHED before allowing enrollment
+- [ ] Published lessons with student progress cannot be deleted without check (409 on conflict)
+- [ ] Token rotation: old refresh token deleted on every `refresh` call
+- [ ] Password change invalidates all sessions (see [002])
+- [ ] Account deletion: DB delete before Redis cleanup (see [012])
+
+### A05 — Security Misconfiguration
+
+- [ ] `helmet()` applied in `main.ts`
+- [ ] CORS origin uses `config.get('cors.origins')` — never hardcoded `'*'`
+- [ ] No `cors:` option on `@WebSocketGateway` decorators
+- [ ] No `enableImplicitConversion: true` in `ValidationPipe` config (see [004])
+- [ ] Environment variables validated by Zod on startup — no silent fallbacks for required vars
+
+### A06 — Vulnerable and Outdated Components
+
+- [ ] No use of deprecated `passport-jwt` config patterns
+- [ ] `pnpm audit` passes at `--audit-level=high`
+
+### A07 — Identification and Authentication Failures
+
+- [ ] JWT strategy verifies `payload.type === 'access'` (see [011])
+- [ ] WebSocket `authenticate()` verifies `payload.type === 'access'` (see [011])
+- [ ] JWT strategy checks `revoked:user:${userId}` in Redis
+- [ ] WebSocket `authenticate()` checks `revoked:user:${userId}` in Redis
+- [ ] Login endpoint has `@Throttle({ default: { limit: 5, ttl: 60000 } })`
+- [ ] Register endpoint has `@Throttle({ default: { limit: 5, ttl: 60000 } })`
+- [ ] Refresh endpoint has `@Throttle({ default: { limit: 5, ttl: 60000 } })`
+- [ ] Failed login does NOT log the email address (see [010])
+
+### A08 — Software and Data Integrity Failures
+
+- [ ] No auto-update scripts without integrity checks
+- [ ] Webhook endpoints (if any) verify signatures
+
+### A09 — Security Logging and Monitoring Failures
+
+- [ ] Login failures logged with user ID (not email), action, and IP
+- [ ] Revoked token use logged with user ID and JTI
+- [ ] Password changes logged with user ID
+- [ ] No `console.log` in security-sensitive code paths — always `Logger`
+- [ ] No PII (email, name) in error log messages
+
+### A10 — Server-Side Request Forgery
+
+- [ ] URL fields in DTOs validated with `@IsUrl()` — no open URL fetch from user-supplied URLs
+- [ ] R2 `getSignedUrl` uses internal bucket path — never user-supplied URL
+
+---
+
+## LMS-specific BOLA Checklist
+
+For every controller endpoint that operates on a nested resource:
+
+- [ ] `GET /courses/:courseId/modules/:moduleId` — `module.courseId === courseId`
+- [ ] `GET /courses/:courseId/modules/:moduleId/lessons/:lessonId` — `lesson.moduleId === moduleId` AND `lesson.module.courseId === courseId`
+- [ ] `PATCH /courses/:courseId/modules/:moduleId/lessons/:lessonId` — same chain
+- [ ] `DELETE /courses/:courseId/modules/:moduleId/lessons/:lessonId` — same chain
+- [ ] `POST /courses/:courseId/modules/:moduleId/lessons/:lessonId/resources` — same chain
+- [ ] Course owner guard: `course.instructorId === user.id` for all write operations
+
+---
+
+## WebSocket Security Checklist
+
+- [ ] `handleConnection` authenticates client immediately — `client.disconnect()` on failure
+- [ ] Token extracted from `handshake.auth.token` OR `Authorization` header
+- [ ] `payload.type === 'access'` checked in `authenticate()`
+- [ ] `revoked:user:${userId}` checked in `authenticate()`
+- [ ] Every `@SubscribeMessage` uses `@MessageBody(new ValidationPipe({ whitelist: true }))` with typed DTO (see [003])
+- [ ] Rate limiting implemented per-connection in every handler (see [013])
+- [ ] Room names use validated IDs from typed DTOs — not raw string concatenation
+- [ ] Broadcast scope: `server.to(room).emit()` — not `server.emit()` to all clients
+- [ ] `enrollmentsService.isEnrolled()` called for course-scoped room access
+
+---
+
+## Business Logic Checklist
+
+- [ ] Self-vote: `post.authorId !== user.id` before vote (see [008])
+- [ ] Self-enrollment: `course.instructorId !== user.id` before enroll (see [008])
+- [ ] Email verification: `user.isVerified === true` required before enrollment
+- [ ] Double enrollment: handled via upsert or explicit conflict check
+- [ ] Course deletion: requires 0 non-cancelled enrollments
+- [ ] Lesson deletion: requires 0 student progress records if published
+- [ ] Module visibility: publishedOnly filter applied for non-instructor/admin callers
+- [ ] Forum delete: thread with replies throws 409
+
+---
+
+## Prisma-Specific Checklist
+
+- [ ] No `findMany` without `take` limit
+- [ ] No `keys()` Redis command — use Sets (see [006])
+- [ ] All FK fields have `@@index` in schema
+- [ ] Multi-step writes use `$transaction`
+- [ ] No repository exports from modules — services only
+- [ ] No direct `PrismaService` injection in service classes — through repository only
 
 ---
 
 ## Output format
 
-List every finding:
+List all findings grouped by severity:
 
 ```
-[HIGH] src/modules/courses/dto/create-course.dto.ts:14
-Issue: categoryId uses @IsString() instead of @IsUUID()
-Fix: Replace @IsString() with @IsUUID() and update the import
+## CRITICAL
+[CRITICAL] src/modules/auth/auth.service.ts:53
+Issue: bcrypt.compare not run when user not found — timing attack allows user enumeration
+Fix: Always compare against DUMMY_HASH when user is null
+MISTAKES.md ref: [005]
+
+## HIGH
+...
+
+## MEDIUM
+...
+
+## LOW
+...
+
+## INFORMATIONAL
+...
 ```
 
-Then provide:
-
-**Summary table**
+End with a summary table:
 
 | Severity | Count | Files affected |
 |---|---|---|
-| Critical | 0 | — |
-| High | 2 | courses.dto.ts, messages.dto.ts |
-| Medium | 1 | messages.repository.ts |
-| Low | 0 | — |
+| CRITICAL | 0 | — |
+| HIGH | 2 | auth.service.ts, courses.service.ts |
+| MEDIUM | 1 | forum.gateway.ts |
+| LOW | 0 | — |
+| INFORMATIONAL | 1 | enrollments.controller.ts |
 
-**Overall risk rating:** Low / Medium / High / Critical
+**Overall risk rating:** LOW / MEDIUM / HIGH / CRITICAL
 
-If a category has no issues, write "✅ No issues found."
+If a category has no issues, write `✅ No issues found.`
