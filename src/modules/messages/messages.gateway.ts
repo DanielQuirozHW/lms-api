@@ -12,6 +12,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import type { AppConfig } from '../../config/configuration';
+import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser, JwtPayload } from '../auth/auth.entity';
 import { MarkReadWsDto } from './dto/mark-read-ws.dto';
 import { SendMessageWsDto } from './dto/send-message-ws.dto';
@@ -31,10 +32,11 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly jwtService: JwtService,
     private readonly config: ConfigService<AppConfig>,
     private readonly messagesService: MessagesService,
+    private readonly redisService: RedisService,
   ) {}
 
-  handleConnection(client: Socket): void {
-    const user = this.authenticate(client);
+  async handleConnection(client: Socket): Promise<void> {
+    const user = await this.authenticate(client);
     if (!user) {
       client.disconnect();
       return;
@@ -103,7 +105,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     return true;
   }
 
-  private authenticate(client: Socket): AuthenticatedUser | null {
+  private async authenticate(client: Socket): Promise<AuthenticatedUser | null> {
     const raw =
       (client.handshake.auth['token'] as string | undefined) ??
       client.handshake.headers['authorization']?.replace('Bearer ', '');
@@ -119,7 +121,17 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       if ((payload.type as string) !== 'access') {
         throw new UnauthorizedException('Invalid token type');
       }
-      return { id: payload.sub, email: payload.email, roles: payload.roles };
+      const revoked = await this.redisService.get(`revoked:user:${payload.sub}`);
+      if (revoked) {
+        this.logger.warn(`Messages client rejected: ${client.id} — revoked user ${payload.sub}`);
+        return null;
+      }
+      return {
+        id: payload.sub,
+        email: payload.email,
+        roles: payload.roles,
+        isVerified: payload.isVerified,
+      };
     } catch {
       this.logger.warn(`Messages client rejected: ${client.id} — invalid token`);
       return null;

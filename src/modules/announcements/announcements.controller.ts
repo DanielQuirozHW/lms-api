@@ -11,7 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -20,7 +20,7 @@ import { PaginationDto, type PaginatedResult } from '../../common/dto/pagination
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
-import type { AnnouncementResponseDto } from './dto/announcement-response.dto';
+import { AnnouncementResponseDto } from './dto/announcement-response.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
 
 @ApiTags('Announcements')
@@ -32,6 +32,7 @@ export class AnnouncementsController {
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create an announcement (course instructor or admin)' })
+  @ApiResponse({ status: 201, type: AnnouncementResponseDto })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId', ParseUUIDPipe) courseId: string,
@@ -43,6 +44,7 @@ export class AnnouncementsController {
   @Get(':courseId/announcements')
   @Public()
   @ApiOperation({ summary: 'List announcements for a course' })
+  @ApiResponse({ status: 200, description: 'Paginated announcements list' })
   findMany(
     @CurrentUser() user: AuthenticatedUser | undefined,
     @Param('courseId', ParseUUIDPipe) courseId: string,
@@ -55,6 +57,7 @@ export class AnnouncementsController {
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an announcement (author or admin)' })
+  @ApiResponse({ status: 200, type: AnnouncementResponseDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId', ParseUUIDPipe) courseId: string,
@@ -69,6 +72,7 @@ export class AnnouncementsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an announcement (author or admin)' })
+  @ApiResponse({ status: 204 })
   delete(
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId', ParseUUIDPipe) courseId: string,

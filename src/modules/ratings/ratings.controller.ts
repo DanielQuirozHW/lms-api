@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { PaginationDto, type PaginatedResult } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CreateRatingDto } from './dto/create-rating.dto';
-import type { RatingResponseDto } from './dto/rating-response.dto';
-import type { RatingSummaryDto } from './dto/rating-summary.dto';
+import { RatingResponseDto } from './dto/rating-response.dto';
+import { RatingSummaryDto } from './dto/rating-summary.dto';
 import { UpdateRatingDto } from './dto/update-rating.dto';
 import { RatingsService } from './ratings.service';
 
@@ -18,6 +18,7 @@ export class RatingsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Rate a course (enrolled students only)' })
+  @ApiResponse({ status: 201, type: RatingResponseDto })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateRatingDto,
@@ -28,6 +29,7 @@ export class RatingsController {
   @Patch(':courseId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update own course rating' })
+  @ApiResponse({ status: 200, type: RatingResponseDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId', ParseUUIDPipe) courseId: string,
@@ -39,6 +41,7 @@ export class RatingsController {
   @Get('course/:courseId')
   @Public()
   @ApiOperation({ summary: 'Get all ratings for a course' })
+  @ApiResponse({ status: 200, description: 'Paginated ratings list' })
   getRatings(
     @Param('courseId', ParseUUIDPipe) courseId: string,
     @Query() pagination: PaginationDto,
@@ -49,6 +52,7 @@ export class RatingsController {
   @Get('course/:courseId/summary')
   @Public()
   @ApiOperation({ summary: 'Get rating summary (average + count + scale)' })
+  @ApiResponse({ status: 200, type: RatingSummaryDto })
   getSummary(@Param('courseId', ParseUUIDPipe) courseId: string): Promise<RatingSummaryDto> {
     return this.ratingsService.getSummary(courseId);
   }

@@ -11,12 +11,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PaginationDto, type PaginatedResult } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
-import type { InboxItemDto } from './dto/inbox-item.dto';
-import type { MessageResponseDto } from './dto/message-response.dto';
+import { InboxItemDto } from './dto/inbox-item.dto';
+import { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MessagesGateway } from './messages.gateway';
 import { MessagesService } from './messages.service';
@@ -32,6 +32,7 @@ export class MessagesController {
 
   @Get()
   @ApiOperation({ summary: 'Get inbox — one entry per conversation partner' })
+  @ApiResponse({ status: 200, description: 'Paginated inbox list' })
   getInbox(
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PaginationDto,
@@ -41,6 +42,7 @@ export class MessagesController {
 
   @Get(':userId')
   @ApiOperation({ summary: 'Get conversation with a specific user' })
+  @ApiResponse({ status: 200, description: 'Paginated conversation' })
   getConversation(
     @CurrentUser() user: AuthenticatedUser,
     @Param('userId', ParseUUIDPipe) partnerId: string,
@@ -52,6 +54,7 @@ export class MessagesController {
   @Post(':userId')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Send a message to a user' })
+  @ApiResponse({ status: 201, type: MessageResponseDto })
   async sendMessage(
     @CurrentUser() user: AuthenticatedUser,
     @Param('userId', ParseUUIDPipe) receiverId: string,
@@ -65,6 +68,7 @@ export class MessagesController {
   @Patch(':userId/read')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Mark all messages from a user as read' })
+  @ApiResponse({ status: 204 })
   async markConversationRead(
     @CurrentUser() user: AuthenticatedUser,
     @Param('userId', ParseUUIDPipe) senderId: string,

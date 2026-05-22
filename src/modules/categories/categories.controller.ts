@@ -10,13 +10,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
-import type { CategoryResponseDto } from './dto/category-response.dto';
+import { CategoryResponseDto } from './dto/category-response.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @ApiTags('Categories')
@@ -27,6 +27,7 @@ export class CategoriesController {
   @Get()
   @Public()
   @ApiOperation({ summary: 'List all categories' })
+  @ApiResponse({ status: 200, type: CategoryResponseDto, isArray: true })
   findAll(): Promise<CategoryResponseDto[]> {
     return this.categoriesService.findAll();
   }
@@ -35,6 +36,7 @@ export class CategoriesController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a category (admin only)' })
+  @ApiResponse({ status: 201, type: CategoryResponseDto })
   create(@Body() dto: CreateCategoryDto): Promise<CategoryResponseDto> {
     return this.categoriesService.create(dto);
   }
@@ -43,6 +45,7 @@ export class CategoriesController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a category (admin only)' })
+  @ApiResponse({ status: 200, type: CategoryResponseDto })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCategoryDto,
@@ -55,6 +58,7 @@ export class CategoriesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a category (admin only, fails if it has courses)' })
+  @ApiResponse({ status: 204 })
   delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.categoriesService.delete(id);
   }
