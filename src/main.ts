@@ -42,12 +42,17 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService<AppConfig>);
 
   app.use(helmet());
+  // helmet does not include Permissions-Policy; set it explicitly to restrict browser features
+  app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
 
   const corsOrigins = config.get('cors.origins', { infer: true }) ?? ['http://localhost:3001'];
   app.enableCors({
     origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
     credentials: true,
   });
 

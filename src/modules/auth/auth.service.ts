@@ -14,6 +14,9 @@ import type { RegisterDto } from './dto/register.dto';
 
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+// Valid bcrypt hash used solely to equalise timing when email is not found.
+// Ensures bcrypt.compare always runs, preventing user enumeration via response-time differences.
+const DUMMY_HASH = '$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
 @Injectable()
 export class AuthService {
@@ -45,13 +48,15 @@ export class AuthService {
   /** Validates credentials and returns a JWT token pair. Throws 401 on bad email or wrong password. */
   async login(dto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.authRepository.findByEmail(dto.email);
-    if (!user) {
-      this.logger.warn(`Login failed — unknown email: ${dto.email}`);
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    const isValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isValid) {
-      this.logger.warn(`Login failed — wrong password for user ${user.id}`);
+    // Always run bcrypt regardless of whether the email exists to prevent
+    // timing-based user enumeration (unknown email would otherwise return ~5ms vs ~300ms).
+    const valid = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_HASH);
+    if (!user || !valid) {
+      this.logger.warn(
+        user
+          ? `Login failed — wrong password for user ${user.id}`
+          : `Login failed — unknown email: ${dto.email}`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.buildAuthResponse(user);

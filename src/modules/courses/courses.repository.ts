@@ -77,6 +77,10 @@ export class CoursesRepository {
     });
   }
 
+  countLessons(courseId: string): Promise<number> {
+    return this.prisma.lesson.count({ where: { module: { courseId } } });
+  }
+
   create(data: Prisma.CourseCreateInput): Promise<Course> {
     return this.prisma.course.create({ data });
   }

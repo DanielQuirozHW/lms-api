@@ -98,7 +98,10 @@
       "bcrypt",
       "prisma",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "ws": ">=8.20.1"
+    }
   },
   "lint-staged": {
     "*.ts": [

@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Course } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -35,6 +35,7 @@ describe('CoursesService', () => {
       | 'findById'
       | 'findByIdWithCount'
       | 'countActiveEnrollments'
+      | 'countLessons'
       | 'create'
       | 'update'
       | 'delete'
@@ -47,6 +48,7 @@ describe('CoursesService', () => {
       findById: jest.fn(),
       findByIdWithCount: jest.fn(),
       countActiveEnrollments: jest.fn(),
+      countLessons: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -161,16 +163,31 @@ describe('CoursesService', () => {
   });
 
   describe('publish', () => {
-    it('updates course status to PUBLISHED', async () => {
+    it('updates course status to PUBLISHED when lessons exist', async () => {
       const published = { ...mockCourse, status: 'PUBLISHED' as const };
+      coursesRepository.findById.mockResolvedValue(mockCourse);
+      coursesRepository.countLessons.mockResolvedValue(3);
       coursesRepository.update.mockResolvedValue(published);
 
       const result = await service.publish('course-123');
 
-      expect(coursesRepository.update).toHaveBeenCalledWith('course-123', {
-        status: 'PUBLISHED',
-      });
+      expect(coursesRepository.update).toHaveBeenCalledWith('course-123', { status: 'PUBLISHED' });
       expect(result.status).toBe('PUBLISHED');
+    });
+
+    it('throws NotFoundException when course does not exist', async () => {
+      coursesRepository.findById.mockResolvedValue(null);
+
+      await expect(service.publish('nonexistent')).rejects.toThrow(NotFoundException);
+      expect(coursesRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when course has no lessons', async () => {
+      coursesRepository.findById.mockResolvedValue(mockCourse);
+      coursesRepository.countLessons.mockResolvedValue(0);
+
+      await expect(service.publish('course-123')).rejects.toThrow(BadRequestException);
+      expect(coursesRepository.update).not.toHaveBeenCalled();
     });
   });
 

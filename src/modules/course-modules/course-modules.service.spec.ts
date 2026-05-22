@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { CourseModule, Lesson } from '@prisma/client';
 import { type CourseModuleWithLessons, CourseModulesRepository } from './course-modules.repository';
@@ -50,6 +50,7 @@ describe('CourseModulesService', () => {
       | 'update'
       | 'delete'
       | 'reorder'
+      | 'findIdsByCourseId'
     >
   >;
 
@@ -64,6 +65,7 @@ describe('CourseModulesService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       reorder: jest.fn(),
+      findIdsByCourseId: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -168,9 +170,10 @@ describe('CourseModulesService', () => {
 
   describe('reorder', () => {
     it('delegates all items to repository reorder in a transaction', async () => {
+      repo.findIdsByCourseId.mockResolvedValue(['module-123', 'module-456']);
       repo.reorder.mockResolvedValue(undefined);
 
-      await service.reorder({
+      await service.reorder('course-123', {
         items: [
           { id: 'module-123', order: 2 },
           { id: 'module-456', order: 1 },
@@ -181,6 +184,20 @@ describe('CourseModulesService', () => {
         { id: 'module-123', order: 2 },
         { id: 'module-456', order: 1 },
       ]);
+    });
+
+    it('throws BadRequestException when an ID does not belong to the course', async () => {
+      repo.findIdsByCourseId.mockResolvedValue(['module-123']);
+
+      await expect(
+        service.reorder('course-123', {
+          items: [
+            { id: 'module-123', order: 2 },
+            { id: 'module-foreign', order: 1 },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.reorder).not.toHaveBeenCalled();
     });
   });
 

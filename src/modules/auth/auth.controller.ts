@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -20,6 +20,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @Throttle(STRICT_THROTTLE)
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiResponse({ status: 201, description: 'User registered successfully', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation failed' })
@@ -33,6 +34,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle(STRICT_THROTTLE)
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Log in and receive JWT tokens' })
   @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation failed' })
@@ -46,6 +48,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @Throttle(STRICT_THROTTLE)
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Exchange a refresh token for new token pair' })
   @ApiResponse({ status: 200, description: 'Tokens refreshed', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation failed' })

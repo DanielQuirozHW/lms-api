@@ -12,8 +12,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import type { PaginatedResult } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -85,6 +88,7 @@ export class ForumController {
   }
 
   @Patch('threads/:id/pin')
+  @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
   @ApiOperation({ summary: 'Toggle thread pin (instructor or admin)' })
   @ApiResponse({ status: 200, type: ThreadResponseDto })
   @ApiResponse({ status: 403, description: 'Not course instructor or admin' })
@@ -97,6 +101,7 @@ export class ForumController {
   }
 
   @Patch('threads/:id/close')
+  @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
   @ApiOperation({ summary: 'Toggle thread open/closed (instructor or admin)' })
   @ApiResponse({ status: 200, type: ThreadResponseDto })
   @ApiResponse({ status: 403, description: 'Not course instructor or admin' })
@@ -125,6 +130,7 @@ export class ForumController {
   // ── Posts ────────────────────────────────────────────────────────────────
 
   @Post('threads/:threadId/posts')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Create a post in a thread' })
   @ApiResponse({ status: 201, type: PostResponseDto })
   @ApiResponse({ status: 403, description: 'Thread is closed or forum access denied' })

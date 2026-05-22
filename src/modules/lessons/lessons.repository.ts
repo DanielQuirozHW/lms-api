@@ -12,6 +12,7 @@ export type LessonWithDetails = Lesson & {
   resources: LessonResource[];
   quizSettings: QuizSettings | null;
   assignmentSettings: AssignmentSettings | null;
+  module: { courseId: string };
 };
 
 @Injectable()
@@ -39,6 +40,7 @@ export class LessonsRepository {
         resources: { orderBy: { createdAt: 'asc' } },
         quizSettings: true,
         assignmentSettings: true,
+        module: { select: { courseId: true } },
       },
     });
   }
@@ -83,8 +85,16 @@ export class LessonsRepository {
     return this.prisma.lessonResource.create({ data });
   }
 
-  findResourceById(id: string): Promise<LessonResource | null> {
-    return this.prisma.lessonResource.findUnique({ where: { id } });
+  async findIdsByModuleId(moduleId: string): Promise<string[]> {
+    const lessons = await this.prisma.lesson.findMany({
+      where: { moduleId },
+      select: { id: true },
+    });
+    return lessons.map((l) => l.id);
+  }
+
+  findResourceById(id: string, lessonId: string): Promise<LessonResource | null> {
+    return this.prisma.lessonResource.findFirst({ where: { id, lessonId } });
   }
 
   deleteResource(id: string): Promise<LessonResource> {

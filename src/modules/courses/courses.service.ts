@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Course, Prisma } from '@prisma/client';
 import { slugify } from '../../common/utils/slug.util';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
@@ -78,8 +83,12 @@ export class CoursesService {
     return this.map(course);
   }
 
-  /** Transitions the course to PUBLISHED status. */
+  /** Transitions the course to PUBLISHED status. Throws 404 if not found, 400 if no lessons. */
   async publish(courseId: string): Promise<CourseResponseDto> {
+    const existing = await this.coursesRepository.findById(courseId);
+    if (!existing) throw new NotFoundException('Course not found');
+    const lessonCount = await this.coursesRepository.countLessons(courseId);
+    if (lessonCount === 0) throw new BadRequestException('Cannot publish a course with no lessons');
     const course = await this.coursesRepository.update(courseId, { status: 'PUBLISHED' });
     return this.map(course);
   }

@@ -27,10 +27,13 @@ export class EnrollmentsService {
     private readonly redisService: RedisService,
   ) {}
 
-  /** Enrolls a user in a published course. Validates status, window, and capacity. Seeds LessonProgress records. */
+  /** Enrolls a user in a published course. Validates status, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
   async enroll(userId: string, dto: CreateEnrollmentDto): Promise<EnrollmentResponseDto> {
     const existing = await this.enrollmentsRepository.findByUserAndCourse(userId, dto.courseId);
-    if (existing) throw new ConflictException('Already enrolled in this course');
+    if (existing?.status === 'ACTIVE')
+      throw new ConflictException('Already enrolled in this course');
+    if (existing?.status === 'COMPLETED')
+      throw new ConflictException('This course has already been completed');
 
     const course = await this.enrollmentsRepository.findCourseWithSettings(dto.courseId);
     if (!course) throw new NotFoundException('Course not found');
@@ -60,13 +63,13 @@ export class EnrollmentsService {
         if (activeCount >= settings.maxEnrollments) {
           throw new ConflictException('Course enrollment limit has been reached');
         }
-        return await this.createEnrollmentRecord(userId, dto.courseId, settings, now);
+        return await this.createEnrollmentRecord(userId, dto.courseId, settings, now, existing?.id);
       } finally {
         await this.redisService.del(lockKey);
       }
     }
 
-    return this.createEnrollmentRecord(userId, dto.courseId, settings, now);
+    return this.createEnrollmentRecord(userId, dto.courseId, settings, now, existing?.id);
   }
 
   /** Returns the authenticated user's own enrollments, paginated. */
@@ -175,17 +178,25 @@ export class EnrollmentsService {
     courseId: string,
     settings: CourseSettings | null,
     now: Date,
+    existingEnrollmentId?: string,
   ): Promise<EnrollmentResponseDto> {
     const lessons = await this.enrollmentsRepository.findPublishedLessons(courseId);
     const lockAll = !!(settings?.courseStartDate && settings.courseStartDate > now);
     const isSequential = settings?.isSequential ?? false;
-    const enrollment = await this.enrollmentsRepository.createWithProgress({
-      userId,
-      courseId,
-      lessons,
-      lockAll,
-      isSequential,
-    });
+    const enrollment = existingEnrollmentId
+      ? await this.enrollmentsRepository.reactivateWithProgress({
+          enrollmentId: existingEnrollmentId,
+          lessons,
+          lockAll,
+          isSequential,
+        })
+      : await this.enrollmentsRepository.createWithProgress({
+          userId,
+          courseId,
+          lessons,
+          lockAll,
+          isSequential,
+        });
     return this.map(enrollment);
   }
 

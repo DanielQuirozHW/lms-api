@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { CourseModule, Lesson, Prisma } from '@prisma/client';
 import type { CreateModuleDto } from './dto/create-module.dto';
 import type {
@@ -66,8 +71,13 @@ export class CourseModulesService {
     return this.map(courseModule);
   }
 
-  /** Reorders modules by applying all order updates in a single transaction. */
-  async reorder(dto: ReorderModulesDto): Promise<void> {
+  /** Reorders modules. Validates all IDs belong to courseId before updating. */
+  async reorder(courseId: string, dto: ReorderModulesDto): Promise<void> {
+    const existingIds = await this.courseModulesRepository.findIdsByCourseId(courseId);
+    const existing = new Set(existingIds);
+    if (dto.items.some((item) => !existing.has(item.id))) {
+      throw new BadRequestException('One or more module IDs do not belong to this course');
+    }
     await this.courseModulesRepository.reorder(dto.items);
   }
 

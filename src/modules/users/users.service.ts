@@ -10,6 +10,8 @@ import type { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-r
 import { UsersRepository } from './users.repository';
 
 const BCRYPT_ROUNDS = 12;
+// Matches the JWT_EXPIRES_IN default (7d). The revocation key must outlive any valid access token.
+const ACCESS_TOKEN_REVOCATION_TTL = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class UsersService {
@@ -68,6 +70,7 @@ export class UsersService {
       await this.redisService.del(...tokenKeys);
     }
 
+    await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
     await this.usersRepository.delete(userId);
   }
 

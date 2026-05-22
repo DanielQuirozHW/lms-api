@@ -46,6 +46,14 @@ export class CourseModulesRepository {
     return this.prisma.lesson.count({ where: { moduleId, isPublished: true } });
   }
 
+  async findIdsByCourseId(courseId: string): Promise<string[]> {
+    const modules = await this.prisma.courseModule.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    return modules.map((m) => m.id);
+  }
+
   create(data: Prisma.CourseModuleCreateInput): Promise<CourseModule> {
     return this.prisma.courseModule.create({ data });
   }

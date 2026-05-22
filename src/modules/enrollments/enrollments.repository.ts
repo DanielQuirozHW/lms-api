@@ -105,6 +105,32 @@ export class EnrollmentsRepository {
     });
   }
 
+  async reactivateWithProgress(params: {
+    enrollmentId: string;
+    lessons: Lesson[];
+    lockAll: boolean;
+    isSequential: boolean;
+  }): Promise<Enrollment> {
+    const { enrollmentId, lessons, lockAll, isSequential } = params;
+    return this.prisma.$transaction(async (tx) => {
+      const enrollment = await tx.enrollment.update({
+        where: { id: enrollmentId },
+        data: { status: 'ACTIVE', completedAt: null, enrolledAt: new Date() },
+      });
+      await tx.lessonProgress.deleteMany({ where: { enrollmentId } });
+      if (lessons.length > 0) {
+        await tx.lessonProgress.createMany({
+          data: lessons.map((lesson, index) => ({
+            enrollmentId,
+            lessonId: lesson.id,
+            isLocked: lockAll || (isSequential && index > 0),
+          })),
+        });
+      }
+      return enrollment;
+    });
+  }
+
   findActiveByUserAndCourse(userId: string, courseId: string): Promise<Enrollment | null> {
     return this.prisma.enrollment.findFirst({ where: { userId, courseId, status: 'ACTIVE' } });
   }

@@ -19,6 +19,10 @@ export type InboxRawRow = {
 export class MessagesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Raw SQL is required here: Prisma's query builder does not support PostgreSQL's
+  // DISTINCT ON expression, which is the only way to efficiently select the latest
+  // message per conversation partner in a single query. userId appears in every
+  // WHERE clause to ensure strict per-user data isolation.
   async findInbox(userId: string, pagination: PaginationDto): Promise<[InboxRawRow[], number]> {
     const skip = pagination.skip;
     const take = pagination.limit ?? 20;

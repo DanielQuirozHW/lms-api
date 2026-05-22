@@ -38,6 +38,10 @@ export class RatingsService {
       throw new BadRequestException('Ratings are disabled for this course');
     }
 
+    if (courseData.instructorId === userId) {
+      throw new ForbiddenException('Instructors cannot rate their own courses');
+    }
+
     const scale = courseData.settings?.ratingScale ?? RatingScale.STARS_5;
     this.assertValidScore(dto.score, scale);
 

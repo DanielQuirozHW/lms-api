@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -60,14 +61,20 @@ export class LessonsService {
    * Returns lesson detail with resources and settings.
    * Students must be enrolled unless isPreview is true.
    * Unpublished lessons are returned as 404 for non-instructors.
+   * BOLA guard: verifies lesson belongs to the moduleId and courseId from the URL.
    */
   async findOne(
     id: string,
+    moduleId: string,
     courseId: string,
     user: AuthenticatedUser | undefined,
   ): Promise<LessonDetailResponseDto> {
     const lesson = await this.lessonsRepository.findByIdWithDetails(id);
     if (!lesson) throw new NotFoundException('Lesson not found');
+
+    if (lesson.moduleId !== moduleId || lesson.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
 
     const isInstructorOrAdmin = user?.roles.some(
       (r) => r === UserRole.INSTRUCTOR || r === UserRole.ADMIN,
@@ -112,8 +119,13 @@ export class LessonsService {
     return this.map(lesson);
   }
 
-  /** Reorders lessons by applying all order updates in a single transaction. */
-  async reorder(dto: ReorderLessonsDto): Promise<void> {
+  /** Reorders lessons. Validates all IDs belong to moduleId before updating. */
+  async reorder(moduleId: string, dto: ReorderLessonsDto): Promise<void> {
+    const existingIds = await this.lessonsRepository.findIdsByModuleId(moduleId);
+    const existing = new Set(existingIds);
+    if (dto.items.some((item) => !existing.has(item.id))) {
+      throw new BadRequestException('One or more lesson IDs do not belong to this module');
+    }
     await this.lessonsRepository.reorder(dto.items);
   }
 
@@ -148,9 +160,9 @@ export class LessonsService {
     return this.mapResource(resource);
   }
 
-  /** Removes a resource from a lesson. Throws 404 if resource does not exist. */
-  async removeResource(resourceId: string): Promise<void> {
-    const existing = await this.lessonsRepository.findResourceById(resourceId);
+  /** Removes a resource from a lesson. Throws 404 if resource does not exist or does not belong to lessonId. */
+  async removeResource(lessonId: string, resourceId: string): Promise<void> {
+    const existing = await this.lessonsRepository.findResourceById(resourceId, lessonId);
     if (!existing) throw new NotFoundException('Resource not found');
     await this.lessonsRepository.deleteResource(resourceId);
   }

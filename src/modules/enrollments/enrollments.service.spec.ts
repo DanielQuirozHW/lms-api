@@ -74,6 +74,7 @@ describe('EnrollmentsService', () => {
       | 'findActiveByUserAndCourse'
       | 'findPublishedLessons'
       | 'createWithProgress'
+      | 'reactivateWithProgress'
       | 'findById'
       | 'findByIdWithProgress'
       | 'findManyByUserId'
@@ -92,6 +93,7 @@ describe('EnrollmentsService', () => {
       findActiveByUserAndCourse: jest.fn(),
       findPublishedLessons: jest.fn(),
       createWithProgress: jest.fn(),
+      reactivateWithProgress: jest.fn(),
       findById: jest.fn(),
       findByIdWithProgress: jest.fn(),
       findManyByUserId: jest.fn(),
@@ -132,12 +134,45 @@ describe('EnrollmentsService', () => {
       );
     });
 
-    it('should throw ConflictException when already enrolled', async () => {
-      repo.findByUserAndCourse.mockResolvedValue(mockEnrollment);
+    it('should throw ConflictException when already actively enrolled', async () => {
+      repo.findByUserAndCourse.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.ACTIVE,
+      });
 
       await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
+    });
+
+    it('should throw ConflictException when course already completed', async () => {
+      repo.findByUserAndCourse.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.COMPLETED,
+      });
+
+      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should re-enroll after cancellation using reactivateWithProgress', async () => {
+      const cancelledEnrollment = { ...mockEnrollment, status: EnrollmentStatus.CANCELLED };
+      repo.findByUserAndCourse.mockResolvedValue(cancelledEnrollment);
+      repo.findCourseWithSettings.mockResolvedValue(mockCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.reactivateWithProgress.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.ACTIVE,
+      });
+
+      const result = await service.enroll('user-1', { courseId: 'course-1' });
+
+      expect(repo.reactivateWithProgress).toHaveBeenCalledWith(
+        expect.objectContaining({ enrollmentId: cancelledEnrollment.id }),
+      );
+      expect(repo.createWithProgress).not.toHaveBeenCalled();
+      expect(result.status).toBe(EnrollmentStatus.ACTIVE);
     });
 
     it('should throw NotFoundException when course not found', async () => {

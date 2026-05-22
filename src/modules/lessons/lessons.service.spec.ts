@@ -33,6 +33,7 @@ const mockLessonWithDetails: LessonWithDetails = {
   resources: [],
   quizSettings: null,
   assignmentSettings: null,
+  module: { courseId: 'course-123' },
 };
 
 const instructor = {
@@ -50,6 +51,7 @@ describe('LessonsService', () => {
       | 'findByModuleId'
       | 'findById'
       | 'findByIdWithDetails'
+      | 'findIdsByModuleId'
       | 'getMaxOrder'
       | 'countProgress'
       | 'isEnrolled'
@@ -68,6 +70,7 @@ describe('LessonsService', () => {
       findByModuleId: jest.fn(),
       findById: jest.fn(),
       findByIdWithDetails: jest.fn(),
+      findIdsByModuleId: jest.fn(),
       getMaxOrder: jest.fn(),
       countProgress: jest.fn(),
       isEnrolled: jest.fn(),
@@ -151,7 +154,7 @@ describe('LessonsService', () => {
     it('returns lesson detail for instructor even when unpublished', async () => {
       repo.findByIdWithDetails.mockResolvedValue({ ...mockLessonWithDetails, isPublished: false });
 
-      const result = await service.findOne('lesson-123', 'course-123', instructor);
+      const result = await service.findOne('lesson-123', 'module-123', 'course-123', instructor);
 
       expect(result.id).toBe('lesson-123');
       expect(result.resources).toHaveLength(0);
@@ -161,9 +164,31 @@ describe('LessonsService', () => {
     it('throws NotFoundException for students when lesson is not published', async () => {
       repo.findByIdWithDetails.mockResolvedValue({ ...mockLessonWithDetails, isPublished: false });
 
-      await expect(service.findOne('lesson-123', 'course-123', student)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findOne('lesson-123', 'module-123', 'course-123', student),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when lesson does not belong to the given module (BOLA guard)', async () => {
+      repo.findByIdWithDetails.mockResolvedValue({
+        ...mockLessonWithDetails,
+        moduleId: 'different-module',
+      });
+
+      await expect(
+        service.findOne('lesson-123', 'module-123', 'course-123', instructor),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when module does not belong to the given course (BOLA guard)', async () => {
+      repo.findByIdWithDetails.mockResolvedValue({
+        ...mockLessonWithDetails,
+        module: { courseId: 'different-course' },
+      });
+
+      await expect(
+        service.findOne('lesson-123', 'module-123', 'course-123', instructor),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws ForbiddenException when student is not enrolled in a non-preview lesson', async () => {
@@ -174,9 +199,9 @@ describe('LessonsService', () => {
       });
       repo.isEnrolled.mockResolvedValue(false);
 
-      await expect(service.findOne('lesson-123', 'course-123', student)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('lesson-123', 'module-123', 'course-123', student),
+      ).rejects.toThrow(ForbiddenException);
       expect(repo.isEnrolled).toHaveBeenCalledWith('student-123', 'course-123');
     });
 
@@ -187,7 +212,7 @@ describe('LessonsService', () => {
         isPreview: true,
       });
 
-      const result = await service.findOne('lesson-123', 'course-123', undefined);
+      const result = await service.findOne('lesson-123', 'module-123', 'course-123', undefined);
 
       expect(result.id).toBe('lesson-123');
       expect(repo.isEnrolled).not.toHaveBeenCalled();
@@ -201,7 +226,7 @@ describe('LessonsService', () => {
       });
       repo.isEnrolled.mockResolvedValue(true);
 
-      const result = await service.findOne('lesson-123', 'course-123', student);
+      const result = await service.findOne('lesson-123', 'module-123', 'course-123', student);
 
       expect(result.id).toBe('lesson-123');
     });
@@ -297,19 +322,22 @@ describe('LessonsService', () => {
   });
 
   describe('removeResource', () => {
-    it('throws NotFoundException when resource does not exist', async () => {
+    it('throws NotFoundException when resource does not exist or does not belong to lesson', async () => {
       repo.findResourceById.mockResolvedValue(null);
 
-      await expect(service.removeResource('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.removeResource('lesson-123', 'nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(repo.deleteResource).not.toHaveBeenCalled();
     });
 
-    it('deletes resource successfully', async () => {
+    it('deletes resource successfully when it belongs to the lesson', async () => {
       repo.findResourceById.mockResolvedValue(mockResource);
       repo.deleteResource.mockResolvedValue(mockResource);
 
-      await service.removeResource('resource-123');
+      await service.removeResource('lesson-123', 'resource-123');
 
+      expect(repo.findResourceById).toHaveBeenCalledWith('resource-123', 'lesson-123');
       expect(repo.deleteResource).toHaveBeenCalledWith('resource-123');
     });
   });

@@ -78,10 +78,10 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   reorder(
     @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Body() dto: ReorderLessonsDto,
   ): Promise<void> {
-    return this.lessonsService.reorder(dto);
+    return this.lessonsService.reorder(moduleId, dto);
   }
 
   @Get(':id')
@@ -92,11 +92,11 @@ export class LessonsController {
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   findOne(
     @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<LessonDetailResponseDto> {
-    return this.lessonsService.findOne(id, courseId, user);
+    return this.lessonsService.findOne(id, moduleId, courseId, user);
   }
 
   @Patch(':id')
@@ -186,9 +186,9 @@ export class LessonsController {
   removeResource(
     @Param('courseId', ParseUUIDPipe) _courseId: string,
     @Param('moduleId', ParseUUIDPipe) _moduleId: string,
-    @Param('id', ParseUUIDPipe) _id: string,
+    @Param('id', ParseUUIDPipe) lessonId: string,
     @Param('resourceId', ParseUUIDPipe) resourceId: string,
   ): Promise<void> {
-    return this.lessonsService.removeResource(resourceId);
+    return this.lessonsService.removeResource(lessonId, resourceId);
   }
 }

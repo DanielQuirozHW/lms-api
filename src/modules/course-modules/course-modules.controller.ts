@@ -71,10 +71,10 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   reorder(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Body() dto: ReorderModulesDto,
   ): Promise<void> {
-    return this.courseModulesService.reorder(dto);
+    return this.courseModulesService.reorder(courseId, dto);
   }
 
   @Get(':id')
