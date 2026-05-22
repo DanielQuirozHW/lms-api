@@ -32,33 +32,49 @@ export class StorageService {
   }
 
   async upload(key: string, body: Buffer, contentType: string): Promise<string> {
+    const safeKey = this.sanitizeKey(key);
     await this.client.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey,
+        Body: body,
+        ContentType: contentType,
+      }),
     );
-    this.logger.log(`Uploaded: ${key}`);
-    return this.getPublicUrl(key);
+    this.logger.log(`Uploaded: ${safeKey}`);
+    return this.getPublicUrl(safeKey);
   }
 
   async delete(key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
-    this.logger.log(`Deleted: ${key}`);
+    const safeKey = this.sanitizeKey(key);
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: safeKey }));
+    this.logger.log(`Deleted: ${safeKey}`);
   }
 
   async getPresignedUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
+    const safeKey = this.sanitizeKey(key);
     return getSignedUrl(
       this.client,
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }),
+      new PutObjectCommand({ Bucket: this.bucket, Key: safeKey, ContentType: contentType }),
       { expiresIn },
     );
   }
 
   async getPresignedDownloadUrl(key: string, expiresIn = 3600): Promise<string> {
-    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
+    const safeKey = this.sanitizeKey(key);
+    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: safeKey }), {
       expiresIn,
     });
   }
 
   getPublicUrl(key: string): string {
-    return `${this.publicUrl ?? ''}/${key}`;
+    return `${this.publicUrl ?? ''}/${this.sanitizeKey(key)}`;
+  }
+
+  private sanitizeKey(key: string): string {
+    return key
+      .replace(/\.\./g, '')
+      .replace(/^\/+/, '')
+      .replace(/[^a-zA-Z0-9/_.-]/g, '_');
   }
 }

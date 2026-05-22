@@ -23,12 +23,13 @@ class SocketIoCorsAdapter extends IoAdapter {
   createIOServer(port: number, options?: ServerOptions): unknown {
     return super.createIOServer(port, {
       ...options,
+      maxHttpBufferSize: 1e6,
       cors: { origin: this.origins, credentials: true },
     });
   }
 }
 
-const BODY_SIZE_LIMIT = '10mb';
+const BODY_SIZE_LIMIT = '256kb';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
@@ -63,7 +64,6 @@ async function bootstrap(): Promise<void> {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
@@ -71,8 +71,9 @@ async function bootstrap(): Promise<void> {
 
   const port = config.get('port', { infer: true }) ?? 3000;
   const env = config.get('nodeEnv', { infer: true }) ?? 'development';
+  const swaggerEnabled = config.get('swaggerEnabled', { infer: true }) ?? false;
 
-  if (env !== 'production') {
+  if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('LMS API')
       .setDescription('Learning Management System REST API')

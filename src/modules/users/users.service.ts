@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import type { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
@@ -13,6 +13,8 @@ const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly redisService: RedisService,
@@ -31,16 +33,26 @@ export class UsersService {
     return this.toPrivate(user);
   }
 
-  /** Verifies the current password before setting the new one. Throws 401 on wrong current password. */
+  /** Verifies the current password before setting the new one. Revokes all active refresh tokens. Throws 401 on wrong current password. */
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     const user = await this.usersRepository.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const isValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!isValid) throw new UnauthorizedException('Current password is incorrect');
+    if (!isValid) {
+      this.logger.warn(`Password change failed for user ${userId} — wrong current password`);
+      throw new UnauthorizedException('Current password is incorrect');
+    }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     await this.usersRepository.update(userId, { passwordHash });
+
+    const tokenKeys = await this.redisService.keys(`rt:${userId}:*`);
+    if (tokenKeys.length > 0) {
+      await this.redisService.del(...tokenKeys);
+    }
+
+    this.logger.log(`Password changed for user ${userId} — all refresh tokens revoked`);
   }
 
   /** Verifies password, revokes all refresh tokens in Redis, then permanently deletes the account. */
@@ -59,7 +71,7 @@ export class UsersService {
     await this.usersRepository.delete(userId);
   }
 
-  /** Returns the public profile of any user. Never includes email or passwordHash. */
+  /** Returns the public profile of any user. Never includes email, passwordHash, roles, or isVerified. */
   async getPublicProfile(id: string): Promise<UserPublicResponseDto> {
     const user = await this.usersRepository.findById(id);
     if (!user) throw new NotFoundException('User not found');
@@ -98,7 +110,6 @@ export class UsersService {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: user.roles,
       avatarUrl: user.avatarUrl,
     };
   }

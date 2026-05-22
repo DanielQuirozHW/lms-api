@@ -106,14 +106,13 @@ describe('CoursesService', () => {
       );
     });
 
-    it('uses the provided status filter', async () => {
+    it('always uses PUBLISHED status regardless of any query filter', async () => {
       coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
 
-      const query = Object.assign(new CourseQueryDto(), { status: 'DRAFT' as const });
-      await service.findAll(query);
+      await service.findAll(new CourseQueryDto());
 
       expect(coursesRepository.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'DRAFT' }),
+        expect.objectContaining({ status: 'PUBLISHED' }),
       );
     });
 

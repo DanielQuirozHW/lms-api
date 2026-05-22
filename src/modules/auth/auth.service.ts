@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
@@ -17,6 +17,8 @@ const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
@@ -44,10 +46,12 @@ export class AuthService {
   async login(dto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.authRepository.findByEmail(dto.email);
     if (!user) {
+      this.logger.warn(`Login failed — unknown email: ${dto.email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isValid) {
+      this.logger.warn(`Login failed — wrong password for user ${user.id}`);
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.buildAuthResponse(user);
@@ -67,6 +71,7 @@ export class AuthService {
     const redisKey = this.rtKey(payload.sub, payload.jti);
     const exists = await this.redisService.get(redisKey);
     if (!exists) {
+      this.logger.warn(`Revoked refresh token used — user ${payload.sub}, jti ${payload.jti}`);
       throw new UnauthorizedException('Refresh token revoked');
     }
     await this.redisService.del(redisKey);
@@ -118,7 +123,7 @@ export class AuthService {
     };
     return this.jwtService.signAsync(payload, {
       secret: this.config.get('jwt.secret', { infer: true }),
-      expiresIn: '15m',
+      expiresIn: this.config.get('jwt.expiresIn', { infer: true }) ?? '15m',
     });
   }
 

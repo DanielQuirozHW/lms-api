@@ -4,6 +4,7 @@ export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';
   port: number;
   apiPrefix: string;
+  swaggerEnabled: boolean;
   database: {
     url: string;
   };
@@ -38,6 +39,7 @@ export const configuration = (env: Env): AppConfig => ({
   nodeEnv: env.NODE_ENV,
   port: env.PORT,
   apiPrefix: env.API_PREFIX,
+  swaggerEnabled: env.SWAGGER_ENABLED,
 
   database: {
     url: env.DATABASE_URL,

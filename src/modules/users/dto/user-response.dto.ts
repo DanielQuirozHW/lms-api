@@ -17,6 +17,5 @@ export class UserPublicResponseDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
   @ApiProperty({ example: 'John' }) firstName!: string;
   @ApiProperty({ example: 'Doe' }) lastName!: string;
-  @ApiProperty({ enum: UserRole, isArray: true, example: [UserRole.STUDENT] }) roles!: UserRole[];
   @ApiProperty({ example: null, nullable: true }) avatarUrl!: string | null;
 }

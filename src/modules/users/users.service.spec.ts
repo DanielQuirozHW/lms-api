@@ -107,9 +107,11 @@ describe('UsersService', () => {
       expect(usersRepository.update).not.toHaveBeenCalled();
     });
 
-    it('hashes new password and updates when current password is correct', async () => {
+    it('hashes new password, updates, and revokes all refresh tokens', async () => {
       usersRepository.findById.mockResolvedValue(mockUser);
       usersRepository.update.mockResolvedValue(mockUser);
+      redisService.keys.mockResolvedValue(['rt:user-123:jti-1', 'rt:user-123:jti-2']);
+      redisService.del.mockResolvedValue(2);
 
       await service.changePassword('user-123', {
         currentPassword: 'currentpassword',
@@ -121,6 +123,21 @@ describe('UsersService', () => {
       expect(usersRepository.update).toHaveBeenCalledWith('user-123', {
         passwordHash: '$2b$12$newhash',
       });
+      expect(redisService.keys).toHaveBeenCalledWith('rt:user-123:*');
+      expect(redisService.del).toHaveBeenCalledWith('rt:user-123:jti-1', 'rt:user-123:jti-2');
+    });
+
+    it('does not call del when user has no active sessions at password change', async () => {
+      usersRepository.findById.mockResolvedValue(mockUser);
+      usersRepository.update.mockResolvedValue(mockUser);
+      redisService.keys.mockResolvedValue([]);
+
+      await service.changePassword('user-123', {
+        currentPassword: 'currentpassword',
+        newPassword: 'newpassword123',
+      });
+
+      expect(redisService.del).not.toHaveBeenCalled();
     });
   });
 

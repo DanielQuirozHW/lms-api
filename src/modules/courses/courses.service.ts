@@ -26,10 +26,10 @@ export class CoursesService {
     return this.map(course);
   }
 
-  /** Returns a paginated list of courses. Defaults to PUBLISHED when no status filter is provided. */
+  /** Returns a paginated list of published courses. Always returns PUBLISHED regardless of any filter. */
   async findAll(query: CourseQueryDto): Promise<PaginatedResult<CourseResponseDto>> {
     const [courses, total] = await this.coursesRepository.findMany({
-      status: query.status ?? 'PUBLISHED',
+      status: 'PUBLISHED',
       categoryId: query.categoryId,
       skip: query.skip,
       take: query.limit ?? 20,

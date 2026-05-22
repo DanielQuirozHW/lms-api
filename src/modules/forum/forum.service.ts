@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { ForumThread } from '@prisma/client';
@@ -28,6 +29,8 @@ import {
 
 @Injectable()
 export class ForumService {
+  private readonly logger = new Logger(ForumService.name);
+
   constructor(
     private readonly forumRepository: ForumRepository,
     private readonly coursesService: CoursesService,
@@ -220,7 +223,12 @@ export class ForumService {
     courseId: string | null | undefined,
     user: AuthenticatedUser | undefined,
   ): Promise<void> {
-    if (!courseId) return;
+    if (!courseId) {
+      if (!user) {
+        throw new ForbiddenException('Authentication required to access global forum threads');
+      }
+      return;
+    }
 
     const course = await this.forumRepository.findCourseForumSettings(courseId);
     if (!course) throw new NotFoundException('Course not found');
@@ -237,6 +245,9 @@ export class ForumService {
 
     const enrolled = await this.enrollmentsService.isEnrolled(user.id, courseId);
     if (!enrolled) {
+      this.logger.warn(
+        `Forbidden forum access: user ${user.id} not enrolled in course ${courseId}`,
+      );
       throw new ForbiddenException('You must be enrolled in this course to access this forum');
     }
   }

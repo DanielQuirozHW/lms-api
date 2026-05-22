@@ -5,9 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Enrollment } from '@prisma/client';
+import type { CourseSettings, Enrollment } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
+import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CoursesService } from '../courses/courses.service';
 import type { CreateEnrollmentDto } from './dto/create-enrollment.dto';
@@ -23,6 +24,7 @@ export class EnrollmentsService {
   constructor(
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly coursesService: CoursesService,
+    private readonly redisService: RedisService,
   ) {}
 
   /** Enrolls a user in a published course. Validates status, window, and capacity. Seeds LessonProgress records. */
@@ -48,25 +50,23 @@ export class EnrollmentsService {
     }
 
     if (settings?.maxEnrollments != null) {
-      const activeCount = await this.enrollmentsRepository.countActiveByCourseId(dto.courseId);
-      if (activeCount >= settings.maxEnrollments) {
-        throw new ConflictException('Course enrollment limit has been reached');
+      const lockKey = `enroll-lock:${dto.courseId}`;
+      const acquired = (await this.redisService.set(lockKey, '1', 'PX', 5000, 'NX')) as
+        | string
+        | null;
+      if (!acquired) throw new ConflictException('Enrollment in progress, please retry');
+      try {
+        const activeCount = await this.enrollmentsRepository.countActiveByCourseId(dto.courseId);
+        if (activeCount >= settings.maxEnrollments) {
+          throw new ConflictException('Course enrollment limit has been reached');
+        }
+        return await this.createEnrollmentRecord(userId, dto.courseId, settings, now);
+      } finally {
+        await this.redisService.del(lockKey);
       }
     }
 
-    const lessons = await this.enrollmentsRepository.findPublishedLessons(dto.courseId);
-    const lockAll = !!(settings?.courseStartDate && settings.courseStartDate > now);
-    const isSequential = settings?.isSequential ?? false;
-
-    const enrollment = await this.enrollmentsRepository.createWithProgress({
-      userId,
-      courseId: dto.courseId,
-      lessons,
-      lockAll,
-      isSequential,
-    });
-
-    return this.map(enrollment);
+    return this.createEnrollmentRecord(userId, dto.courseId, settings, now);
   }
 
   /** Returns the authenticated user's own enrollments, paginated. */
@@ -168,6 +168,25 @@ export class EnrollmentsService {
 
     const updated = await this.enrollmentsRepository.updateStatus(id, 'COMPLETED', new Date());
     return this.map(updated);
+  }
+
+  private async createEnrollmentRecord(
+    userId: string,
+    courseId: string,
+    settings: CourseSettings | null,
+    now: Date,
+  ): Promise<EnrollmentResponseDto> {
+    const lessons = await this.enrollmentsRepository.findPublishedLessons(courseId);
+    const lockAll = !!(settings?.courseStartDate && settings.courseStartDate > now);
+    const isSequential = settings?.isSequential ?? false;
+    const enrollment = await this.enrollmentsRepository.createWithProgress({
+      userId,
+      courseId,
+      lessons,
+      lockAll,
+      isSequential,
+    });
+    return this.map(enrollment);
   }
 
   private map(enrollment: Enrollment): EnrollmentResponseDto {

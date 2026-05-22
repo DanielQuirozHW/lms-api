@@ -8,6 +8,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { Enrollment } from '@prisma/client';
 import { EnrollmentStatus, UserRole } from '@prisma/client';
 import type { PaginatedResult } from '../../common/dto/pagination.dto';
+import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CourseDetailResponseDto } from '../courses/dto/course-response.dto';
 import { CoursesService } from '../courses/courses.service';
@@ -70,6 +71,7 @@ describe('EnrollmentsService', () => {
       | 'findByUserAndCourse'
       | 'findCourseWithSettings'
       | 'countActiveByCourseId'
+      | 'findActiveByUserAndCourse'
       | 'findPublishedLessons'
       | 'createWithProgress'
       | 'findById'
@@ -80,12 +82,14 @@ describe('EnrollmentsService', () => {
     >
   >;
   let coursesService: jest.Mocked<Pick<CoursesService, 'findOne'>>;
+  let redisService: jest.Mocked<Pick<RedisService, 'set' | 'del'>>;
 
   beforeEach(async () => {
     repo = {
       findByUserAndCourse: jest.fn(),
       findCourseWithSettings: jest.fn(),
       countActiveByCourseId: jest.fn(),
+      findActiveByUserAndCourse: jest.fn(),
       findPublishedLessons: jest.fn(),
       createWithProgress: jest.fn(),
       findById: jest.fn(),
@@ -95,12 +99,17 @@ describe('EnrollmentsService', () => {
       updateStatus: jest.fn(),
     };
     coursesService = { findOne: jest.fn() };
+    redisService = {
+      set: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EnrollmentsService,
         { provide: EnrollmentsRepository, useValue: repo },
         { provide: CoursesService, useValue: coursesService },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
 
@@ -155,11 +164,44 @@ describe('EnrollmentsService', () => {
         ...mockCourse,
         settings: { ...baseSettings, maxEnrollments: 10 },
       });
+      redisService.set.mockResolvedValue('OK');
       repo.countActiveByCourseId.mockResolvedValue(10);
 
       await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
+      expect(redisService.del).toHaveBeenCalledWith('enroll-lock:course-1');
+    });
+
+    it('should throw ConflictException when enrollment lock cannot be acquired', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: { ...baseSettings, maxEnrollments: 10 },
+      });
+      redisService.set.mockResolvedValue(null);
+
+      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(repo.countActiveByCourseId).not.toHaveBeenCalled();
+    });
+
+    it('should enroll successfully under capacity and release lock', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: { ...baseSettings, maxEnrollments: 10 },
+      });
+      redisService.set.mockResolvedValue('OK');
+      repo.countActiveByCourseId.mockResolvedValue(5);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll('user-1', { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+      expect(redisService.del).toHaveBeenCalledWith('enroll-lock:course-1');
     });
 
     it('should throw BadRequestException when enrollment window has not started', async () => {
