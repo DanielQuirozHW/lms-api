@@ -16,7 +16,7 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const req = context.switchToHttp().getRequest<Request>();
+    const req = context.switchToHttp().getRequest<Request & { user?: { id?: string } }>();
     const res = context.switchToHttp().getResponse<Response>();
     const { method, url } = req;
     const requestId = randomUUID();
@@ -28,15 +28,17 @@ export class LoggingInterceptor implements NestInterceptor {
       tap({
         next: () => {
           const duration = Date.now() - start;
+          const userId = req.user?.id ?? '-';
           this.logger.log(
-            `${method} ${url} ${String(res.statusCode)} +${String(duration)}ms [${requestId}]`,
+            `${method} ${url} ${String(res.statusCode)} +${String(duration)}ms [${requestId}] uid=${userId}`,
           );
         },
         error: (err: unknown) => {
           const duration = Date.now() - start;
           const status = err instanceof HttpException ? err.getStatus() : 500;
+          const userId = req.user?.id ?? '-';
           this.logger.error(
-            `${method} ${url} ${String(status)} +${String(duration)}ms [${requestId}]`,
+            `${method} ${url} ${String(status)} +${String(duration)}ms [${requestId}] uid=${userId}`,
           );
         },
       }),

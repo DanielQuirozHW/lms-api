@@ -71,9 +71,9 @@ export class CoursesRepository {
     return this.prisma.course.findUnique({ where: { slug } });
   }
 
-  countActiveEnrollments(courseId: string): Promise<number> {
+  countNonCancelledEnrollments(courseId: string): Promise<number> {
     return this.prisma.enrollment.count({
-      where: { courseId, status: 'ACTIVE' },
+      where: { courseId, status: { not: 'CANCELLED' } },
     });
   }
 

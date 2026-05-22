@@ -31,8 +31,14 @@ import { type LessonWithDetails, LessonsRepository } from './lessons.repository'
 export class LessonsService {
   constructor(private readonly lessonsRepository: LessonsRepository) {}
 
-  /** Creates a lesson in a module. Order auto-assigned to maxOrder + 1 if not provided. */
-  async create(moduleId: string, dto: CreateLessonDto): Promise<LessonResponseDto> {
+  /** Creates a lesson in a module. Verifies module belongs to courseId. Order auto-assigned to maxOrder + 1 if not provided. */
+  async create(
+    courseId: string,
+    moduleId: string,
+    dto: CreateLessonDto,
+  ): Promise<LessonResponseDto> {
+    const module = await this.lessonsRepository.findModuleByCourseId(moduleId, courseId);
+    if (!module) throw new NotFoundException('Module not found');
     let order = dto.order;
     if (order === undefined) {
       const maxOrder = await this.lessonsRepository.getMaxOrder(moduleId);
@@ -51,8 +57,14 @@ export class LessonsService {
     return this.map(lesson);
   }
 
-  /** Returns all lessons in a module. Unpublished hidden from students when publishedOnly is true. */
-  async findAll(moduleId: string, publishedOnly: boolean): Promise<LessonResponseDto[]> {
+  /** Returns all lessons in a module. Verifies module belongs to courseId. Unpublished hidden from students when publishedOnly is true. */
+  async findAll(
+    courseId: string,
+    moduleId: string,
+    publishedOnly: boolean,
+  ): Promise<LessonResponseDto[]> {
+    const module = await this.lessonsRepository.findModuleByCourseId(moduleId, courseId);
+    if (!module) throw new NotFoundException('Module not found');
     const lessons = await this.lessonsRepository.findByModuleId(moduleId, publishedOnly);
     return lessons.map((l) => this.map(l));
   }
@@ -94,10 +106,17 @@ export class LessonsService {
     return this.mapDetail(lesson);
   }
 
-  /** Updates lesson fields. Throws 404 if lesson does not exist. */
-  async update(lessonId: string, dto: UpdateLessonDto): Promise<LessonResponseDto> {
-    const existing = await this.lessonsRepository.findById(lessonId);
-    if (!existing) throw new NotFoundException('Lesson not found');
+  /** Updates lesson fields. Verifies lesson belongs to the given moduleId and courseId. Throws 404 if not found or mismatched. */
+  async update(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    dto: UpdateLessonDto,
+  ): Promise<LessonResponseDto> {
+    const existing = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!existing || existing.moduleId !== moduleId || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
     const data: Prisma.LessonUpdateInput = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.type !== undefined && { type: dto.type }),
@@ -111,10 +130,12 @@ export class LessonsService {
     return this.map(lesson);
   }
 
-  /** Transitions the lesson to published status. Throws 404 if lesson does not exist. */
-  async publish(lessonId: string): Promise<LessonResponseDto> {
-    const existing = await this.lessonsRepository.findById(lessonId);
-    if (!existing) throw new NotFoundException('Lesson not found');
+  /** Transitions the lesson to published status. Verifies lesson belongs to moduleId and courseId. Throws 404 if not found or mismatched. */
+  async publish(courseId: string, moduleId: string, lessonId: string): Promise<LessonResponseDto> {
+    const existing = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!existing || existing.moduleId !== moduleId || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
     const lesson = await this.lessonsRepository.update(lessonId, { isPublished: true });
     return this.map(lesson);
   }
@@ -131,11 +152,13 @@ export class LessonsService {
 
   /**
    * Deletes a lesson. Throws 409 if the lesson is published and has student progress records.
-   * Throws 404 if the lesson does not exist.
+   * Throws 404 if the lesson does not exist or does not belong to the given moduleId and courseId.
    */
-  async remove(lessonId: string): Promise<void> {
-    const existing = await this.lessonsRepository.findById(lessonId);
-    if (!existing) throw new NotFoundException('Lesson not found');
+  async remove(courseId: string, moduleId: string, lessonId: string): Promise<void> {
+    const existing = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!existing || existing.moduleId !== moduleId || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
     if (existing.isPublished) {
       const progressCount = await this.lessonsRepository.countProgress(lessonId);
       if (progressCount > 0) {
@@ -147,10 +170,17 @@ export class LessonsService {
     await this.lessonsRepository.delete(lessonId);
   }
 
-  /** Adds a downloadable or reference resource to a lesson. Throws 404 if lesson does not exist. */
-  async addResource(lessonId: string, dto: CreateResourceDto): Promise<LessonResourceDto> {
-    const existing = await this.lessonsRepository.findById(lessonId);
-    if (!existing) throw new NotFoundException('Lesson not found');
+  /** Adds a downloadable or reference resource to a lesson. Verifies lesson belongs to moduleId and courseId. Throws 404 if not found or mismatched. */
+  async addResource(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    dto: CreateResourceDto,
+  ): Promise<LessonResourceDto> {
+    const existing = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!existing || existing.moduleId !== moduleId || existing.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
     const resource = await this.lessonsRepository.createResource({
       title: dto.title,
       url: dto.url,

@@ -25,6 +25,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     const revoked = await this.redisService.get(`revoked:user:${payload.sub}`);
     if (revoked) throw new UnauthorizedException('Token revoked');
-    return { id: payload.sub, email: payload.email, roles: payload.roles };
+    return {
+      id: payload.sub,
+      email: payload.email,
+      roles: payload.roles,
+      isVerified: payload.isVerified,
+    };
   }
 }

@@ -27,8 +27,13 @@ export class EnrollmentsService {
     private readonly redisService: RedisService,
   ) {}
 
-  /** Enrolls a user in a published course. Validates status, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
-  async enroll(userId: string, dto: CreateEnrollmentDto): Promise<EnrollmentResponseDto> {
+  /** Enrolls a user in a published course. Validates verification, status, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
+  async enroll(user: AuthenticatedUser, dto: CreateEnrollmentDto): Promise<EnrollmentResponseDto> {
+    if (user.isVerified === false) {
+      throw new ForbiddenException('Email verification required before enrolling');
+    }
+
+    const userId = user.id;
     const existing = await this.enrollmentsRepository.findByUserAndCourse(userId, dto.courseId);
     if (existing?.status === 'ACTIVE')
       throw new ConflictException('Already enrolled in this course');
@@ -40,6 +45,10 @@ export class EnrollmentsService {
 
     if (course.status !== 'PUBLISHED') {
       throw new BadRequestException('Course is not available for enrollment');
+    }
+
+    if (user.roles.includes(UserRole.INSTRUCTOR) && course.instructorId === userId) {
+      throw new ForbiddenException('Instructors cannot enroll in their own course');
     }
 
     const now = new Date();
@@ -137,7 +146,7 @@ export class EnrollmentsService {
   ): Promise<PaginatedResult<EnrollmentResponseDto>> {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
     if (!isAdmin) {
-      const course = await this.coursesService.findOne(courseId);
+      const course = await this.coursesService.findOne(courseId, user);
       if (course.instructorId !== user.id) {
         throw new ForbiddenException('You do not own this course');
       }

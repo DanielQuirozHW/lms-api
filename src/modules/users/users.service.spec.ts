@@ -27,7 +27,7 @@ describe('UsersService', () => {
   let usersRepository: jest.Mocked<
     Pick<UsersRepository, 'findById' | 'findByEmail' | 'update' | 'delete' | 'findAll'>
   >;
-  let redisService: jest.Mocked<Pick<RedisService, 'keys' | 'del' | 'set'>>;
+  let redisService: jest.Mocked<Pick<RedisService, 'smembers' | 'del' | 'set'>>;
 
   beforeEach(async () => {
     usersRepository = {
@@ -39,7 +39,7 @@ describe('UsersService', () => {
     };
 
     redisService = {
-      keys: jest.fn().mockResolvedValue([]),
+      smembers: jest.fn().mockResolvedValue([]),
       del: jest.fn().mockResolvedValue(0),
       set: jest.fn().mockResolvedValue('OK'),
     };
@@ -108,10 +108,10 @@ describe('UsersService', () => {
       expect(usersRepository.update).not.toHaveBeenCalled();
     });
 
-    it('hashes new password, updates, and revokes all refresh tokens', async () => {
+    it('hashes new password, updates, revokes all refresh tokens, and sets access token revocation key', async () => {
       usersRepository.findById.mockResolvedValue(mockUser);
       usersRepository.update.mockResolvedValue(mockUser);
-      redisService.keys.mockResolvedValue(['rt:user-123:jti-1', 'rt:user-123:jti-2']);
+      redisService.smembers.mockResolvedValue(['jti-1', 'jti-2']);
       redisService.del.mockResolvedValue(2);
 
       await service.changePassword('user-123', {
@@ -124,14 +124,24 @@ describe('UsersService', () => {
       expect(usersRepository.update).toHaveBeenCalledWith('user-123', {
         passwordHash: '$2b$12$newhash',
       });
-      expect(redisService.keys).toHaveBeenCalledWith('rt:user-123:*');
-      expect(redisService.del).toHaveBeenCalledWith('rt:user-123:jti-1', 'rt:user-123:jti-2');
+      expect(redisService.smembers).toHaveBeenCalledWith('rt-set:user-123');
+      expect(redisService.del).toHaveBeenCalledWith(
+        'rt:user-123:jti-1',
+        'rt:user-123:jti-2',
+        'rt-set:user-123',
+      );
+      expect(redisService.set).toHaveBeenCalledWith(
+        'revoked:user:user-123',
+        '1',
+        'EX',
+        expect.any(Number),
+      );
     });
 
     it('does not call del when user has no active sessions at password change', async () => {
       usersRepository.findById.mockResolvedValue(mockUser);
       usersRepository.update.mockResolvedValue(mockUser);
-      redisService.keys.mockResolvedValue([]);
+      redisService.smembers.mockResolvedValue([]);
 
       await service.changePassword('user-123', {
         currentPassword: 'currentpassword',
@@ -156,32 +166,37 @@ describe('UsersService', () => {
       expect(redisService.set).not.toHaveBeenCalled();
     });
 
-    it('revokes all refresh tokens, sets revocation flag, and deletes account', async () => {
+    it('deletes DB first, then revokes all refresh tokens and sets revocation flag', async () => {
       usersRepository.findById.mockResolvedValue(mockUser);
       usersRepository.delete.mockResolvedValue(mockUser);
-      redisService.keys.mockResolvedValue(['rt:user-123:jti-1', 'rt:user-123:jti-2']);
+      redisService.smembers.mockResolvedValue(['jti-1', 'jti-2']);
       redisService.del.mockResolvedValue(2);
 
       await service.deleteAccount('user-123', { password: 'correctpassword' });
 
-      expect(redisService.keys).toHaveBeenCalledWith('rt:user-123:*');
-      expect(redisService.del).toHaveBeenCalledWith('rt:user-123:jti-1', 'rt:user-123:jti-2');
+      expect(usersRepository.delete).toHaveBeenCalledWith('user-123');
+      expect(redisService.smembers).toHaveBeenCalledWith('rt-set:user-123');
+      expect(redisService.del).toHaveBeenCalledWith(
+        'rt:user-123:jti-1',
+        'rt:user-123:jti-2',
+        'rt-set:user-123',
+      );
       expect(redisService.set).toHaveBeenCalledWith(
         'revoked:user:user-123',
         '1',
         'EX',
         expect.any(Number),
       );
-      expect(usersRepository.delete).toHaveBeenCalledWith('user-123');
     });
 
     it('skips refresh token del when user has no active sessions but still sets revocation flag', async () => {
       usersRepository.findById.mockResolvedValue(mockUser);
       usersRepository.delete.mockResolvedValue(mockUser);
-      redisService.keys.mockResolvedValue([]);
+      redisService.smembers.mockResolvedValue([]);
 
       await service.deleteAccount('user-123', { password: 'correctpassword' });
 
+      expect(usersRepository.delete).toHaveBeenCalledWith('user-123');
       expect(redisService.del).not.toHaveBeenCalled();
       expect(redisService.set).toHaveBeenCalledWith(
         'revoked:user:user-123',
@@ -189,7 +204,6 @@ describe('UsersService', () => {
         'EX',
         expect.any(Number),
       );
-      expect(usersRepository.delete).toHaveBeenCalledWith('user-123');
     });
   });
 

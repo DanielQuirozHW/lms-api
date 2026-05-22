@@ -71,7 +71,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       error,
-      path: request.url,
+      path: request.path,
       timestamp: new Date().toISOString(),
     };
 

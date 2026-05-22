@@ -11,6 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -28,17 +29,19 @@ export class EnrollmentsController {
   constructor(private readonly enrollmentsService: EnrollmentsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Enroll current user in a course' })
   @ApiResponse({ status: 201, type: EnrollmentResponseDto })
   @ApiResponse({ status: 400, description: 'Course not available or enrollment window closed' })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Email not verified or instructor self-enrollment' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   @ApiResponse({ status: 409, description: 'Already enrolled or course is full' })
   enroll(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateEnrollmentDto,
   ): Promise<EnrollmentResponseDto> {
-    return this.enrollmentsService.enroll(user.id, dto);
+    return this.enrollmentsService.enroll(user, dto);
   }
 
   @Get()

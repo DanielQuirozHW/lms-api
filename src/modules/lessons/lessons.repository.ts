@@ -33,6 +33,20 @@ export class LessonsRepository {
     return this.prisma.lesson.findUnique({ where: { id } });
   }
 
+  findByIdWithModule(id: string): Promise<(Lesson & { module: { courseId: string } }) | null> {
+    return this.prisma.lesson.findUnique({
+      where: { id },
+      include: { module: { select: { courseId: true } } },
+    });
+  }
+
+  findModuleByCourseId(moduleId: string, courseId: string): Promise<{ id: string } | null> {
+    return this.prisma.courseModule.findFirst({
+      where: { id: moduleId, courseId },
+      select: { id: true },
+    });
+  }
+
   findByIdWithDetails(id: string): Promise<LessonWithDetails | null> {
     return this.prisma.lesson.findUnique({
       where: { id },

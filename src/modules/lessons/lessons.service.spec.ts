@@ -49,7 +49,8 @@ describe('LessonsService', () => {
     Pick<
       LessonsRepository,
       | 'findByModuleId'
-      | 'findById'
+      | 'findByIdWithModule'
+      | 'findModuleByCourseId'
       | 'findByIdWithDetails'
       | 'findIdsByModuleId'
       | 'getMaxOrder'
@@ -68,7 +69,8 @@ describe('LessonsService', () => {
   beforeEach(async () => {
     repo = {
       findByModuleId: jest.fn(),
-      findById: jest.fn(),
+      findByIdWithModule: jest.fn(),
+      findModuleByCourseId: jest.fn(),
       findByIdWithDetails: jest.fn(),
       findIdsByModuleId: jest.fn(),
       getMaxOrder: jest.fn(),
@@ -96,15 +98,17 @@ describe('LessonsService', () => {
 
   describe('create', () => {
     it('creates a VIDEO lesson with videoUrl and auto-assigned order', async () => {
+      repo.findModuleByCourseId.mockResolvedValue({ id: 'module-123' });
       repo.getMaxOrder.mockResolvedValue(0);
       repo.create.mockResolvedValue(mockLesson);
 
-      const result = await service.create('module-123', {
+      const result = await service.create('course-123', 'module-123', {
         title: 'Introduction to Variables',
         type: 'VIDEO',
         videoUrl: 'https://cdn.example.com/video.mp4',
       });
 
+      expect(repo.findModuleByCourseId).toHaveBeenCalledWith('module-123', 'course-123');
       expect(repo.getMaxOrder).toHaveBeenCalledWith('module-123');
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -120,10 +124,15 @@ describe('LessonsService', () => {
     });
 
     it('creates a QUIZ lesson without videoUrl and uses provided order', async () => {
+      repo.findModuleByCourseId.mockResolvedValue({ id: 'module-123' });
       const quizLesson: Lesson = { ...mockLesson, type: 'QUIZ', videoUrl: null, order: 3 };
       repo.create.mockResolvedValue(quizLesson);
 
-      await service.create('module-123', { title: 'Chapter Quiz', type: 'QUIZ', order: 3 });
+      await service.create('course-123', 'module-123', {
+        title: 'Chapter Quiz',
+        type: 'QUIZ',
+        order: 3,
+      });
 
       expect(repo.getMaxOrder).not.toHaveBeenCalled();
       expect(repo.create).toHaveBeenCalledWith(
@@ -134,17 +143,19 @@ describe('LessonsService', () => {
 
   describe('findAll', () => {
     it('passes publishedOnly=false for instructors', async () => {
+      repo.findModuleByCourseId.mockResolvedValue({ id: 'module-123' });
       repo.findByModuleId.mockResolvedValue([mockLesson]);
 
-      await service.findAll('module-123', false);
+      await service.findAll('course-123', 'module-123', false);
 
       expect(repo.findByModuleId).toHaveBeenCalledWith('module-123', false);
     });
 
     it('passes publishedOnly=true for students', async () => {
+      repo.findModuleByCourseId.mockResolvedValue({ id: 'module-123' });
       repo.findByModuleId.mockResolvedValue([]);
 
-      await service.findAll('module-123', true);
+      await service.findAll('course-123', 'module-123', true);
 
       expect(repo.findByModuleId).toHaveBeenCalledWith('module-123', true);
     });
@@ -234,54 +245,75 @@ describe('LessonsService', () => {
 
   describe('publish', () => {
     it('sets isPublished to true', async () => {
-      repo.findById.mockResolvedValue(mockLesson);
+      repo.findByIdWithModule.mockResolvedValue({
+        ...mockLesson,
+        module: { courseId: 'course-123' },
+      });
       repo.update.mockResolvedValue({ ...mockLesson, isPublished: true });
 
-      const result = await service.publish('lesson-123');
+      const result = await service.publish('course-123', 'module-123', 'lesson-123');
 
       expect(repo.update).toHaveBeenCalledWith('lesson-123', { isPublished: true });
       expect(result.isPublished).toBe(true);
     });
 
     it('throws NotFoundException when lesson does not exist', async () => {
-      repo.findById.mockResolvedValue(null);
+      repo.findByIdWithModule.mockResolvedValue(null);
 
-      await expect(service.publish('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.publish('course-123', 'module-123', 'nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('remove', () => {
     it('throws NotFoundException when lesson does not exist', async () => {
-      repo.findById.mockResolvedValue(null);
+      repo.findByIdWithModule.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('course-123', 'module-123', 'nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(repo.delete).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when published lesson has student progress records', async () => {
-      repo.findById.mockResolvedValue({ ...mockLesson, isPublished: true });
+      repo.findByIdWithModule.mockResolvedValue({
+        ...mockLesson,
+        isPublished: true,
+        module: { courseId: 'course-123' },
+      });
       repo.countProgress.mockResolvedValue(5);
 
-      await expect(service.remove('lesson-123')).rejects.toThrow(ConflictException);
+      await expect(service.remove('course-123', 'module-123', 'lesson-123')).rejects.toThrow(
+        ConflictException,
+      );
       expect(repo.delete).not.toHaveBeenCalled();
     });
 
     it('deletes unpublished lesson without checking progress', async () => {
-      repo.findById.mockResolvedValue({ ...mockLesson, isPublished: false });
+      repo.findByIdWithModule.mockResolvedValue({
+        ...mockLesson,
+        isPublished: false,
+        module: { courseId: 'course-123' },
+      });
       repo.delete.mockResolvedValue(mockLesson);
 
-      await service.remove('lesson-123');
+      await service.remove('course-123', 'module-123', 'lesson-123');
 
       expect(repo.countProgress).not.toHaveBeenCalled();
       expect(repo.delete).toHaveBeenCalledWith('lesson-123');
     });
 
     it('deletes published lesson when there are no progress records', async () => {
-      repo.findById.mockResolvedValue({ ...mockLesson, isPublished: true });
+      repo.findByIdWithModule.mockResolvedValue({
+        ...mockLesson,
+        isPublished: true,
+        module: { courseId: 'course-123' },
+      });
       repo.countProgress.mockResolvedValue(0);
       repo.delete.mockResolvedValue(mockLesson);
 
-      await service.remove('lesson-123');
+      await service.remove('course-123', 'module-123', 'lesson-123');
 
       expect(repo.countProgress).toHaveBeenCalledWith('lesson-123');
       expect(repo.delete).toHaveBeenCalledWith('lesson-123');
@@ -290,10 +322,10 @@ describe('LessonsService', () => {
 
   describe('addResource', () => {
     it('throws NotFoundException when lesson does not exist', async () => {
-      repo.findById.mockResolvedValue(null);
+      repo.findByIdWithModule.mockResolvedValue(null);
 
       await expect(
-        service.addResource('nonexistent', {
+        service.addResource('course-123', 'module-123', 'nonexistent', {
           title: 'Slides',
           url: 'https://example.com/s.pdf',
           type: 'pdf',
@@ -302,10 +334,13 @@ describe('LessonsService', () => {
     });
 
     it('creates and returns the resource', async () => {
-      repo.findById.mockResolvedValue(mockLesson);
+      repo.findByIdWithModule.mockResolvedValue({
+        ...mockLesson,
+        module: { courseId: 'course-123' },
+      });
       repo.createResource.mockResolvedValue(mockResource);
 
-      const result = await service.addResource('lesson-123', {
+      const result = await service.addResource('course-123', 'module-123', 'lesson-123', {
         title: 'Course Slides',
         url: 'https://example.com/slides.pdf',
         type: 'pdf',

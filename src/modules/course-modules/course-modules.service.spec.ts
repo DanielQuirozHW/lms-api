@@ -135,7 +135,7 @@ describe('CourseModulesService', () => {
     it('returns module detail with lesson list', async () => {
       repo.findByIdWithLessons.mockResolvedValue(mockModuleWithLessons);
 
-      const result = await service.findOne('module-123', false);
+      const result = await service.findOne('course-123', 'module-123', false);
 
       expect(result.id).toBe('module-123');
       expect(result.lessons).toHaveLength(1);
@@ -145,7 +145,17 @@ describe('CourseModulesService', () => {
     it('throws NotFoundException when module does not exist', async () => {
       repo.findByIdWithLessons.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent', false)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('course-123', 'nonexistent', false)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when module belongs to a different course', async () => {
+      repo.findByIdWithLessons.mockResolvedValue(mockModuleWithLessons);
+
+      await expect(service.findOne('other-course', 'module-123', false)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -154,7 +164,7 @@ describe('CourseModulesService', () => {
       repo.findById.mockResolvedValue(mockModule);
       repo.update.mockResolvedValue({ ...mockModule, isPublished: true });
 
-      const result = await service.publish('module-123');
+      const result = await service.publish('course-123', 'module-123');
 
       expect(repo.update).toHaveBeenCalledWith('module-123', { isPublished: true });
       expect(result.isPublished).toBe(true);
@@ -163,7 +173,16 @@ describe('CourseModulesService', () => {
     it('throws NotFoundException when module does not exist', async () => {
       repo.findById.mockResolvedValue(null);
 
-      await expect(service.publish('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.publish('course-123', 'nonexistent')).rejects.toThrow(NotFoundException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when module belongs to a different course', async () => {
+      repo.findById.mockResolvedValue(mockModule);
+
+      await expect(service.publish('other-course', 'module-123')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(repo.update).not.toHaveBeenCalled();
     });
   });
@@ -205,7 +224,15 @@ describe('CourseModulesService', () => {
     it('throws NotFoundException when module does not exist', async () => {
       repo.findById.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('course-123', 'nonexistent')).rejects.toThrow(NotFoundException);
+      expect(repo.countPublishedLessons).not.toHaveBeenCalled();
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when module belongs to a different course', async () => {
+      repo.findById.mockResolvedValue(mockModule);
+
+      await expect(service.remove('other-course', 'module-123')).rejects.toThrow(NotFoundException);
       expect(repo.countPublishedLessons).not.toHaveBeenCalled();
       expect(repo.delete).not.toHaveBeenCalled();
     });
@@ -214,7 +241,7 @@ describe('CourseModulesService', () => {
       repo.findById.mockResolvedValue(mockModule);
       repo.countPublishedLessons.mockResolvedValue(3);
 
-      await expect(service.remove('module-123')).rejects.toThrow(ConflictException);
+      await expect(service.remove('course-123', 'module-123')).rejects.toThrow(ConflictException);
       expect(repo.delete).not.toHaveBeenCalled();
     });
 
@@ -223,7 +250,7 @@ describe('CourseModulesService', () => {
       repo.countPublishedLessons.mockResolvedValue(0);
       repo.delete.mockResolvedValue(mockModule);
 
-      await service.remove('module-123');
+      await service.remove('course-123', 'module-123');
 
       expect(repo.countPublishedLessons).toHaveBeenCalledWith('module-123');
       expect(repo.delete).toHaveBeenCalledWith('module-123');

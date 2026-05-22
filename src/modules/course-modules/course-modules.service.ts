@@ -42,17 +42,27 @@ export class CourseModulesService {
     return modules.map((m) => this.map(m));
   }
 
-  /** Returns module with its lessons. Lessons filtered to published-only for students. Throws 404 if not found. */
-  async findOne(id: string, publishedOnly: boolean): Promise<ModuleDetailResponseDto> {
+  /** Returns module with its lessons. Verifies module belongs to courseId. Throws 404 if not found or mismatched. */
+  async findOne(
+    courseId: string,
+    id: string,
+    publishedOnly: boolean,
+  ): Promise<ModuleDetailResponseDto> {
     const courseModule = await this.courseModulesRepository.findByIdWithLessons(id, publishedOnly);
-    if (!courseModule) throw new NotFoundException('Module not found');
+    if (!courseModule || courseModule.courseId !== courseId)
+      throw new NotFoundException('Module not found');
     return this.mapDetail(courseModule);
   }
 
-  /** Updates module fields. Throws 404 if module does not exist. */
-  async update(moduleId: string, dto: UpdateModuleDto): Promise<ModuleResponseDto> {
+  /** Updates module fields. Throws 404 if module does not exist or does not belong to courseId. */
+  async update(
+    courseId: string,
+    moduleId: string,
+    dto: UpdateModuleDto,
+  ): Promise<ModuleResponseDto> {
     const existing = await this.courseModulesRepository.findById(moduleId);
-    if (!existing) throw new NotFoundException('Module not found');
+    if (!existing || existing.courseId !== courseId)
+      throw new NotFoundException('Module not found');
     const data: Prisma.CourseModuleUpdateInput = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.description !== undefined && { description: dto.description }),
@@ -63,10 +73,11 @@ export class CourseModulesService {
     return this.map(courseModule);
   }
 
-  /** Transitions the module to published status. Throws 404 if module does not exist. */
-  async publish(moduleId: string): Promise<ModuleResponseDto> {
+  /** Transitions the module to published status. Throws 404 if module does not exist or does not belong to courseId. */
+  async publish(courseId: string, moduleId: string): Promise<ModuleResponseDto> {
     const existing = await this.courseModulesRepository.findById(moduleId);
-    if (!existing) throw new NotFoundException('Module not found');
+    if (!existing || existing.courseId !== courseId)
+      throw new NotFoundException('Module not found');
     const courseModule = await this.courseModulesRepository.update(moduleId, { isPublished: true });
     return this.map(courseModule);
   }
@@ -81,10 +92,11 @@ export class CourseModulesService {
     await this.courseModulesRepository.reorder(dto.items);
   }
 
-  /** Deletes a module. Throws 409 if the module has published lessons. Throws 404 if not found. */
-  async remove(moduleId: string): Promise<void> {
+  /** Deletes a module. Throws 409 if the module has published lessons. Throws 404 if not found or does not belong to courseId. */
+  async remove(courseId: string, moduleId: string): Promise<void> {
     const existing = await this.courseModulesRepository.findById(moduleId);
-    if (!existing) throw new NotFoundException('Module not found');
+    if (!existing || existing.courseId !== courseId)
+      throw new NotFoundException('Module not found');
     const publishedLessons = await this.courseModulesRepository.countPublishedLessons(moduleId);
     if (publishedLessons > 0) {
       throw new ConflictException('Cannot delete a module that has published lessons');

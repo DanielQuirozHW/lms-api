@@ -46,11 +46,11 @@ export class LessonsController {
   @ApiResponse({ status: 404, description: 'Course or module not found' })
   @ApiResponse({ status: 409, description: 'Order conflict — duplicate position' })
   create(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Body() dto: CreateLessonDto,
   ): Promise<LessonResponseDto> {
-    return this.lessonsService.create(moduleId, dto);
+    return this.lessonsService.create(courseId, moduleId, dto);
   }
 
   @Get()
@@ -58,13 +58,13 @@ export class LessonsController {
   @ApiOperation({ summary: 'List lessons in a module (students see only published)' })
   @ApiResponse({ status: 200, type: LessonResponseDto, isArray: true })
   findAll(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<LessonResponseDto[]> {
     const publishedOnly =
       !user || !user.roles.some((r) => r === UserRole.INSTRUCTOR || r === UserRole.ADMIN);
-    return this.lessonsService.findAll(moduleId, publishedOnly);
+    return this.lessonsService.findAll(courseId, moduleId, publishedOnly);
   }
 
   @Patch('reorder')
@@ -110,12 +110,12 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLessonDto,
   ): Promise<LessonResponseDto> {
-    return this.lessonsService.update(id, dto);
+    return this.lessonsService.update(courseId, moduleId, id, dto);
   }
 
   @Patch(':id/publish')
@@ -128,11 +128,11 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   publish(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<LessonResponseDto> {
-    return this.lessonsService.publish(id);
+    return this.lessonsService.publish(courseId, moduleId, id);
   }
 
   @Delete(':id')
@@ -147,11 +147,11 @@ export class LessonsController {
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   @ApiResponse({ status: 409, description: 'Lesson has student progress records' })
   remove(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
-    return this.lessonsService.remove(id);
+    return this.lessonsService.remove(courseId, moduleId, id);
   }
 
   @Post(':id/resources')
@@ -165,12 +165,12 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   addResource(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateResourceDto,
   ): Promise<LessonResourceDto> {
-    return this.lessonsService.addResource(id, dto);
+    return this.lessonsService.addResource(courseId, moduleId, id, dto);
   }
 
   @Delete(':id/resources/:resourceId')

@@ -13,7 +13,7 @@ import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 
 const BCRYPT_ROUNDS = 12;
-const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 // Valid bcrypt hash used solely to equalise timing when email is not found.
 // Ensures bcrypt.compare always runs, preventing user enumeration via response-time differences.
 const DUMMY_HASH = '$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
@@ -53,9 +53,7 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !valid) {
       this.logger.warn(
-        user
-          ? `Login failed — wrong password for user ${user.id}`
-          : `Login failed — unknown email: ${dto.email}`,
+        user ? `Login failed — wrong password for user ${user.id}` : `Login failed — unknown email`,
       );
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -80,6 +78,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token revoked');
     }
     await this.redisService.del(redisKey);
+    await this.redisService.srem(this.rtSetKey(payload.sub), payload.jti);
 
     const user = await this.authRepository.findById(payload.sub);
     if (!user) {
@@ -96,6 +95,7 @@ export class AuthService {
       });
       if (payload.sub === userId) {
         await this.redisService.del(this.rtKey(userId, payload.jti));
+        await this.redisService.srem(this.rtSetKey(userId), payload.jti);
       }
     } catch {
       // Token already expired or invalid — nothing to revoke
@@ -125,6 +125,7 @@ export class AuthService {
       email: user.email,
       roles: user.roles,
       type: 'access',
+      isVerified: user.isVerified,
     };
     return this.jwtService.signAsync(payload, {
       secret: this.config.get('jwt.secret', { infer: true }),
@@ -137,14 +138,19 @@ export class AuthService {
     const payload: RefreshTokenPayload = { sub: user.id, jti, type: 'refresh' };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.config.get('jwt.refreshSecret', { infer: true }),
-      expiresIn: '7d',
+      expiresIn: this.config.get('jwt.refreshExpiresIn', { infer: true }) ?? '30d',
     });
     await this.redisService.set(this.rtKey(user.id, jti), '1', 'EX', REFRESH_TTL_SECONDS);
+    await this.redisService.sadd(this.rtSetKey(user.id), jti);
     return token;
   }
 
   private rtKey(userId: string, jti: string): string {
     return `rt:${userId}:${jti}`;
+  }
+
+  private rtSetKey(userId: string): string {
+    return `rt-set:${userId}`;
   }
 
   private toUserResponse(user: User): UserResponseDto {

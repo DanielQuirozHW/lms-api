@@ -110,7 +110,7 @@ export class ForumService {
     if (!isAdmin) {
       const postCount = await this.forumRepository.countPosts(id);
       if (postCount > 1) {
-        throw new ConflictException('Cannot delete a thread that has replies from other users');
+        throw new ConflictException('Cannot delete a thread that has replies');
       }
     }
 
@@ -171,7 +171,7 @@ export class ForumService {
     const canAccept =
       user.roles.includes(UserRole.ADMIN) ||
       thread.authorId === user.id ||
-      (thread.courseId !== null && (await this.isInstructor(thread.courseId, user.id)));
+      (thread.courseId !== null && (await this.isInstructor(thread.courseId, user.id, user)));
 
     if (!canAccept) {
       throw new ForbiddenException(
@@ -196,6 +196,10 @@ export class ForumService {
 
     const post = await this.forumRepository.findPostById(postId);
     if (!post || post.threadId !== threadId) throw new NotFoundException('Post not found');
+
+    if (post.authorId === user.id) {
+      throw new BadRequestException('You cannot vote on your own post');
+    }
 
     const existing = await this.forumRepository.findVote(postId, user.id);
     if (existing?.value === dto.value) {
@@ -259,7 +263,7 @@ export class ForumService {
       throw new ForbiddenException('Only admins can moderate global threads');
     }
 
-    const course = await this.coursesService.findOne(thread.courseId);
+    const course = await this.coursesService.findOne(thread.courseId, user);
     if (course.instructorId === user.id) return;
 
     throw new ForbiddenException('Only the course instructor or admin can perform this action');
@@ -272,8 +276,12 @@ export class ForumService {
     }
   }
 
-  private async isInstructor(courseId: string, userId: string): Promise<boolean> {
-    const course = await this.coursesService.findOne(courseId);
+  private async isInstructor(
+    courseId: string,
+    userId: string,
+    user: AuthenticatedUser,
+  ): Promise<boolean> {
+    const course = await this.coursesService.findOne(courseId, user);
     return course.instructorId === userId;
   }
 

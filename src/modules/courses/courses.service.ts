@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Course, Prisma } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { slugify } from '../../common/utils/slug.util';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
+import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CreateCourseDto } from './dto/create-course.dto';
 import type { CourseQueryDto } from './dto/course-query.dto';
 import type { CourseDetailResponseDto, CourseResponseDto } from './dto/course-response.dto';
@@ -46,10 +48,17 @@ export class CoursesService {
     );
   }
 
-  /** Returns course detail including lessons and enrollment counts. */
-  async findOne(id: string): Promise<CourseDetailResponseDto> {
+  /** Returns course detail including lessons and enrollment counts. Non-PUBLISHED courses return 404 unless the caller is the owner or an admin. */
+  async findOne(id: string, user?: AuthenticatedUser): Promise<CourseDetailResponseDto> {
     const course = await this.coursesRepository.findByIdWithCount(id);
     if (!course) throw new NotFoundException('Course not found');
+
+    const canViewNonPublished =
+      user && (user.roles.includes(UserRole.ADMIN) || user.id === course.instructorId);
+    if (course.status !== 'PUBLISHED' && !canViewNonPublished) {
+      throw new NotFoundException('Course not found');
+    }
+
     return this.mapDetail(course);
   }
 
@@ -99,11 +108,11 @@ export class CoursesService {
     return this.map(course);
   }
 
-  /** Deletes the course. Throws 409 if the course has active enrollments. */
+  /** Deletes the course. Throws 409 if the course has any non-cancelled enrollments (ACTIVE or COMPLETED). */
   async remove(courseId: string): Promise<void> {
-    const activeCount = await this.coursesRepository.countActiveEnrollments(courseId);
-    if (activeCount > 0) {
-      throw new ConflictException('Cannot delete a course with active enrollments');
+    const enrollmentCount = await this.coursesRepository.countNonCancelledEnrollments(courseId);
+    if (enrollmentCount > 0) {
+      throw new ConflictException('Cannot delete a course with active or completed enrollments');
     }
     await this.coursesRepository.delete(courseId);
   }

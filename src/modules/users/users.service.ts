@@ -49,11 +49,13 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     await this.usersRepository.update(userId, { passwordHash });
 
-    const tokenKeys = await this.redisService.keys(`rt:${userId}:*`);
-    if (tokenKeys.length > 0) {
-      await this.redisService.del(...tokenKeys);
+    const jtis = await this.redisService.smembers(`rt-set:${userId}`);
+    if (jtis.length > 0) {
+      const rtKeys = jtis.map((jti) => `rt:${userId}:${jti}`);
+      await this.redisService.del(...rtKeys, `rt-set:${userId}`);
     }
 
+    await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
     this.logger.log(`Password changed for user ${userId} — all refresh tokens revoked`);
   }
 
@@ -65,13 +67,15 @@ export class UsersService {
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Password is incorrect');
 
-    const tokenKeys = await this.redisService.keys(`rt:${userId}:*`);
-    if (tokenKeys.length > 0) {
-      await this.redisService.del(...tokenKeys);
+    await this.usersRepository.delete(userId);
+
+    const jtis = await this.redisService.smembers(`rt-set:${userId}`);
+    if (jtis.length > 0) {
+      const rtKeys = jtis.map((jti) => `rt:${userId}:${jti}`);
+      await this.redisService.del(...rtKeys, `rt-set:${userId}`);
     }
 
     await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
-    await this.usersRepository.delete(userId);
   }
 
   /** Returns the public profile of any user. Never includes email, passwordHash, roles, or isVerified. */

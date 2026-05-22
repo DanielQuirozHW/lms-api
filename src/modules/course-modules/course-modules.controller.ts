@@ -83,13 +83,13 @@ export class CourseModulesController {
   @ApiResponse({ status: 200, type: ModuleDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Module not found' })
   findOne(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<ModuleDetailResponseDto> {
     const publishedOnly =
       !user || !user.roles.some((r) => r === UserRole.INSTRUCTOR || r === UserRole.ADMIN);
-    return this.courseModulesService.findOne(id, publishedOnly);
+    return this.courseModulesService.findOne(courseId, id, publishedOnly);
   }
 
   @Patch(':id')
@@ -103,11 +103,11 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Module not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateModuleDto,
   ): Promise<ModuleResponseDto> {
-    return this.courseModulesService.update(id, dto);
+    return this.courseModulesService.update(courseId, id, dto);
   }
 
   @Patch(':id/publish')
@@ -120,10 +120,10 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Module not found' })
   publish(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleResponseDto> {
-    return this.courseModulesService.publish(id);
+    return this.courseModulesService.publish(courseId, id);
   }
 
   @Delete(':id')
@@ -138,9 +138,9 @@ export class CourseModulesController {
   @ApiResponse({ status: 404, description: 'Module not found' })
   @ApiResponse({ status: 409, description: 'Module has published lessons' })
   remove(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
+    @Param('courseId', ParseUUIDPipe) courseId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
-    return this.courseModulesService.remove(id);
+    return this.courseModulesService.remove(courseId, id);
   }
 }

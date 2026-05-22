@@ -63,6 +63,12 @@ const mockAdmin: AuthenticatedUser = {
   roles: [UserRole.ADMIN],
 };
 
+const mockStudent: AuthenticatedUser = {
+  id: 'user-1',
+  email: 'student@test.com',
+  roles: [UserRole.STUDENT],
+};
+
 describe('EnrollmentsService', () => {
   let service: EnrollmentsService;
   let repo: jest.Mocked<
@@ -125,12 +131,35 @@ describe('EnrollmentsService', () => {
       repo.findPublishedLessons.mockResolvedValue([]);
       repo.createWithProgress.mockResolvedValue(mockEnrollment);
 
-      const result = await service.enroll('user-1', { courseId: 'course-1' });
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
 
       expect(result.id).toBe('enrollment-1');
       expect(result.status).toBe(EnrollmentStatus.ACTIVE);
       expect(repo.createWithProgress).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-1', courseId: 'course-1' }),
+      );
+    });
+
+    it('should throw ForbiddenException when user email is not verified', async () => {
+      const unverifiedUser: AuthenticatedUser = { ...mockStudent, isVerified: false };
+
+      await expect(service.enroll(unverifiedUser, { courseId: 'course-1' })).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(repo.findByUserAndCourse).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when instructor tries to enroll in own course', async () => {
+      const instructor: AuthenticatedUser = {
+        id: 'instructor-1',
+        email: 'i@test.com',
+        roles: [UserRole.INSTRUCTOR],
+      };
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(mockCourse);
+
+      await expect(service.enroll(instructor, { courseId: 'course-1' })).rejects.toThrow(
+        ForbiddenException,
       );
     });
 
@@ -140,7 +169,7 @@ describe('EnrollmentsService', () => {
         status: EnrollmentStatus.ACTIVE,
       });
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
     });
@@ -151,7 +180,7 @@ describe('EnrollmentsService', () => {
         status: EnrollmentStatus.COMPLETED,
       });
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
     });
@@ -166,7 +195,7 @@ describe('EnrollmentsService', () => {
         status: EnrollmentStatus.ACTIVE,
       });
 
-      const result = await service.enroll('user-1', { courseId: 'course-1' });
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
 
       expect(repo.reactivateWithProgress).toHaveBeenCalledWith(
         expect.objectContaining({ enrollmentId: cancelledEnrollment.id }),
@@ -179,7 +208,7 @@ describe('EnrollmentsService', () => {
       repo.findByUserAndCourse.mockResolvedValue(null);
       repo.findCourseWithSettings.mockResolvedValue(null);
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -188,7 +217,7 @@ describe('EnrollmentsService', () => {
       repo.findByUserAndCourse.mockResolvedValue(null);
       repo.findCourseWithSettings.mockResolvedValue({ ...mockCourse, status: 'DRAFT' });
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -202,7 +231,7 @@ describe('EnrollmentsService', () => {
       redisService.set.mockResolvedValue('OK');
       repo.countActiveByCourseId.mockResolvedValue(10);
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
       expect(redisService.del).toHaveBeenCalledWith('enroll-lock:course-1');
@@ -216,7 +245,7 @@ describe('EnrollmentsService', () => {
       });
       redisService.set.mockResolvedValue(null);
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         ConflictException,
       );
       expect(repo.countActiveByCourseId).not.toHaveBeenCalled();
@@ -233,7 +262,7 @@ describe('EnrollmentsService', () => {
       repo.findPublishedLessons.mockResolvedValue([]);
       repo.createWithProgress.mockResolvedValue(mockEnrollment);
 
-      const result = await service.enroll('user-1', { courseId: 'course-1' });
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
 
       expect(result.id).toBe('enrollment-1');
       expect(redisService.del).toHaveBeenCalledWith('enroll-lock:course-1');
@@ -247,7 +276,7 @@ describe('EnrollmentsService', () => {
         settings: { ...baseSettings, enrollmentStartDate: futureDate },
       });
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -260,7 +289,7 @@ describe('EnrollmentsService', () => {
         settings: { ...baseSettings, enrollmentEndDate: pastDate },
       });
 
-      await expect(service.enroll('user-1', { courseId: 'course-1' })).rejects.toThrow(
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
         BadRequestException,
       );
     });

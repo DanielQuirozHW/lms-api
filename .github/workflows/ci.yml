@@ -31,7 +31,7 @@ jobs:
 
       # 32-char test-only secrets — never used in production.
       JWT_SECRET: ci-test-jwt-secret-key-for-ci-only!!
-      JWT_EXPIRES_IN: 7d
+      JWT_EXPIRES_IN: 15m
       JWT_REFRESH_SECRET: ci-test-refresh-secret-key-for-ci!!
       JWT_REFRESH_EXPIRES_IN: 30d
 
@@ -67,6 +67,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
 
       - name: Generate Prisma client
         run: pnpm prisma:generate

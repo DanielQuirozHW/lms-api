@@ -74,8 +74,11 @@ export class CoursesController {
   @ApiOperation({ summary: 'Get course detail with lesson and enrollment counts' })
   @ApiResponse({ status: 200, type: CourseDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<CourseDetailResponseDto> {
-    return this.coursesService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ): Promise<CourseDetailResponseDto> {
+    return this.coursesService.findOne(id, user);
   }
 
   @Patch(':id')

@@ -10,6 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PaginationDto, type PaginatedResult } from '../../common/dto/pagination.dto';
@@ -49,6 +50,7 @@ export class MessagesController {
   }
 
   @Post(':userId')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Send a message to a user' })
   async sendMessage(
     @CurrentUser() user: AuthenticatedUser,

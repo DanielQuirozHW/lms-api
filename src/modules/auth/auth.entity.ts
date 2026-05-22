@@ -5,6 +5,7 @@ export interface JwtPayload {
   email: string;
   roles: UserRole[];
   type: 'access';
+  isVerified?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -21,4 +22,5 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   roles: UserRole[];
+  isVerified?: boolean;
 }

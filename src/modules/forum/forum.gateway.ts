@@ -1,6 +1,7 @@
 import { Logger, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { RedisService } from '../../redis/redis.service';
 import {
   ConnectedSocket,
   MessageBody,
@@ -33,10 +34,11 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService<AppConfig>,
     private readonly forumRepository: ForumRepository,
     private readonly enrollmentsService: EnrollmentsService,
+    private readonly redisService: RedisService,
   ) {}
 
-  handleConnection(client: Socket): void {
-    const user = this.authenticate(client);
+  async handleConnection(client: Socket): Promise<void> {
+    const user = await this.authenticate(client);
     if (!user) {
       client.disconnect();
       return;
@@ -117,7 +119,7 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return true;
   }
 
-  private authenticate(client: Socket): AuthenticatedUser | null {
+  private async authenticate(client: Socket): Promise<AuthenticatedUser | null> {
     const raw =
       (client.handshake.auth['token'] as string | undefined) ??
       client.handshake.headers['authorization']?.replace('Bearer ', '');
@@ -133,7 +135,17 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if ((payload.type as string) !== 'access') {
         throw new UnauthorizedException('Invalid token type');
       }
-      return { id: payload.sub, email: payload.email, roles: payload.roles };
+      const revoked = await this.redisService.get(`revoked:user:${payload.sub}`);
+      if (revoked) {
+        this.logger.warn(`Forum client rejected: ${client.id} — revoked user ${payload.sub}`);
+        return null;
+      }
+      return {
+        id: payload.sub,
+        email: payload.email,
+        roles: payload.roles,
+        isVerified: payload.isVerified,
+      };
     } catch {
       this.logger.warn(`Forum client rejected: ${client.id} — invalid token`);
       return null;

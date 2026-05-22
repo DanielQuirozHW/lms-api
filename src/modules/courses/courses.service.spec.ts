@@ -34,7 +34,7 @@ describe('CoursesService', () => {
       | 'findMany'
       | 'findById'
       | 'findByIdWithCount'
-      | 'countActiveEnrollments'
+      | 'countNonCancelledEnrollments'
       | 'countLessons'
       | 'create'
       | 'update'
@@ -47,7 +47,7 @@ describe('CoursesService', () => {
       findMany: jest.fn(),
       findById: jest.fn(),
       findByIdWithCount: jest.fn(),
-      countActiveEnrollments: jest.fn(),
+      countNonCancelledEnrollments: jest.fn(),
       countLessons: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -131,14 +131,30 @@ describe('CoursesService', () => {
   });
 
   describe('findOne', () => {
-    it('returns course detail with lesson and enrollment counts', async () => {
-      coursesRepository.findByIdWithCount.mockResolvedValue(mockCourseWithCount);
+    it('returns course detail for a PUBLISHED course without user context', async () => {
+      const publishedCourse = { ...mockCourseWithCount, status: 'PUBLISHED' as const };
+      coursesRepository.findByIdWithCount.mockResolvedValue(publishedCourse);
 
       const result = await service.findOne('course-123');
 
       expect(result.id).toBe('course-123');
       expect(result.lessonsCount).toBe(5);
       expect(result.enrollmentsCount).toBe(10);
+    });
+
+    it('returns course detail for a non-PUBLISHED course when caller is the owner', async () => {
+      coursesRepository.findByIdWithCount.mockResolvedValue(mockCourseWithCount);
+      const owner = { id: 'instructor-123', email: 'i@test.com', roles: ['INSTRUCTOR' as const] };
+
+      const result = await service.findOne('course-123', owner);
+
+      expect(result.id).toBe('course-123');
+    });
+
+    it('throws NotFoundException for non-PUBLISHED course when caller is not owner or admin', async () => {
+      coursesRepository.findByIdWithCount.mockResolvedValue(mockCourseWithCount);
+
+      await expect(service.findOne('course-123')).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException when course does not exist', async () => {
@@ -206,20 +222,20 @@ describe('CoursesService', () => {
   });
 
   describe('remove', () => {
-    it('throws ConflictException when course has active enrollments', async () => {
-      coursesRepository.countActiveEnrollments.mockResolvedValue(3);
+    it('throws ConflictException when course has non-cancelled enrollments', async () => {
+      coursesRepository.countNonCancelledEnrollments.mockResolvedValue(3);
 
       await expect(service.remove('course-123')).rejects.toThrow(ConflictException);
       expect(coursesRepository.delete).not.toHaveBeenCalled();
     });
 
-    it('deletes course successfully when there are no active enrollments', async () => {
-      coursesRepository.countActiveEnrollments.mockResolvedValue(0);
+    it('deletes course successfully when all enrollments are cancelled', async () => {
+      coursesRepository.countNonCancelledEnrollments.mockResolvedValue(0);
       coursesRepository.delete.mockResolvedValue(mockCourse);
 
       await service.remove('course-123');
 
-      expect(coursesRepository.countActiveEnrollments).toHaveBeenCalledWith('course-123');
+      expect(coursesRepository.countNonCancelledEnrollments).toHaveBeenCalledWith('course-123');
       expect(coursesRepository.delete).toHaveBeenCalledWith('course-123');
     });
   });

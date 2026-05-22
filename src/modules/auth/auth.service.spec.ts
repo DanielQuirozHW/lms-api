@@ -31,7 +31,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let authRepository: jest.Mocked<Pick<AuthRepository, 'findByEmail' | 'findById' | 'createUser'>>;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
-  let redisService: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del'>>;
+  let redisService: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem'>>;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   beforeEach(async () => {
@@ -50,6 +50,8 @@ describe('AuthService', () => {
       get: jest.fn(),
       set: jest.fn().mockResolvedValue('OK'),
       del: jest.fn().mockResolvedValue(1),
+      sadd: jest.fn().mockResolvedValue(1),
+      srem: jest.fn().mockResolvedValue(1),
     };
 
     configService = {
