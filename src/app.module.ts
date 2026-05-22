@@ -8,7 +8,9 @@ import { validate } from './config/env.validation';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './health/health.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { CoursesModule } from './modules/courses/courses.module';
 import { CourseModulesModule } from './modules/course-modules/course-modules.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
@@ -46,7 +48,9 @@ import type { AppConfig } from './config/configuration';
     RedisModule,
     StorageModule,
     HealthModule,
+    AnnouncementsModule,
     AuthModule,
+    CategoriesModule,
     UsersModule,
     CoursesModule,
     CourseModulesModule,
