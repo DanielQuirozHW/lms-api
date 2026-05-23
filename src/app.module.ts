@@ -23,6 +23,7 @@ import { UsersModule } from './modules/users/users.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { GradebookModule } from './modules/gradebook/gradebook.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { QuizModule } from './modules/quiz/quiz.module';
 import { RubricsModule } from './modules/rubrics/rubrics.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -67,6 +68,7 @@ import type { AppConfig } from './config/configuration';
     CalendarModule,
     GradebookModule,
     GroupsModule,
+    QuizModule,
     RubricsModule,
   ],
   providers: [
