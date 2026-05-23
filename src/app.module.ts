@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
@@ -25,7 +26,9 @@ import { GradebookModule } from './modules/gradebook/gradebook.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
 import { QuizModule } from './modules/quiz/quiz.module';
+import { DripModule } from './modules/drip/drip.module';
 import { RubricsModule } from './modules/rubrics/rubrics.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { StorageModule } from './storage/storage.module';
@@ -72,6 +75,9 @@ import type { AppConfig } from './config/configuration';
     AssignmentsModule,
     QuizModule,
     RubricsModule,
+    UploadModule,
+    ScheduleModule.forRoot(),
+    DripModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

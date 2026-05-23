@@ -9,7 +9,7 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
-    "types": ["jest", "node"],
+    "types": ["jest", "node", "multer"],
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,

@@ -266,6 +266,13 @@ export class LessonsService {
     return this.mapProgress(progress);
   }
 
+  /** Returns the courseId for the given lesson. Used by UploadService to verify instructor ownership before generating presigned upload URLs. */
+  async getLessonCourseId(lessonId: string): Promise<string> {
+    const lesson = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!lesson) throw new NotFoundException('Lesson not found');
+    return lesson.module.courseId;
+  }
+
   private map(lesson: Lesson): LessonResponseDto {
     return {
       id: lesson.id,
