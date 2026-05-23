@@ -63,6 +63,15 @@ enum NotificationType {
   ANNOUNCEMENT
 }
 
+enum CalendarEventType {
+  ASSIGNMENT_DUE
+  QUIZ_DUE
+  LESSON_AVAILABLE
+  COURSE_START
+  COURSE_END
+  CUSTOM
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
@@ -77,18 +86,21 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  notificationSettings NotificationSettings?
-  taughtCourses        Course[]              @relation("CourseInstructor")
-  enrollments          Enrollment[]
-  notifications        Notification[]
-  threads              ForumThread[]
-  posts                ForumPost[]
-  postVotes            ForumPostVote[]
-  sentMessages         Message[]             @relation("SentMessages")
-  receivedMessages     Message[]             @relation("ReceivedMessages")
-  courseRatings        CourseRating[]
-  announcements        Announcement[]        @relation("AnnouncementInstructor")
-  gradedSubmissions    Submission[]          @relation("SubmissionGrader")
+  notificationSettings  NotificationSettings?
+  taughtCourses         Course[]              @relation("CourseInstructor")
+  enrollments           Enrollment[]
+  notifications         Notification[]
+  threads               ForumThread[]
+  posts                 ForumPost[]
+  postVotes             ForumPostVote[]
+  sentMessages          Message[]             @relation("SentMessages")
+  receivedMessages      Message[]             @relation("ReceivedMessages")
+  courseRatings         CourseRating[]
+  announcements         Announcement[]        @relation("AnnouncementInstructor")
+  gradedSubmissions     Submission[]          @relation("SubmissionGrader")
+  rubricAssessments     RubricAssessment[]
+  groupMemberships      CourseGroupMember[]
+  calendarEvents        CalendarEvent[]
 
   @@map("users")
 }
@@ -130,14 +142,18 @@ model Course {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  instructor    User            @relation("CourseInstructor", fields: [instructorId], references: [id])
-  category      Category?       @relation(fields: [categoryId], references: [id])
-  settings      CourseSettings?
-  modules       CourseModule[]
-  enrollments   Enrollment[]
-  ratings       CourseRating[]
-  threads       ForumThread[]
-  announcements Announcement[]
+  instructor          User                @relation("CourseInstructor", fields: [instructorId], references: [id])
+  category            Category?           @relation(fields: [categoryId], references: [id])
+  settings            CourseSettings?
+  modules             CourseModule[]
+  enrollments         Enrollment[]
+  ratings             CourseRating[]
+  threads             ForumThread[]
+  announcements       Announcement[]
+  gradebookCategories GradebookCategory[]
+  rubrics             Rubric[]
+  groups              CourseGroup[]
+  calendarEvents      CalendarEvent[]
 
   @@index([instructorId])
   @@index([categoryId])
@@ -197,6 +213,7 @@ model Lesson {
   duration    Int?
   isPreview   Boolean    @default(false) @map("is_preview")
   isPublished Boolean    @default(false) @map("is_published")
+  rubricId    String?    @map("rubric_id")
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
@@ -208,6 +225,8 @@ model Lesson {
   progress           LessonProgress[]
   quizAttempts       QuizAttempt[]
   submissions        Submission[]
+  gradebookItem      GradebookItem?
+  rubric             Rubric?             @relation(fields: [rubricId], references: [id], onDelete: SetNull)
 
   @@unique([moduleId, order])
   @@index([moduleId])
@@ -320,9 +339,13 @@ model AssignmentSettings {
   passingScore        Int?        @map("passing_score")
   dueDate             DateTime?   @map("due_date")
   allowLateSubmission Boolean     @default(false) @map("allow_late_submission")
+  isGroupAssignment   Boolean     @default(false) @map("is_group_assignment")
+  groupId             String?     @map("group_id")
 
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  group  CourseGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
+  @@index([groupId])
   @@map("assignment_settings")
 }
 
@@ -338,15 +361,19 @@ model Submission {
   feedback      String?
   gradedById    String?   @map("graded_by_id")
   gradedAt      DateTime? @map("graded_at")
+  groupId       String?   @map("group_id")
 
-  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  gradedBy   User?      @relation("SubmissionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+  enrollment       Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson           Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  gradedBy         User?             @relation("SubmissionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+  group            CourseGroup?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  rubricAssessment RubricAssessment?
 
   @@unique([enrollmentId, lessonId, attemptNumber])
   @@index([enrollmentId])
   @@index([lessonId])
   @@index([gradedById])
+  @@index([groupId])
   @@map("submissions")
 }
 
@@ -360,6 +387,8 @@ model Enrollment {
   completedAt DateTime?        @map("completed_at")
   enrolledAt  DateTime         @default(now()) @map("enrolled_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
+  finalGrade  Float?           @map("final_grade")
+  gradedAt    DateTime?        @map("graded_at")
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   course       Course           @relation(fields: [courseId], references: [id])
@@ -522,4 +551,185 @@ model Message {
   @@index([receiverId])
   @@index([senderId, receiverId])
   @@map("messages")
+}
+
+// ─── Gradebook ────────────────────────────────────────────────────────────────
+
+model GradebookCategory {
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  name     String
+  weight   Float
+  order    Int
+
+  course Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  items  GradebookItem[]
+
+  @@unique([courseId, name])
+  @@index([courseId])
+  @@map("gradebook_categories")
+}
+
+model GradebookItem {
+  id           String  @id @default(cuid())
+  categoryId   String  @map("category_id")
+  lessonId     String  @unique @map("lesson_id")
+  weight       Float?
+  maxScore     Float   @map("max_score")
+  isExtraCredit Boolean @default(false) @map("is_extra_credit")
+
+  category GradebookCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@map("gradebook_items")
+}
+
+// ─── Rubrics ──────────────────────────────────────────────────────────────────
+
+model Rubric {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  title       String
+  description String?
+  totalPoints Int      @map("total_points")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  criteria    RubricCriterion[]
+  assessments RubricAssessment[]
+  lessons     Lesson[]
+
+  @@index([courseId])
+  @@map("rubrics")
+}
+
+model RubricCriterion {
+  id          String  @id @default(cuid())
+  rubricId    String  @map("rubric_id")
+  title       String
+  description String?
+  order       Int
+  points      Int
+
+  rubric  Rubric                   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  levels  RubricLevel[]
+  answers RubricAssessmentAnswer[]
+
+  @@unique([rubricId, order])
+  @@map("rubric_criteria")
+}
+
+model RubricLevel {
+  id          String  @id @default(cuid())
+  criterionId String  @map("criterion_id")
+  title       String
+  description String?
+  points      Int
+  order       Int
+
+  criterion RubricCriterion          @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  answers   RubricAssessmentAnswer[]
+
+  @@unique([criterionId, order])
+  @@map("rubric_levels")
+}
+
+model RubricAssessment {
+  id           String   @id @default(cuid())
+  rubricId     String   @map("rubric_id")
+  submissionId String   @unique @map("submission_id")
+  assessorId   String   @map("assessor_id")
+  totalScore   Float    @map("total_score")
+  feedback     String?
+  assessedAt   DateTime @map("assessed_at")
+
+  rubric     Rubric                   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  submission Submission               @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  assessor   User                     @relation(fields: [assessorId], references: [id])
+  answers    RubricAssessmentAnswer[]
+
+  @@index([rubricId])
+  @@index([assessorId])
+  @@map("rubric_assessments")
+}
+
+model RubricAssessmentAnswer {
+  id             String  @id @default(cuid())
+  assessmentId   String  @map("assessment_id")
+  criterionId    String  @map("criterion_id")
+  levelId        String? @map("level_id")
+  pointsAwarded  Float   @map("points_awarded")
+  feedback       String?
+
+  assessment RubricAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  criterion  RubricCriterion  @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  level      RubricLevel?     @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  @@unique([assessmentId, criterionId])
+  @@map("rubric_assessment_answers")
+}
+
+// ─── Groups ───────────────────────────────────────────────────────────────────
+
+model CourseGroup {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  name        String
+  description String?
+  maxMembers  Int?     @map("max_members")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  course             Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  members            CourseGroupMember[]
+  submissions        Submission[]
+  assignmentSettings AssignmentSettings[]
+
+  @@unique([courseId, name])
+  @@index([courseId])
+  @@map("course_groups")
+}
+
+model CourseGroupMember {
+  id       String   @id @default(cuid())
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  group CourseGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("course_group_members")
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+
+model CalendarEvent {
+  id            String            @id @default(cuid())
+  courseId      String?           @map("course_id")
+  userId        String            @map("user_id")
+  title         String
+  description   String?
+  type          CalendarEventType
+  startDate     DateTime          @map("start_date")
+  endDate       DateTime?         @map("end_date")
+  allDay        Boolean           @default(false) @map("all_day")
+  color         String?
+  referenceId   String?           @map("reference_id")
+  referenceType String?           @map("reference_type")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  course  Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([userId])
+  @@index([startDate])
+  @@map("calendar_events")
 }

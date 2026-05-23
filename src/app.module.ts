@@ -20,6 +20,10 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
 import { UsersModule } from './modules/users/users.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { GradebookModule } from './modules/gradebook/gradebook.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { RubricsModule } from './modules/rubrics/rubrics.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { StorageModule } from './storage/storage.module';
@@ -60,6 +64,10 @@ import type { AppConfig } from './config/configuration';
     MessagesModule,
     NotificationsModule,
     RatingsModule,
+    CalendarModule,
+    GradebookModule,
+    GroupsModule,
+    RubricsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
