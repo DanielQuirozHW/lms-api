@@ -6,11 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CourseSettings, Enrollment } from '@prisma/client';
-import { UserRole } from '@prisma/client';
+import { CalendarEventType, NotificationType, UserRole } from '@prisma/client';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CoursesService } from '../courses/courses.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import type {
   EnrollmentDetailResponseDto,
@@ -25,6 +26,7 @@ export class EnrollmentsService {
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly coursesService: CoursesService,
     private readonly redisService: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /** Enrolls a user in a published course. Validates verification, status, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
@@ -180,6 +182,111 @@ export class EnrollmentsService {
 
     const updated = await this.enrollmentsRepository.updateStatus(id, 'COMPLETED', new Date());
     return this.map(updated);
+  }
+
+  /**
+   * Checks if all published lessons are complete for the enrollment; if so, marks it COMPLETED,
+   * calculates the weighted final grade from the gradebook, notifies the student, and creates a COURSE_END calendar event.
+   * Safe to call multiple times — exits early if already completed or not all lessons done.
+   */
+  async checkAndCompleteCourse(enrollmentId: string): Promise<void> {
+    const enrollment = await this.enrollmentsRepository.findById(enrollmentId);
+    if (!enrollment || enrollment.status !== 'ACTIVE') return;
+
+    const [total, completed] = await Promise.all([
+      this.enrollmentsRepository.countPublishedLessons(enrollment.courseId),
+      this.enrollmentsRepository.countCompletedLessons(enrollmentId),
+    ]);
+
+    if (completed < total) return;
+
+    const finalGrade = await this.calculateFinalGrade(enrollmentId, enrollment.courseId);
+    const now = new Date();
+
+    await this.enrollmentsRepository.updateCompletion(enrollmentId, finalGrade, now);
+
+    void this.notificationsService.notify(
+      enrollment.userId,
+      NotificationType.COURSE_COMPLETED,
+      'Course completed',
+      'Congratulations! You have completed the course.',
+      enrollment.courseId,
+      'course',
+    );
+
+    void this.enrollmentsRepository.createCalendarEvent({
+      userId: enrollment.userId,
+      courseId: enrollment.courseId,
+      title: 'Course Completed',
+      type: CalendarEventType.COURSE_END,
+      startDate: now,
+      allDay: true,
+      referenceId: enrollmentId,
+      referenceType: 'enrollment',
+    });
+  }
+
+  /** Returns a progress summary for an enrollment. Only the enrolled user or admin may access. */
+  async getProgressSummary(
+    id: string,
+    userId: string,
+    isAdmin: boolean,
+  ): Promise<ProgressSummaryDto> {
+    const enrollment = await this.enrollmentsRepository.findByIdWithProgress(id);
+    if (!enrollment) throw new NotFoundException('Enrollment not found');
+
+    if (!isAdmin && enrollment.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this enrollment');
+    }
+
+    const total = enrollment.progress.length;
+    const completedCount = enrollment.progress.filter((p) => p.completedAt !== null).length;
+    const progressPercentage = total > 0 ? Math.round((completedCount / total) * 1000) / 10 : 0;
+
+    return {
+      totalLessons: total,
+      completedLessons: completedCount,
+      progressPercentage,
+      finalGrade: enrollment.finalGrade ?? null,
+      status: enrollment.status,
+    };
+  }
+
+  private async calculateFinalGrade(
+    enrollmentId: string,
+    courseId: string,
+  ): Promise<number | null> {
+    const categories = await this.enrollmentsRepository.findGradebookData(courseId, enrollmentId);
+    if (categories.length === 0) return null;
+
+    let totalWeight = 0;
+    let weightedSum = 0;
+
+    for (const category of categories) {
+      if (category.items.length === 0) continue;
+
+      let itemWeightedSum = 0;
+      let itemTotalWeight = 0;
+
+      for (const item of category.items) {
+        const quizScore = item.lesson.quizAttempts[0]?.score ?? null;
+        const submissionGrade = item.lesson.submissions[0]?.grade ?? null;
+        const earnedScore = quizScore ?? submissionGrade;
+        if (earnedScore === null) continue;
+
+        const w = item.weight ?? 1;
+        itemWeightedSum += (earnedScore / item.maxScore) * w;
+        itemTotalWeight += w;
+      }
+
+      if (itemTotalWeight === 0) continue;
+
+      weightedSum += (itemWeightedSum / itemTotalWeight) * category.weight;
+      totalWeight += category.weight;
+    }
+
+    if (totalWeight === 0) return null;
+    return Math.round((weightedSum / totalWeight) * 1000) / 10;
   }
 
   private async createEnrollmentRecord(

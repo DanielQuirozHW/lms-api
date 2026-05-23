@@ -12,6 +12,7 @@ import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CourseDetailResponseDto } from '../courses/dto/course-response.dto';
 import { CoursesService } from '../courses/courses.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CourseWithSettings } from './enrollments.repository';
 import { EnrollmentsRepository } from './enrollments.repository';
 import { EnrollmentsService } from './enrollments.service';
@@ -88,10 +89,16 @@ describe('EnrollmentsService', () => {
       | 'findManyByUserId'
       | 'findManyByCourseId'
       | 'updateStatus'
+      | 'countPublishedLessons'
+      | 'countCompletedLessons'
+      | 'findGradebookData'
+      | 'updateCompletion'
+      | 'createCalendarEvent'
     >
   >;
   let coursesService: jest.Mocked<Pick<CoursesService, 'findOne'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'set' | 'del'>>;
+  let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
 
   beforeEach(async () => {
     repo = {
@@ -107,12 +114,18 @@ describe('EnrollmentsService', () => {
       findManyByUserId: jest.fn(),
       findManyByCourseId: jest.fn(),
       updateStatus: jest.fn(),
+      countPublishedLessons: jest.fn(),
+      countCompletedLessons: jest.fn(),
+      findGradebookData: jest.fn().mockResolvedValue([]),
+      updateCompletion: jest.fn(),
+      createCalendarEvent: jest.fn().mockResolvedValue({}),
     };
     coursesService = { findOne: jest.fn() };
     redisService = {
       set: jest.fn().mockResolvedValue('OK'),
       del: jest.fn().mockResolvedValue(1),
     };
+    notificationsSvc = { notify: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -120,6 +133,7 @@ describe('EnrollmentsService', () => {
         { provide: EnrollmentsRepository, useValue: repo },
         { provide: CoursesService, useValue: coursesService },
         { provide: RedisService, useValue: redisService },
+        { provide: NotificationsService, useValue: notificationsSvc },
       ],
     }).compile();
 
@@ -486,6 +500,126 @@ describe('EnrollmentsService', () => {
       const result = await service.findOne('enrollment-1', 'user-1', false);
 
       expect(result.progress.progressPercentage).toBe(0);
+    });
+  });
+
+  describe('checkAndCompleteCourse', () => {
+    it('returns early when enrollment is not active', async () => {
+      repo.findById.mockResolvedValue({ ...mockEnrollment, status: EnrollmentStatus.COMPLETED });
+
+      await service.checkAndCompleteCourse('enrollment-1');
+
+      expect(repo.countPublishedLessons).not.toHaveBeenCalled();
+    });
+
+    it('returns early when not all lessons are completed', async () => {
+      repo.findById.mockResolvedValue(mockEnrollment);
+      repo.countPublishedLessons.mockResolvedValue(5);
+      repo.countCompletedLessons.mockResolvedValue(3);
+
+      await service.checkAndCompleteCourse('enrollment-1');
+
+      expect(repo.updateCompletion).not.toHaveBeenCalled();
+    });
+
+    it('completes enrollment, notifies student and creates calendar event when all lessons done', async () => {
+      repo.findById.mockResolvedValue(mockEnrollment);
+      repo.countPublishedLessons.mockResolvedValue(3);
+      repo.countCompletedLessons.mockResolvedValue(3);
+      repo.findGradebookData.mockResolvedValue([]);
+      repo.updateCompletion.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.COMPLETED,
+        completedAt: new Date(),
+      });
+
+      await service.checkAndCompleteCourse('enrollment-1');
+
+      expect(repo.updateCompletion).toHaveBeenCalledWith('enrollment-1', null, expect.any(Date));
+      expect(notificationsSvc.notify).toHaveBeenCalledWith(
+        'user-1',
+        'COURSE_COMPLETED',
+        expect.any(String),
+        expect.any(String),
+        'course-1',
+        'course',
+      );
+      expect(repo.createCalendarEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', type: 'COURSE_END' }),
+      );
+    });
+
+    it('calculates finalGrade from gradebook data when items exist', async () => {
+      repo.findById.mockResolvedValue(mockEnrollment);
+      repo.countPublishedLessons.mockResolvedValue(1);
+      repo.countCompletedLessons.mockResolvedValue(1);
+      repo.findGradebookData.mockResolvedValue([
+        {
+          weight: 100,
+          items: [
+            {
+              weight: null,
+              maxScore: 100,
+              lesson: {
+                quizAttempts: [{ score: 80 }],
+                submissions: [],
+              },
+            },
+          ],
+        },
+      ] as never);
+      repo.updateCompletion.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.COMPLETED,
+        completedAt: new Date(),
+      });
+
+      await service.checkAndCompleteCourse('enrollment-1');
+
+      expect(repo.updateCompletion).toHaveBeenCalledWith('enrollment-1', 80, expect.any(Date));
+    });
+  });
+
+  describe('getProgressSummary', () => {
+    it('throws NotFoundException when enrollment not found', async () => {
+      repo.findByIdWithProgress.mockResolvedValue(null);
+
+      await expect(service.getProgressSummary('enrollment-1', 'user-1', false)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws ForbiddenException when user does not own the enrollment', async () => {
+      repo.findByIdWithProgress.mockResolvedValue({ ...mockEnrollment, progress: [] });
+
+      await expect(service.getProgressSummary('enrollment-1', 'other-user', false)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('returns summary with finalGrade and status', async () => {
+      const progress = [{ completedAt: new Date() }, { completedAt: null }];
+      repo.findByIdWithProgress.mockResolvedValue({
+        ...mockEnrollment,
+        finalGrade: 85.5,
+        progress: progress as never,
+      });
+
+      const result = await service.getProgressSummary('enrollment-1', 'user-1', false);
+
+      expect(result.totalLessons).toBe(2);
+      expect(result.completedLessons).toBe(1);
+      expect(result.progressPercentage).toBe(50);
+      expect(result.finalGrade).toBe(85.5);
+      expect(result.status).toBe(EnrollmentStatus.ACTIVE);
+    });
+
+    it('allows admin to view any enrollment summary', async () => {
+      repo.findByIdWithProgress.mockResolvedValue({ ...mockEnrollment, progress: [] });
+
+      const result = await service.getProgressSummary('enrollment-1', 'admin-1', true);
+
+      expect(result.totalLessons).toBe(0);
     });
   });
 });

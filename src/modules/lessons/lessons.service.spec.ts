@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { Lesson, LessonResource } from '@prisma/client';
+import type { Lesson, LessonProgress, LessonResource } from '@prisma/client';
+import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { type LessonWithDetails, LessonsRepository } from './lessons.repository';
 import { LessonsService } from './lessons.service';
 
@@ -64,8 +65,15 @@ describe('LessonsService', () => {
       | 'createResource'
       | 'findResourceById'
       | 'deleteResource'
+      | 'findActiveEnrollmentId'
+      | 'findLessonProgress'
+      | 'upsertLessonProgress'
+      | 'findCourseIsSequential'
+      | 'findNextPublishedLesson'
+      | 'unlockLessonProgress'
     >
   >;
+  let enrollmentsSvc: jest.Mocked<Pick<EnrollmentsService, 'checkAndCompleteCourse'>>;
 
   beforeEach(async () => {
     repo = {
@@ -84,10 +92,21 @@ describe('LessonsService', () => {
       createResource: jest.fn(),
       findResourceById: jest.fn(),
       deleteResource: jest.fn(),
+      findActiveEnrollmentId: jest.fn(),
+      findLessonProgress: jest.fn(),
+      upsertLessonProgress: jest.fn(),
+      findCourseIsSequential: jest.fn(),
+      findNextPublishedLesson: jest.fn(),
+      unlockLessonProgress: jest.fn(),
     };
+    enrollmentsSvc = { checkAndCompleteCourse: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LessonsService, { provide: LessonsRepository, useValue: repo }],
+      providers: [
+        LessonsService,
+        { provide: LessonsRepository, useValue: repo },
+        { provide: EnrollmentsService, useValue: enrollmentsSvc },
+      ],
     }).compile();
 
     service = module.get<LessonsService>(LessonsService);
@@ -375,6 +394,153 @@ describe('LessonsService', () => {
 
       expect(repo.findResourceById).toHaveBeenCalledWith('resource-123', 'lesson-123');
       expect(repo.deleteResource).toHaveBeenCalledWith('resource-123');
+    });
+  });
+
+  describe('updateProgress', () => {
+    const lessonWithModule = { ...mockLesson, module: { courseId: 'course-123' } };
+    const mockProgress: LessonProgress = {
+      id: 'progress-1',
+      enrollmentId: 'enrollment-1',
+      lessonId: 'lesson-123',
+      isLocked: false,
+      startedAt: new Date('2026-01-01'),
+      completedAt: null,
+      lastWatchedAt: null,
+      watchedSeconds: null,
+    };
+
+    it('throws NotFoundException when lesson does not belong to module/course', async () => {
+      repo.findByIdWithModule.mockResolvedValue(null);
+
+      await expect(
+        service.updateProgress(
+          'course-123',
+          'module-123',
+          'lesson-123',
+          {},
+          {
+            id: 'student-1',
+            email: 's@test.com',
+            roles: ['STUDENT'],
+          },
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ForbiddenException when student is not enrolled', async () => {
+      repo.findByIdWithModule.mockResolvedValue(lessonWithModule);
+      repo.findActiveEnrollmentId.mockResolvedValue(null);
+
+      await expect(
+        service.updateProgress(
+          'course-123',
+          'module-123',
+          'lesson-123',
+          {},
+          {
+            id: 'student-1',
+            email: 's@test.com',
+            roles: ['STUDENT'],
+          },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('sets startedAt on first view and updates watchedSeconds', async () => {
+      repo.findByIdWithModule.mockResolvedValue(lessonWithModule);
+      repo.findActiveEnrollmentId.mockResolvedValue({ id: 'enrollment-1' });
+      repo.findLessonProgress.mockResolvedValue(null);
+      repo.upsertLessonProgress.mockResolvedValue({ ...mockProgress, watchedSeconds: 60 });
+
+      const result = await service.updateProgress(
+        'course-123',
+        'module-123',
+        'lesson-123',
+        { watchedSeconds: 60 },
+        { id: 'student-1', email: 's@test.com', roles: ['STUDENT'] },
+      );
+
+      expect(repo.upsertLessonProgress).toHaveBeenCalledWith(
+        'enrollment-1',
+        'lesson-123',
+        expect.objectContaining({
+          startedAt: expect.any(Date) as unknown,
+          watchedSeconds: 60,
+        }) as unknown,
+        expect.objectContaining({ watchedSeconds: 60 }) as unknown,
+      );
+      expect(result.watchedSeconds).toBe(60);
+    });
+
+    it('marks lesson completed and calls checkAndCompleteCourse', async () => {
+      repo.findByIdWithModule.mockResolvedValue(lessonWithModule);
+      repo.findActiveEnrollmentId.mockResolvedValue({ id: 'enrollment-1' });
+      repo.findLessonProgress.mockResolvedValue(null);
+      repo.upsertLessonProgress.mockResolvedValue({
+        ...mockProgress,
+        completedAt: new Date(),
+      });
+      repo.findCourseIsSequential.mockResolvedValue(false);
+
+      await service.updateProgress(
+        'course-123',
+        'module-123',
+        'lesson-123',
+        { completed: true },
+        { id: 'student-1', email: 's@test.com', roles: ['STUDENT'] },
+      );
+
+      expect(repo.upsertLessonProgress).toHaveBeenCalledWith(
+        'enrollment-1',
+        'lesson-123',
+        expect.objectContaining({ completedAt: expect.any(Date) as unknown }) as unknown,
+        expect.objectContaining({ completedAt: expect.any(Date) as unknown }) as unknown,
+      );
+      expect(enrollmentsSvc.checkAndCompleteCourse).toHaveBeenCalledWith('enrollment-1');
+    });
+
+    it('unlocks next lesson on completion when course is sequential', async () => {
+      repo.findByIdWithModule.mockResolvedValue(lessonWithModule);
+      repo.findActiveEnrollmentId.mockResolvedValue({ id: 'enrollment-1' });
+      repo.findLessonProgress.mockResolvedValue(null);
+      repo.upsertLessonProgress.mockResolvedValue({ ...mockProgress, completedAt: new Date() });
+      repo.findCourseIsSequential.mockResolvedValue(true);
+      repo.findNextPublishedLesson.mockResolvedValue({ id: 'lesson-next' });
+      repo.unlockLessonProgress.mockResolvedValue(undefined);
+
+      await service.updateProgress(
+        'course-123',
+        'module-123',
+        'lesson-123',
+        { completed: true },
+        { id: 'student-1', email: 's@test.com', roles: ['STUDENT'] },
+      );
+
+      expect(repo.findNextPublishedLesson).toHaveBeenCalledWith(
+        'lesson-123',
+        'module-123',
+        'course-123',
+      );
+      expect(repo.unlockLessonProgress).toHaveBeenCalledWith('enrollment-1', 'lesson-next');
+    });
+
+    it('does not re-complete or re-unlock when lesson is already completed', async () => {
+      repo.findByIdWithModule.mockResolvedValue(lessonWithModule);
+      repo.findActiveEnrollmentId.mockResolvedValue({ id: 'enrollment-1' });
+      repo.findLessonProgress.mockResolvedValue({ ...mockProgress, completedAt: new Date() });
+      repo.upsertLessonProgress.mockResolvedValue({ ...mockProgress, completedAt: new Date() });
+
+      await service.updateProgress(
+        'course-123',
+        'module-123',
+        'lesson-123',
+        { completed: true },
+        { id: 'student-1', email: 's@test.com', roles: ['STUDENT'] },
+      );
+
+      expect(enrollmentsSvc.checkAndCompleteCourse).not.toHaveBeenCalled();
+      expect(repo.unlockLessonProgress).not.toHaveBeenCalled();
     });
   });
 });

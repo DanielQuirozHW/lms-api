@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type {
   AssignmentSettings,
   Lesson,
+  LessonProgress,
   LessonResource,
   Prisma,
   QuizSettings,
@@ -113,5 +114,93 @@ export class LessonsRepository {
 
   deleteResource(id: string): Promise<LessonResource> {
     return this.prisma.lessonResource.delete({ where: { id } });
+  }
+
+  findActiveEnrollmentId(userId: string, courseId: string): Promise<{ id: string } | null> {
+    return this.prisma.enrollment.findFirst({
+      where: { userId, courseId, status: 'ACTIVE' },
+      select: { id: true },
+    });
+  }
+
+  findLessonProgress(enrollmentId: string, lessonId: string): Promise<LessonProgress | null> {
+    return this.prisma.lessonProgress.findUnique({
+      where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
+    });
+  }
+
+  upsertLessonProgress(
+    enrollmentId: string,
+    lessonId: string,
+    createData: {
+      startedAt: Date;
+      watchedSeconds?: number;
+      lastWatchedAt?: Date;
+      completedAt?: Date;
+    },
+    updateData: {
+      watchedSeconds?: number;
+      lastWatchedAt?: Date;
+      completedAt?: Date;
+    },
+  ): Promise<LessonProgress> {
+    return this.prisma.lessonProgress.upsert({
+      where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
+      create: { enrollmentId, lessonId, ...createData },
+      update: updateData,
+    });
+  }
+
+  async findCourseIsSequential(courseId: string): Promise<boolean> {
+    const settings = await this.prisma.courseSettings.findUnique({
+      where: { courseId },
+      select: { isSequential: true },
+    });
+    return settings?.isSequential ?? false;
+  }
+
+  async findNextPublishedLesson(
+    lessonId: string,
+    moduleId: string,
+    courseId: string,
+  ): Promise<{ id: string } | null> {
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { order: true },
+    });
+    if (!lesson) return null;
+
+    const nextInModule = await this.prisma.lesson.findFirst({
+      where: { moduleId, order: { gt: lesson.order }, isPublished: true },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+    if (nextInModule) return nextInModule;
+
+    const currentModule = await this.prisma.courseModule.findUnique({
+      where: { id: moduleId },
+      select: { order: true },
+    });
+    if (!currentModule) return null;
+
+    const nextModule = await this.prisma.courseModule.findFirst({
+      where: { courseId, order: { gt: currentModule.order }, isPublished: true },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+    if (!nextModule) return null;
+
+    return this.prisma.lesson.findFirst({
+      where: { moduleId: nextModule.id, isPublished: true },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+  }
+
+  async unlockLessonProgress(enrollmentId: string, lessonId: string): Promise<void> {
+    await this.prisma.lessonProgress.updateMany({
+      where: { enrollmentId, lessonId },
+      data: { isLocked: false },
+    });
   }
 }

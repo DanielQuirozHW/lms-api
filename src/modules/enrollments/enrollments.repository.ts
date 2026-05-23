@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  CalendarEvent,
+  CalendarEventType,
   Course,
   CourseSettings,
   Enrollment,
@@ -12,6 +14,17 @@ import { type PaginationDto } from '../../common/dto/pagination.dto';
 
 export type CourseWithSettings = Course & { settings: CourseSettings | null };
 export type EnrollmentWithProgress = Enrollment & { progress: LessonProgress[] };
+export type GradebookCategoryRow = {
+  weight: number;
+  items: {
+    weight: number | null;
+    maxScore: number;
+    lesson: {
+      quizAttempts: { score: number | null }[];
+      submissions: { grade: number | null }[];
+    };
+  }[];
+};
 
 @Injectable()
 export class EnrollmentsRepository {
@@ -140,5 +153,75 @@ export class EnrollmentsRepository {
       where: { id },
       data: { status, ...(completedAt !== undefined && { completedAt }) },
     });
+  }
+
+  countPublishedLessons(courseId: string): Promise<number> {
+    return this.prisma.lesson.count({ where: { module: { courseId }, isPublished: true } });
+  }
+
+  countCompletedLessons(enrollmentId: string): Promise<number> {
+    return this.prisma.lessonProgress.count({
+      where: { enrollmentId, completedAt: { not: null } },
+    });
+  }
+
+  findGradebookData(courseId: string, enrollmentId: string): Promise<GradebookCategoryRow[]> {
+    return this.prisma.gradebookCategory.findMany({
+      where: { courseId },
+      select: {
+        weight: true,
+        items: {
+          select: {
+            weight: true,
+            maxScore: true,
+            lesson: {
+              select: {
+                quizAttempts: {
+                  where: { enrollmentId },
+                  orderBy: { score: 'desc' },
+                  take: 1,
+                  select: { score: true },
+                },
+                submissions: {
+                  where: { enrollmentId, grade: { not: null } },
+                  orderBy: { submittedAt: 'desc' },
+                  take: 1,
+                  select: { grade: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  updateCompletion(
+    enrollmentId: string,
+    finalGrade: number | null,
+    now: Date,
+  ): Promise<Enrollment> {
+    return this.prisma.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        status: 'COMPLETED',
+        completedAt: now,
+        finalGrade,
+        gradedAt: finalGrade !== null ? now : null,
+      },
+    });
+  }
+
+  createCalendarEvent(data: {
+    userId: string;
+    courseId: string;
+    title: string;
+    type: CalendarEventType;
+    startDate: Date;
+    allDay: boolean;
+    referenceId: string;
+    referenceType: string;
+  }): Promise<CalendarEvent> {
+    return this.prisma.calendarEvent.create({ data });
   }
 }

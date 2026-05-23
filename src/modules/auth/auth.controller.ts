@@ -9,8 +9,10 @@ import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 
 const STRICT_THROTTLE = { default: { limit: 5, ttl: 60000 } };
+const VERIFY_THROTTLE = { default: { limit: 3, ttl: 600000 } };
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -74,5 +76,28 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   me(@CurrentUser() user: AuthenticatedUser): Promise<UserResponseDto> {
     return this.authService.me(user.id);
+  }
+
+  @Post('send-verification')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(VERIFY_THROTTLE)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send a 6-digit email verification code (returns code for testing)' })
+  @ApiResponse({ status: 200, description: 'Verification code generated' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  sendVerification(@CurrentUser() user: AuthenticatedUser): Promise<{ code: string }> {
+    return this.authService.sendVerification(user.id);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify email address with the 6-digit code' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired verification code' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  verifyEmail(@CurrentUser() user: AuthenticatedUser, @Body() dto: VerifyEmailDto): Promise<void> {
+    return this.authService.verifyEmail(user.id, dto.code);
   }
 }

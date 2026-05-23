@@ -21,11 +21,13 @@ import { CreateResourceDto } from './dto/create-resource.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import {
   LessonDetailResponseDto,
+  LessonProgressResponseDto,
   LessonResourceDto,
   LessonResponseDto,
 } from './dto/lesson-response.dto';
 import { ReorderLessonsDto } from './dto/reorder-lessons.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { UpdateProgressDto } from './dto/update-progress.dto';
 import { LessonOwnerGuard } from './guards/lesson-owner.guard';
 import { LessonsService } from './lessons.service';
 
@@ -133,6 +135,24 @@ export class LessonsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<LessonResponseDto> {
     return this.lessonsService.publish(courseId, moduleId, id);
+  }
+
+  @Patch(':id/progress')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update lesson progress (enrolled students only)' })
+  @ApiResponse({ status: 200, type: LessonProgressResponseDto })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Not enrolled in this course' })
+  @ApiResponse({ status: 404, description: 'Lesson not found' })
+  updateProgress(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProgressDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LessonProgressResponseDto> {
+    return this.lessonsService.updateProgress(courseId, moduleId, id, dto, user);
   }
 
   @Delete(':id')

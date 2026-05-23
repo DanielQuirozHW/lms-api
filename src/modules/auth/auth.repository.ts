@@ -24,4 +24,8 @@ export class AuthRepository {
   createUser(data: CreateUserInput): Promise<User> {
     return this.prisma.user.create({ data });
   }
+
+  setVerified(id: string): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { isVerified: true } });
+  }
 }

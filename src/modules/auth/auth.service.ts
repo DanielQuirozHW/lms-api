@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
@@ -14,6 +20,7 @@ import type { RegisterDto } from './dto/register.dto';
 
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
+const VERIFY_CODE_TTL = 900; // 15 minutes
 // Valid bcrypt hash used solely to equalise timing when email is not found.
 // Ensures bcrypt.compare always runs, preventing user enumeration via response-time differences.
 const DUMMY_HASH = '$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
@@ -100,6 +107,22 @@ export class AuthService {
     } catch {
       // Token already expired or invalid — nothing to revoke
     }
+  }
+
+  /** Generates a 6-digit code, stores it in Redis at verify:${userId} with 15-min TTL, and returns it. One active code per user — calling again replaces any prior code. */
+  async sendVerification(userId: string): Promise<{ code: string }> {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.redisService.set(`verify:${userId}`, code, 'EX', VERIFY_CODE_TTL);
+    return { code };
+  }
+
+  /** Checks the 6-digit code from Redis. On match sets isVerified=true and deletes the key. Throws 400 on mismatch or expiry. */
+  async verifyEmail(userId: string, code: string): Promise<void> {
+    const stored = await this.redisService.get(`verify:${userId}`);
+    if (!stored) throw new BadRequestException('Verification code expired');
+    if (stored !== code) throw new BadRequestException('Invalid verification code');
+    await this.authRepository.setVerified(userId);
+    await this.redisService.del(`verify:${userId}`);
   }
 
   /** Returns the profile of the currently authenticated user. Throws 401 if the user record no longer exists. */

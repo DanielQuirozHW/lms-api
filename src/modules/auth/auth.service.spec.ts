@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -29,7 +29,9 @@ const mockJti = '550e8400-e29b-41d4-a716-446655440000';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let authRepository: jest.Mocked<Pick<AuthRepository, 'findByEmail' | 'findById' | 'createUser'>>;
+  let authRepository: jest.Mocked<
+    Pick<AuthRepository, 'findByEmail' | 'findById' | 'createUser' | 'setVerified'>
+  >;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem'>>;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
@@ -39,6 +41,7 @@ describe('AuthService', () => {
       findByEmail: jest.fn(),
       findById: jest.fn(),
       createUser: jest.fn(),
+      setVerified: jest.fn(),
     };
 
     jwtService = {
@@ -248,6 +251,60 @@ describe('AuthService', () => {
       authRepository.findById.mockResolvedValue(null);
 
       await expect(service.me('nonexistent-id')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('sendVerification', () => {
+    it('generates a 6-digit code, stores it in Redis, and returns it', async () => {
+      const result = await service.sendVerification('user-123');
+
+      expect(redisService.set).toHaveBeenCalledWith(
+        'verify:user-123',
+        expect.stringMatching(/^\d{6}$/),
+        'EX',
+        900,
+      );
+      expect(result.code).toMatch(/^\d{6}$/);
+    });
+
+    it('overwrites any existing code (one active code per user)', async () => {
+      await service.sendVerification('user-123');
+      await service.sendVerification('user-123');
+
+      expect(redisService.set).toHaveBeenCalledTimes(2);
+      expect(redisService.set).toHaveBeenNthCalledWith(
+        2,
+        'verify:user-123',
+        expect.any(String),
+        'EX',
+        900,
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('throws BadRequestException when code has expired (no Redis key)', async () => {
+      redisService.get.mockResolvedValue(null);
+
+      await expect(service.verifyEmail('user-123', '123456')).rejects.toThrow(BadRequestException);
+      expect(authRepository.setVerified).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when code does not match', async () => {
+      redisService.get.mockResolvedValue('654321');
+
+      await expect(service.verifyEmail('user-123', '123456')).rejects.toThrow(BadRequestException);
+      expect(authRepository.setVerified).not.toHaveBeenCalled();
+    });
+
+    it('sets user as verified and deletes Redis key on correct code', async () => {
+      redisService.get.mockResolvedValue('123456');
+      authRepository.setVerified.mockResolvedValue({ ...mockUser, isVerified: true });
+
+      await service.verifyEmail('user-123', '123456');
+
+      expect(authRepository.setVerified).toHaveBeenCalledWith('user-123');
+      expect(redisService.del).toHaveBeenCalledWith('verify:user-123');
     });
   });
 });

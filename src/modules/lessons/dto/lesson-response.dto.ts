@@ -44,6 +44,17 @@ export class LessonResponseDto {
   @ApiProperty() updatedAt!: Date;
 }
 
+export class LessonProgressResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() enrollmentId!: string;
+  @ApiProperty() lessonId!: string;
+  @ApiProperty() isLocked!: boolean;
+  @ApiPropertyOptional({ nullable: true }) startedAt!: Date | null;
+  @ApiPropertyOptional({ nullable: true }) completedAt!: Date | null;
+  @ApiPropertyOptional({ nullable: true }) lastWatchedAt!: Date | null;
+  @ApiPropertyOptional({ nullable: true }) watchedSeconds!: number | null;
+}
+
 export class LessonDetailResponseDto extends LessonResponseDto {
   @ApiProperty({ type: [LessonResourceDto] })
   resources!: LessonResourceDto[];

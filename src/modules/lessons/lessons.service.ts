@@ -8,28 +8,35 @@ import {
 import type {
   AssignmentSettings,
   Lesson,
+  LessonProgress,
   LessonResource,
   Prisma,
   QuizSettings,
 } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.entity';
+import { EnrollmentsService } from '../enrollments/enrollments.service';
 import type { CreateLessonDto } from './dto/create-lesson.dto';
 import type { CreateResourceDto } from './dto/create-resource.dto';
 import type {
   AssignmentSettingsDto,
   LessonDetailResponseDto,
+  LessonProgressResponseDto,
   LessonResourceDto,
   LessonResponseDto,
   QuizSettingsDto,
 } from './dto/lesson-response.dto';
 import type { ReorderLessonsDto } from './dto/reorder-lessons.dto';
 import type { UpdateLessonDto } from './dto/update-lesson.dto';
+import type { UpdateProgressDto } from './dto/update-progress.dto';
 import { type LessonWithDetails, LessonsRepository } from './lessons.repository';
 
 @Injectable()
 export class LessonsService {
-  constructor(private readonly lessonsRepository: LessonsRepository) {}
+  constructor(
+    private readonly lessonsRepository: LessonsRepository,
+    private readonly enrollmentsService: EnrollmentsService,
+  ) {}
 
   /** Creates a lesson in a module. Verifies module belongs to courseId. Order auto-assigned to maxOrder + 1 if not provided. */
   async create(
@@ -197,6 +204,68 @@ export class LessonsService {
     await this.lessonsRepository.deleteResource(resourceId);
   }
 
+  /** Updates the calling student's progress on a lesson. Sets startedAt on first view, tracks watchedSeconds, and marks completed. If sequential course, unlocks next lesson on completion. */
+  async updateProgress(
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    dto: UpdateProgressDto,
+    user: AuthenticatedUser,
+  ): Promise<LessonProgressResponseDto> {
+    const lesson = await this.lessonsRepository.findByIdWithModule(lessonId);
+    if (!lesson || lesson.moduleId !== moduleId || lesson.module.courseId !== courseId) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    const enrollment = await this.lessonsRepository.findActiveEnrollmentId(user.id, courseId);
+    if (!enrollment) throw new ForbiddenException('You are not enrolled in this course');
+
+    const now = new Date();
+    const existing = await this.lessonsRepository.findLessonProgress(enrollment.id, lessonId);
+    const isFirstCompletion = !!dto.completed && !existing?.completedAt;
+
+    const createData = {
+      startedAt: now,
+      ...(dto.watchedSeconds !== undefined && {
+        watchedSeconds: dto.watchedSeconds,
+        lastWatchedAt: now,
+      }),
+      ...(isFirstCompletion && { completedAt: now }),
+    };
+
+    const updateData = {
+      ...(dto.watchedSeconds !== undefined && {
+        watchedSeconds: dto.watchedSeconds,
+        lastWatchedAt: now,
+      }),
+      ...(isFirstCompletion && { completedAt: now }),
+    };
+
+    const progress = await this.lessonsRepository.upsertLessonProgress(
+      enrollment.id,
+      lessonId,
+      createData,
+      updateData,
+    );
+
+    if (isFirstCompletion) {
+      const isSequential = await this.lessonsRepository.findCourseIsSequential(courseId);
+      if (isSequential) {
+        const nextLesson = await this.lessonsRepository.findNextPublishedLesson(
+          lessonId,
+          moduleId,
+          courseId,
+        );
+        if (nextLesson) {
+          await this.lessonsRepository.unlockLessonProgress(enrollment.id, nextLesson.id);
+        }
+      }
+      await this.enrollmentsService.checkAndCompleteCourse(enrollment.id);
+    }
+
+    return this.mapProgress(progress);
+  }
+
   private map(lesson: Lesson): LessonResponseDto {
     return {
       id: lesson.id,
@@ -242,6 +311,19 @@ export class LessonsService {
       passingScore: as.passingScore,
       dueDate: as.dueDate,
       allowLateSubmission: as.allowLateSubmission,
+    };
+  }
+
+  private mapProgress(progress: LessonProgress): LessonProgressResponseDto {
+    return {
+      id: progress.id,
+      enrollmentId: progress.enrollmentId,
+      lessonId: progress.lessonId,
+      isLocked: progress.isLocked,
+      startedAt: progress.startedAt,
+      completedAt: progress.completedAt,
+      lastWatchedAt: progress.lastWatchedAt,
+      watchedSeconds: progress.watchedSeconds,
     };
   }
 

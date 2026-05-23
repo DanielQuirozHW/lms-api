@@ -19,7 +19,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
-import { EnrollmentDetailResponseDto, EnrollmentResponseDto } from './dto/enrollment-response.dto';
+import {
+  EnrollmentDetailResponseDto,
+  EnrollmentResponseDto,
+  ProgressSummaryDto,
+} from './dto/enrollment-response.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @ApiTags('Enrollments')
@@ -68,6 +72,20 @@ export class EnrollmentsController {
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<EnrollmentResponseDto>> {
     return this.enrollmentsService.getByCourseId(courseId, user, pagination);
+  }
+
+  @Get(':id/progress-summary')
+  @ApiOperation({ summary: 'Get progress summary for an enrollment (self or admin)' })
+  @ApiResponse({ status: 200, type: ProgressSummaryDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Forbidden — not your enrollment' })
+  @ApiResponse({ status: 404, description: 'Enrollment not found' })
+  getProgressSummary(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ProgressSummaryDto> {
+    const isAdmin = user.roles.includes(UserRole.ADMIN);
+    return this.enrollmentsService.getProgressSummary(id, user.id, isAdmin);
   }
 
   @Get(':id')
