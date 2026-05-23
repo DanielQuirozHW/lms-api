@@ -15,6 +15,7 @@ const mockLesson: Lesson = {
   duration: 480,
   isPreview: false,
   isPublished: false,
+  rubricId: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

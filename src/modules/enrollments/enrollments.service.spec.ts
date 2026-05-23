@@ -24,6 +24,8 @@ const mockEnrollment: Enrollment = {
   completedAt: null,
   enrolledAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
+  finalGrade: null,
+  gradedAt: null,
 };
 
 const mockCourse: CourseWithSettings = {
