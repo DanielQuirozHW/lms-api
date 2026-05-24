@@ -126,10 +126,12 @@ describe('GroupsService', () => {
 
   describe('findAll', () => {
     it('returns mapped array of groups for the given course', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
       groupsRepository.findByCourseId.mockResolvedValue([mockGroupWithCount]);
 
-      const result = await service.findAll('course-123');
+      const result = await service.findAll('course-123', instructorUser);
 
+      expect(coursesService.findOne).toHaveBeenCalledWith('course-123', instructorUser);
       expect(groupsRepository.findByCourseId).toHaveBeenCalledWith('course-123');
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('group-123');
@@ -138,11 +140,21 @@ describe('GroupsService', () => {
     });
 
     it('returns empty array when no groups exist', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
       groupsRepository.findByCourseId.mockResolvedValue([]);
 
-      const result = await service.findAll('course-123');
+      const result = await service.findAll('course-123', instructorUser);
 
       expect(result).toEqual([]);
+    });
+
+    it('propagates NotFoundException when course is not visible', async () => {
+      coursesService.findOne.mockRejectedValue(new NotFoundException());
+
+      await expect(service.findAll('course-123', instructorUser)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(groupsRepository.findByCourseId).not.toHaveBeenCalled();
     });
   });
 

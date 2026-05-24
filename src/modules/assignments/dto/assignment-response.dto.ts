@@ -11,6 +11,7 @@ export class AssignmentSettingsResponseDto {
   @ApiProperty() allowLateSubmission!: boolean;
   @ApiProperty() isGroupAssignment!: boolean;
   @ApiPropertyOptional() groupId!: string | null;
+  @ApiPropertyOptional() maxAttempts!: number | null;
 }
 
 export class SubmissionResponseDto {

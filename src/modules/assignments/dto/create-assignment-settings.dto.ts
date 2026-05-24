@@ -37,4 +37,13 @@ export class CreateAssignmentSettingsDto {
   @IsOptional()
   @IsUUID()
   groupId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Maximum allowed submissions per student (null = no limit)',
+    example: 3,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxAttempts?: number;
 }

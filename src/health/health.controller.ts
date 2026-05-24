@@ -1,4 +1,5 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
@@ -27,6 +28,7 @@ export class HealthController {
 
   @Public()
   @Get()
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Check API health status' })
   @ApiResponse({ status: 200, description: 'Service is healthy or degraded' })
   @ApiResponse({ status: 503, description: 'All services unavailable' })

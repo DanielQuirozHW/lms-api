@@ -32,24 +32,45 @@ export class DripService {
       const msEnrolled = now.getTime() - enrollment.enrolledAt.getTime();
       const daysEnrolled = msEnrolled / (1000 * 60 * 60 * 24);
 
-      for (const module of enrollment.course.modules) {
-        if (module.unlockAfterDays === null || daysEnrolled < module.unlockAfterDays) continue;
+      // M-7: collect all ready modules for this enrollment in one pass, then issue a single updateMany
+      const readyModules = enrollment.course.modules.filter(
+        (m) => m.unlockAfterDays !== null && daysEnrolled >= m.unlockAfterDays,
+      );
 
-        const lessonIds = module.lessons.map((l) => l.id);
-        if (lessonIds.length === 0) continue;
+      if (readyModules.length === 0) continue;
 
-        const unlocked = await this.dripRepository.unlockModuleLessons(enrollment.id, lessonIds);
+      const allLessonIds = readyModules.flatMap((m) => m.lessons.map((l) => l.id));
+      if (allLessonIds.length === 0) continue;
+
+      try {
+        // One DB call per enrollment instead of one per (enrollment × module)
+        const unlocked = await this.dripRepository.unlockModuleLessons(enrollment.id, allLessonIds);
+
         if (unlocked > 0) {
           unlockedTotal += unlocked;
-          void this.notificationsService.notify(
-            enrollment.userId,
-            NotificationType.NEW_LESSON,
-            'New lessons available',
-            `Module "${module.title}" is now available in your course.`,
-            module.id,
-            'CourseModule',
-          );
+          const moduleNames = readyModules.map((m) => m.title).join(', ');
+          // L-2: catch notification errors instead of silently swallowing them
+          this.notificationsService
+            .notify(
+              enrollment.userId,
+              NotificationType.NEW_LESSON,
+              'New lessons available',
+              `The following module(s) are now available: ${moduleNames}`,
+              enrollment.courseId,
+              'course',
+            )
+            .catch((err: unknown) => {
+              this.logger.error(
+                `Notification failed for enrollment ${enrollment.id}`,
+                (err as Error).message,
+              );
+            });
         }
+      } catch (err) {
+        // L-3: catch mid-loop errors so one failing enrollment doesn't abort the rest
+        this.logger.warn(
+          `Failed to unlock lessons for enrollment ${enrollment.id}: ${(err as Error).message}`,
+        );
       }
     }
 

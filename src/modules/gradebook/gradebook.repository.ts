@@ -68,6 +68,14 @@ export class GradebookRepository {
     return this.prisma.gradebookItem.delete({ where: { id } });
   }
 
+  /** Returns a lesson ID only when the lesson belongs to the given course (via module FK). */
+  findLessonInCourse(lessonId: string, courseId: string): Promise<{ id: string } | null> {
+    return this.prisma.lesson.findFirst({
+      where: { id: lessonId, module: { courseId } },
+      select: { id: true },
+    });
+  }
+
   findEnrollmentById(
     enrollmentId: string,
   ): Promise<{ id: string; courseId: string; userId: string } | null> {

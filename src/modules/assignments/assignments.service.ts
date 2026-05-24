@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GradingType, LessonType, NotificationType, UserRole } from '@prisma/client';
 import type { AssignmentSettings, Submission } from '@prisma/client';
+import type { AppConfig } from '../../config/configuration';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RubricsService } from '../rubrics/rubrics.service';
@@ -24,6 +27,7 @@ export class AssignmentsService {
     private readonly assignmentsRepository: AssignmentsRepository,
     private readonly notificationsService: NotificationsService,
     private readonly rubricsService: RubricsService,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   /** Creates or updates assignment settings for a lesson. Caller must be the course instructor or admin. */
@@ -42,6 +46,7 @@ export class AssignmentsService {
       allowLateSubmission: dto.allowLateSubmission ?? false,
       isGroupAssignment: dto.isGroupAssignment ?? false,
       groupId: dto.groupId ?? null,
+      maxAttempts: dto.maxAttempts ?? null,
     });
     return this.mapSettings(settings);
   }
@@ -77,6 +82,14 @@ export class AssignmentsService {
     const settings = lesson.assignmentSettings;
     if (!settings) throw new BadRequestException('Assignment not configured');
 
+    // M-3: validate fileUrl is scoped to the configured CDN (prevents arbitrary external links)
+    if (dto.fileUrl) {
+      const r2PublicUrl = this.configService.get<string>('r2.publicUrl' as keyof AppConfig);
+      if (r2PublicUrl && !dto.fileUrl.startsWith(r2PublicUrl)) {
+        throw new BadRequestException('fileUrl must reference a file uploaded to this platform');
+      }
+    }
+
     const now = new Date();
     if (settings.dueDate && now > settings.dueDate && !settings.allowLateSubmission) {
       throw new BadRequestException('The due date has passed and late submissions are not allowed');
@@ -88,6 +101,10 @@ export class AssignmentsService {
     }
 
     const existing = await this.assignmentsRepository.countSubmissions(enrollment.id, lessonId);
+    const limit = settings.maxAttempts ?? 10;
+    if (existing >= limit) {
+      throw new ConflictException('Maximum submission attempts reached');
+    }
     const attemptNumber = existing + 1;
 
     const autoGrade = settings.gradingType === GradingType.AUTOMATIC ? settings.maxScore : null;
@@ -318,6 +335,7 @@ export class AssignmentsService {
       allowLateSubmission: settings.allowLateSubmission,
       isGroupAssignment: settings.isGroupAssignment,
       groupId: settings.groupId,
+      maxAttempts: settings.maxAttempts,
     };
   }
 

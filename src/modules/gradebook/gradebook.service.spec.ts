@@ -103,6 +103,7 @@ describe('GradebookService', () => {
       | 'findCategoryByIdAndCourse'
       | 'findItemById'
       | 'findItemByCategoryAndCourse'
+      | 'findLessonInCourse'
       | 'createCategory'
       | 'updateCategory'
       | 'deleteCategory'
@@ -122,6 +123,7 @@ describe('GradebookService', () => {
       findCategoryByIdAndCourse: jest.fn(),
       findItemById: jest.fn(),
       findItemByCategoryAndCourse: jest.fn(),
+      findLessonInCourse: jest.fn(),
       createCategory: jest.fn(),
       updateCategory: jest.fn(),
       deleteCategory: jest.fn(),
@@ -310,6 +312,8 @@ describe('GradebookService', () => {
 
     it('throws ForbiddenException when a student tries to view another student grade', async () => {
       gradebookRepository.findEnrollmentById.mockResolvedValue(mockEnrollment);
+      // C-1: non-own, non-admin access now goes through coursesService.findOne
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
 
       await expect(
         service.getStudentGrade(COURSE_ID, ENROLLMENT_ID, mockOtherStudent),
@@ -331,8 +335,9 @@ describe('GradebookService', () => {
       expect(result.categories[0].items[0].percentageScore).toBe(80);
     });
 
-    it('allows instructor to view any student grade', async () => {
+    it('allows instructor to view any student grade when they own the course', async () => {
       gradebookRepository.findEnrollmentById.mockResolvedValue(mockEnrollment);
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
       gradebookRepository.findCategoriesWithItems.mockResolvedValue([]);
       gradebookRepository.getQuizScores.mockResolvedValue(new Map());
       gradebookRepository.getSubmissionScores.mockResolvedValue(new Map());
@@ -340,6 +345,20 @@ describe('GradebookService', () => {
       await expect(
         service.getStudentGrade(COURSE_ID, ENROLLMENT_ID, mockInstructor),
       ).resolves.toBeDefined();
+    });
+
+    it('throws ForbiddenException when instructor does not own the course', async () => {
+      const otherInstructor: AuthenticatedUser = {
+        id: 'other-instructor',
+        email: 'other@test.com',
+        roles: ['INSTRUCTOR'],
+      };
+      gradebookRepository.findEnrollmentById.mockResolvedValue(mockEnrollment);
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
+
+      await expect(
+        service.getStudentGrade(COURSE_ID, ENROLLMENT_ID, otherInstructor),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('allows admin to view any student grade', async () => {
@@ -399,6 +418,60 @@ describe('GradebookService', () => {
 
       expect(result.finalGrade).toBeNull();
       expect(result.categories[0].categoryScore).toBeNull();
+    });
+  });
+
+  // ─── createItem ─────────────────────────────────────────────────────────────
+
+  describe('createItem', () => {
+    const createItemDto = { categoryId: CATEGORY_ID, lessonId: LESSON_ID, maxScore: 100 };
+
+    it('creates item when lesson belongs to the course', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
+      gradebookRepository.findCategoryByIdAndCourse.mockResolvedValue(mockEmptyCategoryWithCount);
+      gradebookRepository.findLessonInCourse.mockResolvedValue({ id: LESSON_ID });
+      gradebookRepository.createItem.mockResolvedValue(mockItem);
+
+      const result = await service.createItem(COURSE_ID, createItemDto, mockInstructor);
+
+      expect(gradebookRepository.findLessonInCourse).toHaveBeenCalledWith(LESSON_ID, COURSE_ID);
+      expect(gradebookRepository.createItem).toHaveBeenCalled();
+      expect(result.lessonId).toBe(LESSON_ID);
+    });
+
+    it('throws NotFoundException when lesson does not belong to the course', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
+      gradebookRepository.findCategoryByIdAndCourse.mockResolvedValue(mockEmptyCategoryWithCount);
+      gradebookRepository.findLessonInCourse.mockResolvedValue(null);
+
+      await expect(service.createItem(COURSE_ID, createItemDto, mockInstructor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(gradebookRepository.createItem).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when category does not belong to the course', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
+      gradebookRepository.findCategoryByIdAndCourse.mockResolvedValue(null);
+
+      await expect(service.createItem(COURSE_ID, createItemDto, mockInstructor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(gradebookRepository.createItem).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when non-owner instructor tries to create item', async () => {
+      const otherInstructor: AuthenticatedUser = {
+        id: 'other-instructor',
+        email: 'other@test.com',
+        roles: ['INSTRUCTOR'],
+      };
+      coursesService.findOne.mockResolvedValue(mockCourseDetail);
+
+      await expect(service.createItem(COURSE_ID, createItemDto, otherInstructor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(gradebookRepository.createItem).not.toHaveBeenCalled();
     });
   });
 });

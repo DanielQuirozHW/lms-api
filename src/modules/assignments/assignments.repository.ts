@@ -45,6 +45,7 @@ export class AssignmentsRepository {
       allowLateSubmission?: boolean;
       isGroupAssignment?: boolean;
       groupId?: string | null;
+      maxAttempts?: number | null;
     },
   ): Promise<AssignmentSettings> {
     const common = {
@@ -55,6 +56,7 @@ export class AssignmentsRepository {
       allowLateSubmission: data.allowLateSubmission ?? false,
       isGroupAssignment: data.isGroupAssignment ?? false,
       groupId: data.groupId ?? null,
+      maxAttempts: data.maxAttempts ?? null,
     };
     return this.prisma.assignmentSettings.upsert({
       where: { lessonId },

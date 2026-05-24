@@ -176,3 +176,24 @@ private checkRateLimit(client: Socket): boolean {
 }
 ```
 **Rule:** Always implement manual rate limiting in WebSocket event handlers. ThrottlerGuard does NOT apply to WebSocket events.
+
+---
+
+## [014] Role check instead of ownership check on new resource modules
+**Date:** 2026-05
+**Category:** Broken Object Level Authorization
+**What happened:** New modules (gradebook, rubrics, calendar, groups) used `user.roles.includes(UserRole.INSTRUCTOR)` as their access gate, which only proves the user _can_ teach — not that they own _this specific course_. An instructor from Course A could read grades for Course B students, write rubric assessments on Course B submissions, and inject calendar events into Course B.
+**Fix:**
+```typescript
+// ✅ Correct — ownership, not role
+const course = await this.coursesService.findOne(courseId, user);
+if (!user.roles.includes(UserRole.ADMIN) && course.instructorId !== user.id) {
+  throw new ForbiddenException('You do not own this course');
+}
+
+// ❌ Wrong — role proves nothing about which course
+if (!user.roles.includes(UserRole.INSTRUCTOR)) {
+  throw new ForbiddenException('...');
+}
+```
+**Rule:** `INSTRUCTOR` role only proves the user can teach. It does NOT prove they own this specific resource. Always verify `resource.ownerId === user.id || user.roles.includes(ADMIN)` before any write or sensitive read. Never use role alone as a substitute for resource ownership.

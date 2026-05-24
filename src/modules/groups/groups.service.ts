@@ -25,8 +25,9 @@ export class GroupsService {
     private readonly enrollmentsService: EnrollmentsService,
   ) {}
 
-  /** Returns all groups for the given course. */
-  async findAll(courseId: string): Promise<GroupResponseDto[]> {
+  /** Returns all groups for the given course. Visibility is gated by coursesService (DRAFT/ARCHIVED only visible to owner/admin). */
+  async findAll(courseId: string, user: AuthenticatedUser): Promise<GroupResponseDto[]> {
+    await this.coursesService.findOne(courseId, user);
     const groups = await this.groupsRepository.findByCourseId(courseId);
     return groups.map((g) => this.map(g));
   }

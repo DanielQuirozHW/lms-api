@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Rubric, RubricAssessmentAnswer, RubricCriterion, RubricLevel } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -354,32 +359,21 @@ describe('RubricsService', () => {
 
   describe('createAssessment', () => {
     const assessmentDto: CreateRubricAssessmentDto = {
-      answers: [
-        { criterionId: 'criterion-123', levelId: 'level-123', pointsAwarded: 18 },
-        { criterionId: 'criterion-456', pointsAwarded: 15 },
-      ],
+      answers: [{ criterionId: 'criterion-123', levelId: 'level-123', pointsAwarded: 18 }],
     };
 
     it('calculates totalScore as sum of all answers pointsAwarded', async () => {
-      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(mockRubricWithCriteria);
       rubricsRepository.findSubmissionById.mockResolvedValue({
         id: 'submission-123',
         enrollmentId: 'enrollment-123',
-        enrollment: { courseId: 'course-123' },
+        enrollment: { courseId: 'course-123', userId: 'student-123' },
       });
       rubricsRepository.createAssessment.mockResolvedValue({
         ...mockAssessment,
-        totalScore: 33,
-        answers: [
-          { ...mockAnswer, pointsAwarded: 18 },
-          {
-            ...mockAnswer,
-            id: 'answer-456',
-            criterionId: 'criterion-456',
-            levelId: null,
-            pointsAwarded: 15,
-          },
-        ],
+        totalScore: 18,
+        answers: [{ ...mockAnswer, pointsAwarded: 18 }],
       });
 
       const result = await service.createAssessment(
@@ -391,13 +385,53 @@ describe('RubricsService', () => {
       );
 
       expect(rubricsRepository.createAssessment).toHaveBeenCalledWith(
-        expect.objectContaining({ totalScore: 33 }),
+        expect.objectContaining({ totalScore: 18 }),
       );
-      expect(result.totalScore).toBe(33);
+      expect(result.totalScore).toBe(18);
+    });
+
+    it('throws ForbiddenException when non-owner instructor tries to create assessment', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourse);
+
+      await expect(
+        service.createAssessment(
+          'course-123',
+          'rubric-123',
+          'submission-123',
+          assessmentDto,
+          mockOtherInstructor,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(rubricsRepository.createAssessment).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when a criterionId does not belong to the rubric', async () => {
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(mockRubricWithCriteria);
+      rubricsRepository.findSubmissionById.mockResolvedValue({
+        id: 'submission-123',
+        enrollmentId: 'enrollment-123',
+        enrollment: { courseId: 'course-123', userId: 'student-123' },
+      });
+
+      await expect(
+        service.createAssessment(
+          'course-123',
+          'rubric-123',
+          'submission-123',
+          { answers: [{ criterionId: 'criterion-BOGUS', pointsAwarded: 10 }] },
+          mockInstructor,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(rubricsRepository.createAssessment).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when rubric does not belong to the course', async () => {
-      rubricsRepository.findById.mockResolvedValue({ ...mockRubric, courseId: 'other-course' });
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue({
+        ...mockRubricWithCriteria,
+        courseId: 'other-course',
+      });
 
       await expect(
         service.createAssessment(
@@ -411,7 +445,8 @@ describe('RubricsService', () => {
     });
 
     it('throws NotFoundException when rubric is not found', async () => {
-      rubricsRepository.findById.mockResolvedValue(null);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(null);
 
       await expect(
         service.createAssessment(
@@ -425,11 +460,12 @@ describe('RubricsService', () => {
     });
 
     it('throws NotFoundException when submission does not belong to the course', async () => {
-      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(mockRubricWithCriteria);
       rubricsRepository.findSubmissionById.mockResolvedValue({
         id: 'submission-123',
         enrollmentId: 'enrollment-123',
-        enrollment: { courseId: 'different-course-999' },
+        enrollment: { courseId: 'different-course-999', userId: 'student-123' },
       });
 
       await expect(
@@ -444,7 +480,8 @@ describe('RubricsService', () => {
     });
 
     it('throws NotFoundException when submission is not found', async () => {
-      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(mockRubricWithCriteria);
       rubricsRepository.findSubmissionById.mockResolvedValue(null);
 
       await expect(
@@ -459,11 +496,12 @@ describe('RubricsService', () => {
     });
 
     it('sets assessorId to the authenticated user id', async () => {
-      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findByIdWithCriteria.mockResolvedValue(mockRubricWithCriteria);
       rubricsRepository.findSubmissionById.mockResolvedValue({
         id: 'submission-123',
         enrollmentId: 'enrollment-123',
-        enrollment: { courseId: 'course-123' },
+        enrollment: { courseId: 'course-123', userId: 'student-123' },
       });
       rubricsRepository.createAssessment.mockResolvedValue(mockAssessment);
 
@@ -484,7 +522,13 @@ describe('RubricsService', () => {
   // ─── getAssessment ────────────────────────────────────────────────────────────
 
   describe('getAssessment', () => {
-    it('returns assessment when rubric and assessment are found', async () => {
+    const mockStudent: AuthenticatedUser = {
+      id: 'student-123',
+      email: 'student@test.com',
+      roles: ['STUDENT'],
+    };
+
+    it('returns assessment when called by the course instructor (owner)', async () => {
       rubricsRepository.findById.mockResolvedValue(mockRubric);
       coursesService.findOne.mockResolvedValue(mockCourse);
       rubricsRepository.findAssessmentBySubmissionId.mockResolvedValue(mockAssessment);
@@ -499,6 +543,56 @@ describe('RubricsService', () => {
       expect(result.id).toBe('assessment-123');
       expect(result.totalScore).toBe(18);
       expect(result.answers).toHaveLength(1);
+    });
+
+    it('returns assessment when called by the student who owns the submission', async () => {
+      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findSubmissionById.mockResolvedValue({
+        id: 'submission-123',
+        enrollmentId: 'enrollment-123',
+        enrollment: { courseId: 'course-123', userId: 'student-123' },
+      });
+      rubricsRepository.findAssessmentBySubmissionId.mockResolvedValue(mockAssessment);
+
+      const result = await service.getAssessment(
+        'course-123',
+        'rubric-123',
+        'submission-123',
+        mockStudent,
+      );
+
+      expect(result.id).toBe('assessment-123');
+    });
+
+    it('throws ForbiddenException when non-owner instructor tries to view assessment', async () => {
+      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+
+      await expect(
+        service.getAssessment('course-123', 'rubric-123', 'submission-123', mockOtherInstructor),
+      ).rejects.toThrow(ForbiddenException);
+      expect(rubricsRepository.findAssessmentBySubmissionId).not.toHaveBeenCalled();
+    });
+
+    it("throws ForbiddenException when student tries to view another student's assessment", async () => {
+      const otherStudent: AuthenticatedUser = {
+        id: 'other-student-999',
+        email: 'other@test.com',
+        roles: ['STUDENT'],
+      };
+      rubricsRepository.findById.mockResolvedValue(mockRubric);
+      coursesService.findOne.mockResolvedValue(mockCourse);
+      rubricsRepository.findSubmissionById.mockResolvedValue({
+        id: 'submission-123',
+        enrollmentId: 'enrollment-123',
+        enrollment: { courseId: 'course-123', userId: 'student-123' },
+      });
+
+      await expect(
+        service.getAssessment('course-123', 'rubric-123', 'submission-123', otherStudent),
+      ).rejects.toThrow(ForbiddenException);
+      expect(rubricsRepository.findAssessmentBySubmissionId).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when assessment is not found', async () => {

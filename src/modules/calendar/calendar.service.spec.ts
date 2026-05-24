@@ -206,7 +206,22 @@ describe('CalendarService', () => {
       expect(calendarRepository.create).not.toHaveBeenCalled();
     });
 
-    it('allows an instructor to create a course event', async () => {
+    it('allows an instructor to create a course event they own', async () => {
+      coursesService.findOne.mockResolvedValue({
+        id: 'course-123',
+        title: 'Test Course',
+        slug: 'test-course',
+        description: null,
+        coverUrl: null,
+        status: 'PUBLISHED' as const,
+        price: null,
+        instructorId: 'instructor-123',
+        categoryId: null,
+        createdAt: now,
+        updatedAt: now,
+        lessonsCount: 3,
+        enrollmentsCount: 10,
+      });
       calendarRepository.create.mockResolvedValue(mockCourseEvent);
 
       const dto: CreateCalendarEventDto = {
@@ -218,11 +233,57 @@ describe('CalendarService', () => {
 
       const result = await service.create('instructor-123', dto, instructorUser);
 
+      expect(coursesService.findOne).toHaveBeenCalledWith('course-123', instructorUser);
       expect(calendarRepository.create).toHaveBeenCalled();
       expect(result.id).toBe('event-456');
     });
 
-    it('allows an admin to create a course event', async () => {
+    it('throws ForbiddenException when instructor does not own the course', async () => {
+      coursesService.findOne.mockResolvedValue({
+        id: 'course-123',
+        title: 'Test Course',
+        slug: 'test-course',
+        description: null,
+        coverUrl: null,
+        status: 'PUBLISHED' as const,
+        price: null,
+        instructorId: 'another-instructor-999',
+        categoryId: null,
+        createdAt: now,
+        updatedAt: now,
+        lessonsCount: 3,
+        enrollmentsCount: 10,
+      });
+
+      const dto: CreateCalendarEventDto = {
+        courseId: 'course-123',
+        title: 'Assignment Due',
+        type: CalendarEventType.ASSIGNMENT_DUE,
+        startDate: '2026-06-10T23:59:00Z',
+      };
+
+      await expect(service.create('instructor-123', dto, instructorUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(calendarRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('allows an admin to create a course event for any course', async () => {
+      coursesService.findOne.mockResolvedValue({
+        id: 'course-123',
+        title: 'Test Course',
+        slug: 'test-course',
+        description: null,
+        coverUrl: null,
+        status: 'PUBLISHED' as const,
+        price: null,
+        instructorId: 'some-other-instructor',
+        categoryId: null,
+        createdAt: now,
+        updatedAt: now,
+        lessonsCount: 3,
+        enrollmentsCount: 10,
+      });
       calendarRepository.create.mockResolvedValue(mockCourseEvent);
 
       const dto: CreateCalendarEventDto = {

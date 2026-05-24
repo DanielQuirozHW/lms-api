@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { AssignmentSettings, Submission } from '@prisma/client';
 import { GradingType, NotificationType } from '@prisma/client';
@@ -21,6 +27,7 @@ const mockSettings: AssignmentSettings = {
   allowLateSubmission: false,
   isGroupAssignment: false,
   groupId: null,
+  maxAttempts: null,
 };
 
 const mockLessonWithContext: LessonWithAssignmentContext = {
@@ -126,6 +133,7 @@ describe('AssignmentsService', () => {
         { provide: AssignmentsRepository, useValue: repo },
         { provide: NotificationsService, useValue: notificationsSvc },
         { provide: RubricsService, useValue: rubricsSvc },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
       ],
     }).compile();
 
@@ -288,6 +296,57 @@ describe('AssignmentsService', () => {
       await expect(service.submit('lesson-123', { content: 'My answer' }, student)).rejects.toThrow(
         ForbiddenException,
       );
+      expect(repo.createSubmission).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when submission count meets the default limit of 10', async () => {
+      repo.findLessonWithContext.mockResolvedValue(mockLessonWithContext);
+      repo.findActiveEnrollment.mockResolvedValue({ id: 'enrollment-123' });
+      repo.countSubmissions.mockResolvedValue(10);
+
+      await expect(service.submit('lesson-123', { content: 'answer' }, student)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(repo.createSubmission).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when submission count meets the configured maxAttempts', async () => {
+      repo.findLessonWithContext.mockResolvedValue({
+        ...mockLessonWithContext,
+        assignmentSettings: { ...mockSettings, maxAttempts: 3 },
+      });
+      repo.findActiveEnrollment.mockResolvedValue({ id: 'enrollment-123' });
+      repo.countSubmissions.mockResolvedValue(3);
+
+      await expect(service.submit('lesson-123', { content: 'answer' }, student)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(repo.createSubmission).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when fileUrl does not start with the configured R2 public URL', async () => {
+      const configGet = jest.fn().mockReturnValue('https://cdn.example.com');
+      const module2: TestingModule = await Test.createTestingModule({
+        providers: [
+          AssignmentsService,
+          { provide: AssignmentsRepository, useValue: repo },
+          { provide: NotificationsService, useValue: notificationsSvc },
+          { provide: RubricsService, useValue: rubricsSvc },
+          { provide: ConfigService, useValue: { get: configGet } },
+        ],
+      }).compile();
+      const svc2 = module2.get<AssignmentsService>(AssignmentsService);
+
+      repo.findLessonWithContext.mockResolvedValue(mockLessonWithContext);
+      repo.findActiveEnrollment.mockResolvedValue({ id: 'enrollment-123' });
+
+      await expect(
+        svc2.submit(
+          'lesson-123',
+          { content: 'answer', fileUrl: 'https://evil.example.com/file.pdf' },
+          student,
+        ),
+      ).rejects.toThrow(BadRequestException);
       expect(repo.createSubmission).not.toHaveBeenCalled();
     });
   });

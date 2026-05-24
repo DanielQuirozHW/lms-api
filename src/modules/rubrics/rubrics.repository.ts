@@ -147,15 +147,17 @@ export class RubricsRepository {
     });
   }
 
-  findSubmissionById(
-    submissionId: string,
-  ): Promise<{ id: string; enrollmentId: string; enrollment: { courseId: string } } | null> {
+  findSubmissionById(submissionId: string): Promise<{
+    id: string;
+    enrollmentId: string;
+    enrollment: { courseId: string; userId: string };
+  } | null> {
     return this.prisma.submission.findUnique({
       where: { id: submissionId },
       select: {
         id: true,
         enrollmentId: true,
-        enrollment: { select: { courseId: true } },
+        enrollment: { select: { courseId: true, userId: true } },
       },
     });
   }

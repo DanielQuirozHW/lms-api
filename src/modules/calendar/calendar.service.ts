@@ -44,19 +44,24 @@ export class CalendarService {
   /**
    * Creates a calendar event.
    * Personal events (no courseId) can be created by any authenticated user.
-   * Course events require the caller to be an INSTRUCTOR or ADMIN.
+   * Course events require the caller to be the course instructor or admin.
    */
   async create(
     userId: string,
     dto: CreateCalendarEventDto,
     user: AuthenticatedUser,
   ): Promise<CalendarEventResponseDto> {
-    if (
-      dto.courseId &&
-      !user.roles.includes(UserRole.INSTRUCTOR) &&
-      !user.roles.includes(UserRole.ADMIN)
-    ) {
-      throw new ForbiddenException('Only instructors and admins can create course calendar events');
+    if (dto.courseId) {
+      if (!user.roles.includes(UserRole.INSTRUCTOR) && !user.roles.includes(UserRole.ADMIN)) {
+        throw new ForbiddenException(
+          'Only instructors and admins can create course calendar events',
+        );
+      }
+      // H-3: verify the instructor owns this specific course
+      const course = await this.coursesService.findOne(dto.courseId, user);
+      if (!user.roles.includes(UserRole.ADMIN) && course.instructorId !== user.id) {
+        throw new ForbiddenException('You do not own this course');
+      }
     }
 
     const event = await this.calendarRepository.create({

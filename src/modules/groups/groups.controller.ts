@@ -36,9 +36,13 @@ export class GroupsController {
     description: 'List of groups',
   })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Course not visible to caller' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  findAll(@Param('courseId', ParseUUIDPipe) courseId: string): Promise<GroupResponseDto[]> {
-    return this.groupsService.findAll(courseId);
+  findAll(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<GroupResponseDto[]> {
+    return this.groupsService.findAll(courseId, user);
   }
 
   @Post()

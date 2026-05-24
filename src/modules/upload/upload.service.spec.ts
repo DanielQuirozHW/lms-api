@@ -7,6 +7,11 @@ import { LessonsService } from '../lessons/lessons.service';
 import { UsersService } from '../users/users.service';
 import { UploadService } from './upload.service';
 
+// file-type uses ESM internally (strtok3 dependency) — mock it so Jest can load this spec
+jest.mock('file-type', () => ({
+  fileTypeFromBuffer: jest.fn().mockResolvedValue(null),
+}));
+
 const mockUser = (overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser => ({
   id: 'user-123',
   email: 'test@example.com',

@@ -92,7 +92,7 @@ export class GradebookService {
     await this.gradebookRepository.deleteCategory(id);
   }
 
-  /** Creates a gradebook item linking a lesson to a category. Instructor must own the course. */
+  /** Creates a gradebook item linking a lesson to a category. Instructor must own the course. Lesson must belong to the course. */
   async createItem(
     courseId: string,
     dto: CreateGradebookItemDto,
@@ -106,6 +106,10 @@ export class GradebookService {
       courseId,
     );
     if (!category) throw new NotFoundException('Gradebook category not found');
+
+    // M-2: verify the lesson belongs to this course (not another course)
+    const lesson = await this.gradebookRepository.findLessonInCourse(dto.lessonId, courseId);
+    if (!lesson) throw new NotFoundException('Lesson not found in this course');
 
     const item = await this.gradebookRepository.createItem({
       weight: dto.weight ?? null,
@@ -128,7 +132,7 @@ export class GradebookService {
     await this.gradebookRepository.deleteItem(id);
   }
 
-  /** Returns the calculated grade for a student enrollment. Caller must be the enrolled student, or an instructor/admin. */
+  /** Returns the calculated grade for a student enrollment. Caller must be the enrolled student, the course instructor, or an admin. */
   async getStudentGrade(
     courseId: string,
     enrollmentId: string,
@@ -139,11 +143,14 @@ export class GradebookService {
     if (enrollment.courseId !== courseId) throw new NotFoundException('Enrollment not found');
 
     const isAdmin = user.roles.includes(UserRole.ADMIN);
-    const isInstructor = user.roles.includes(UserRole.INSTRUCTOR);
     const isOwnEnrollment = enrollment.userId === user.id;
 
-    if (!isOwnEnrollment && !isInstructor && !isAdmin) {
-      throw new ForbiddenException('You are not authorized to view this grade');
+    if (!isOwnEnrollment && !isAdmin) {
+      // Verify caller is the instructor who owns this specific course
+      const course = await this.coursesService.findOne(courseId, user);
+      if (course.instructorId !== user.id) {
+        throw new ForbiddenException('You are not authorized to view this grade');
+      }
     }
 
     const [categories, quizScores, submissionScores] = await Promise.all([

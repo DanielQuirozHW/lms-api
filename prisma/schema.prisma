@@ -341,6 +341,7 @@ model AssignmentSettings {
   allowLateSubmission Boolean     @default(false) @map("allow_late_submission")
   isGroupAssignment   Boolean     @default(false) @map("is_group_assignment")
   groupId             String?     @map("group_id")
+  maxAttempts         Int?        @map("max_attempts")
 
   lesson Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   group  CourseGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)

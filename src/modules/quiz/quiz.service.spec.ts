@@ -348,6 +348,18 @@ describe('QuizService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
+    it('throws BadRequestException when an answer references a questionId not in this quiz', async () => {
+      await expect(
+        service.submitAttempt(
+          'lesson-123',
+          'attempt-123',
+          { answers: [{ questionId: 'q-BOGUS', selectedOptionId: 'opt-correct' }] },
+          studentUser,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(quizRepository.completeAttempt).not.toHaveBeenCalled();
+    });
+
     it('completes progress and unlocks next lesson when score passes and blocksProgress is true', async () => {
       quizRepository.findAttemptById
         .mockResolvedValueOnce(mockAttemptWithAnswers)

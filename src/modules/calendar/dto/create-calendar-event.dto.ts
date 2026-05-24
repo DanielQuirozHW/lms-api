@@ -4,9 +4,11 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MinLength,
 } from 'class-validator';
 
@@ -47,18 +49,23 @@ export class CreateCalendarEventDto {
   @IsBoolean()
   allDay?: boolean;
 
-  @ApiPropertyOptional({ example: '#FF5733' })
+  @ApiPropertyOptional({ example: '#FF5733', description: 'Hex color code (3–8 hex digits)' })
   @IsOptional()
   @IsString()
+  @Matches(/^#[0-9A-Fa-f]{3,8}$/, { message: 'color must be a valid hex color code' })
   color?: string;
 
-  @ApiPropertyOptional({ example: 'lesson-uuid', description: 'ID of the referenced resource' })
+  @ApiPropertyOptional({ example: 'lesson-uuid', description: 'UUID of the referenced resource' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   referenceId?: string;
 
-  @ApiPropertyOptional({ example: 'lesson', description: 'Type of the referenced resource' })
+  @ApiPropertyOptional({
+    example: 'lesson',
+    description: 'Type of the referenced resource',
+    enum: ['lesson', 'assignment', 'quiz', 'module'],
+  })
   @IsOptional()
-  @IsString()
+  @IsIn(['lesson', 'assignment', 'quiz', 'module'])
   referenceType?: string;
 }

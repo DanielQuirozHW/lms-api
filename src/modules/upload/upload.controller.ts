@@ -7,6 +7,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -31,6 +32,7 @@ export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
   @Post('avatar')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Upload user avatar (max 5MB — jpg/png/webp)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -52,6 +54,7 @@ export class UploadController {
 
   @Post('course-cover')
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Upload course cover image (max 5MB — jpg/png/webp)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -77,6 +80,7 @@ export class UploadController {
 
   @Post('lesson-video')
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Get a presigned upload URL for a lesson video (mp4/webm)' })
   @ApiResponse({ status: 201, type: VideoUploadResponseDto })
   uploadLessonVideo(
@@ -87,6 +91,7 @@ export class UploadController {
   }
 
   @Post('assignment-file')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({
     summary: 'Upload an assignment submission file (max 50MB — pdf/docx/zip/jpg/png)',
   })

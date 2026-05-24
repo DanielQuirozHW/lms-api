@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -124,7 +125,9 @@ export class RubricsService {
 
   /**
    * Creates an assessment for a submission using a rubric.
-   * Validates that the rubric belongs to the course and the submission belongs to an enrollment in the same course.
+   * Caller must be the course instructor or admin.
+   * Validates that the rubric belongs to the course, the submission belongs to an enrollment in the same course,
+   * and all criterionIds in the answers belong to this rubric.
    * totalScore is calculated as the sum of all answers' pointsAwarded.
    */
   async createAssessment(
@@ -134,7 +137,11 @@ export class RubricsService {
     dto: CreateRubricAssessmentDto,
     user: AuthenticatedUser,
   ): Promise<RubricAssessmentResponseDto> {
-    const rubric = await this.rubricsRepository.findById(rubricId);
+    // C-2: verify caller owns this course
+    const course = await this.coursesService.findOne(courseId, user);
+    this.verifyOwnership(course, user);
+
+    const rubric = await this.rubricsRepository.findByIdWithCriteria(rubricId);
     if (!rubric || rubric.courseId !== courseId) {
       throw new NotFoundException('Rubric not found');
     }
@@ -142,6 +149,16 @@ export class RubricsService {
     const submission = await this.rubricsRepository.findSubmissionById(submissionId);
     if (!submission || submission.enrollment.courseId !== courseId) {
       throw new NotFoundException('Submission not found');
+    }
+
+    // M-6: validate all criterionIds belong to this rubric
+    const validCriterionIds = new Set(rubric.criteria.map((c) => c.id));
+    for (const answer of dto.answers) {
+      if (!validCriterionIds.has(answer.criterionId)) {
+        throw new BadRequestException(
+          `Criterion ${answer.criterionId} does not belong to this rubric`,
+        );
+      }
     }
 
     const totalScore = dto.answers.reduce((sum, a) => sum + a.pointsAwarded, 0);
@@ -163,7 +180,10 @@ export class RubricsService {
     return this.mapAssessment(assessment);
   }
 
-  /** Returns the rubric assessment for a submission. Verifies rubric belongs to the course. */
+  /**
+   * Returns the rubric assessment for a submission.
+   * Caller must be either the submission owner (student) or the course instructor/admin.
+   */
   async getAssessment(
     courseId: string,
     rubricId: string,
@@ -175,8 +195,22 @@ export class RubricsService {
       throw new NotFoundException('Rubric not found');
     }
 
-    // Verify caller can view this course
-    await this.coursesService.findOne(courseId, user);
+    // Verify caller can view this course (gates DRAFT/ARCHIVED visibility)
+    const course = await this.coursesService.findOne(courseId, user);
+
+    // C-3: instructors must own this course; students must own this submission
+    const isInstructorOrAdmin =
+      user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.INSTRUCTOR);
+    if (isInstructorOrAdmin) {
+      if (!user.roles.includes(UserRole.ADMIN) && course.instructorId !== user.id) {
+        throw new ForbiddenException('You do not own this course');
+      }
+    } else {
+      const submission = await this.rubricsRepository.findSubmissionById(submissionId);
+      if (!submission || submission.enrollment.userId !== user.id) {
+        throw new ForbiddenException('You do not have access to this assessment');
+      }
+    }
 
     const assessment = await this.rubricsRepository.findAssessmentBySubmissionId(submissionId);
     if (!assessment || assessment.rubricId !== rubricId) {

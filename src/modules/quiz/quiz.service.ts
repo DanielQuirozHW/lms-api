@@ -212,6 +212,15 @@ export class QuizService {
     }
 
     const questions = await this.quizRepository.findQuestionsByLessonId(lessonId);
+
+    // M-1: reject answers that reference questions from other quizzes
+    const validQuestionIds = new Set(questions.map((q) => q.id));
+    for (const answer of dto.answers) {
+      if (!validQuestionIds.has(answer.questionId)) {
+        throw new BadRequestException(`Question ${answer.questionId} does not belong to this quiz`);
+      }
+    }
+
     const score = this.calculateScore(questions, dto);
     const completedAt = new Date();
     await this.quizRepository.completeAttempt(attemptId, dto.answers, score, completedAt);

@@ -75,8 +75,8 @@ describe('DripService', () => {
       NotificationType.NEW_LESSON,
       expect.any(String),
       expect.stringContaining('Module 1'),
-      'mod-1',
-      'CourseModule',
+      'course-1',
+      'course',
     );
   });
 
