@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from './auth.entity';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
+import { OAuthLoginDto } from './dto/oauth-login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -44,6 +45,19 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('oauth')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'OAuth login or register via Google / Microsoft' })
+  @ApiResponse({ status: 200, description: 'Authenticated via OAuth', type: AuthResponseDto })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  oauth(@Body() dto: OAuthLoginDto): Promise<AuthResponseDto> {
+    return this.authService.oauthLogin(dto);
   }
 
   @Public()

@@ -188,6 +188,19 @@ private checkRateLimit(client: Socket): boolean {
 
 ---
 
+## [016] POST /auth/oauth trusts frontend to validate OAuth tokens
+**Date:** 2026-05
+**Category:** Authentication / Insufficient Token Verification
+**What happened:** The `POST /auth/oauth` endpoint accepts `provider`, `providerAccountId`, and `email` from the frontend body after Auth.js has validated the OAuth flow client-side. The backend does not independently verify the OAuth ID token with Google or Microsoft APIs. A compromised frontend — or a direct API call — could pass any email and create or log in as any user, since the backend performs no cryptographic verification of the claimed identity.
+**Fix (future):** Pass the raw OAuth `id_token` (Google) or `access_token` (Microsoft) in the request body and verify it server-side before trusting any claims:
+- Google: `GET https://oauth2.googleapis.com/tokeninfo?id_token=<token>` → extract `email` from the verified payload
+- Microsoft: `GET https://graph.microsoft.com/oidc/userinfo` with `Authorization: Bearer <token>` → extract `email`
+Never derive `email` from the frontend payload — derive it from the server-verified token response.
+**Accepted risk (current):** The frontend uses Auth.js v5 which validates tokens with the provider before calling this endpoint. The endpoint is also rate-limited (5 req/min). This is acceptable for the current phase but must be fixed before the platform handles sensitive data or payments.
+**Rule:** Never trust user identity claims from the frontend after an OAuth flow. Verify the OAuth token server-side with the issuing provider and extract identity (email, sub) from the verified response.
+
+---
+
 ## [014] Role check instead of ownership check on new resource modules
 **Date:** 2026-05
 **Category:** Broken Object Level Authorization

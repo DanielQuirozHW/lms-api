@@ -16,6 +16,7 @@ import type { JwtPayload, RefreshTokenPayload } from './auth.entity';
 import { AuthRepository } from './auth.repository';
 import type { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
+import type { OAuthLoginDto } from './dto/oauth-login.dto';
 import type { RegisterDto } from './dto/register.dto';
 
 const BCRYPT_ROUNDS = 12;
@@ -48,6 +49,31 @@ export class AuthService {
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
+    });
+    return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Logs in or registers a user via OAuth (Google / Microsoft).
+   * Finds the user by email; returns a new token pair for existing accounts.
+   * For new accounts creates the user with role STUDENT and isVerified:true
+   * (the OAuth provider has already verified the email address).
+   * Never throws 409 — OAuth is always "find-or-create".
+   */
+  async oauthLogin(dto: OAuthLoginDto): Promise<AuthResponseDto> {
+    const existing = await this.authRepository.findByEmail(dto.email);
+    if (existing) {
+      return this.buildAuthResponse(existing);
+    }
+    // Store a bcrypt hash of a random UUID so the account exists in the DB but
+    // can never be accessed via password login (bcrypt.compare always returns false).
+    const passwordHash = await bcrypt.hash(randomUUID(), BCRYPT_ROUNDS);
+    const user = await this.authRepository.createOAuthUser({
+      email: dto.email,
+      passwordHash,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      avatarUrl: dto.avatarUrl ?? null,
     });
     return this.buildAuthResponse(user);
   }

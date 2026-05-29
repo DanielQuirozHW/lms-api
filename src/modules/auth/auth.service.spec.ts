@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import { RedisService } from '../../redis/redis.service';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import { OAuthProvider } from './dto/oauth-login.dto';
 
 jest.mock('bcrypt');
 
@@ -30,7 +31,10 @@ const mockJti = '550e8400-e29b-41d4-a716-446655440000';
 describe('AuthService', () => {
   let service: AuthService;
   let authRepository: jest.Mocked<
-    Pick<AuthRepository, 'findByEmail' | 'findById' | 'createUser' | 'setVerified'>
+    Pick<
+      AuthRepository,
+      'findByEmail' | 'findById' | 'createUser' | 'createOAuthUser' | 'setVerified'
+    >
   >;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem'>>;
@@ -41,6 +45,7 @@ describe('AuthService', () => {
       findByEmail: jest.fn(),
       findById: jest.fn(),
       createUser: jest.fn(),
+      createOAuthUser: jest.fn(),
       setVerified: jest.fn(),
     };
 
@@ -305,6 +310,76 @@ describe('AuthService', () => {
 
       expect(authRepository.setVerified).toHaveBeenCalledWith('user-123');
       expect(redisService.del).toHaveBeenCalledWith('verify:user-123');
+    });
+  });
+
+  describe('oauthLogin', () => {
+    const baseDto = {
+      email: 'test@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      provider: OAuthProvider.GOOGLE,
+      providerAccountId: 'google-sub-123',
+    };
+
+    it('returns tokens for an existing user without creating a new account', async () => {
+      authRepository.findByEmail.mockResolvedValue(mockUser);
+
+      const result = await service.oauthLogin(baseDto);
+
+      expect(authRepository.findByEmail).toHaveBeenCalledWith('test@example.com');
+      expect(authRepository.createOAuthUser).not.toHaveBeenCalled();
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(result.accessToken).toBe(mockAccessToken);
+      expect(result.refreshToken).toBe(mockRefreshToken);
+      expect(result.user.email).toBe(mockUser.email);
+      expect(result.user).not.toHaveProperty('passwordHash');
+    });
+
+    it('creates a new user with isVerified=true when email is not found', async () => {
+      const newUser = { ...mockUser, isVerified: true };
+      authRepository.findByEmail.mockResolvedValue(null);
+      authRepository.createOAuthUser.mockResolvedValue(newUser);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$12$oauthhash');
+
+      const result = await service.oauthLogin(baseDto);
+
+      expect(bcrypt.hash).toHaveBeenCalledTimes(1);
+      expect(authRepository.createOAuthUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          passwordHash: '$2b$12$oauthhash',
+          avatarUrl: null,
+        }),
+      );
+      expect(result.accessToken).toBe(mockAccessToken);
+      expect(result.user.isVerified).toBe(true);
+      expect(result.user).not.toHaveProperty('passwordHash');
+    });
+
+    it('passes avatarUrl to createOAuthUser when provided', async () => {
+      const newUser = { ...mockUser, isVerified: true, avatarUrl: 'https://example.com/pic.jpg' };
+      authRepository.findByEmail.mockResolvedValue(null);
+      authRepository.createOAuthUser.mockResolvedValue(newUser);
+
+      await service.oauthLogin({ ...baseDto, avatarUrl: 'https://example.com/pic.jpg' });
+
+      expect(authRepository.createOAuthUser).toHaveBeenCalledWith(
+        expect.objectContaining({ avatarUrl: 'https://example.com/pic.jpg' }),
+      );
+    });
+
+    it('stores null avatarUrl when avatarUrl is omitted', async () => {
+      authRepository.findByEmail.mockResolvedValue(null);
+      authRepository.createOAuthUser.mockResolvedValue(mockUser);
+
+      await service.oauthLogin(baseDto);
+
+      expect(authRepository.createOAuthUser).toHaveBeenCalledWith(
+        expect.objectContaining({ avatarUrl: null }),
+      );
     });
   });
 });
