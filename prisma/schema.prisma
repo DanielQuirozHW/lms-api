@@ -72,6 +72,13 @@ enum CalendarEventType {
   CUSTOM
 }
 
+enum GlobalAnnouncementType {
+  INFO
+  WARNING
+  MAINTENANCE
+  SUCCESS
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
@@ -101,6 +108,7 @@ model User {
   rubricAssessments     RubricAssessment[]
   groupMemberships      CourseGroupMember[]
   calendarEvents        CalendarEvent[]
+  globalAnnouncements   GlobalAnnouncement[]
 
   @@map("users")
 }
@@ -733,4 +741,25 @@ model CalendarEvent {
   @@index([userId])
   @@index([startDate])
   @@map("calendar_events")
+}
+
+// ─── GlobalAnnouncement ───────────────────────────────────────────────────────
+
+model GlobalAnnouncement {
+  id        String                 @id @default(cuid())
+  title     String
+  message   String
+  type      GlobalAnnouncementType @default(INFO)
+  isActive  Boolean                @default(true) @map("is_active")
+  startsAt  DateTime?              @map("starts_at")
+  endsAt    DateTime?              @map("ends_at")
+  createdBy String                 @map("created_by")
+  createdAt DateTime               @default(now()) @map("created_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
+
+  author User @relation(fields: [createdBy], references: [id])
+
+  @@index([createdBy])
+  @@index([isActive])
+  @@map("global_announcements")
 }

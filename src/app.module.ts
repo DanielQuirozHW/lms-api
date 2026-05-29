@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { ThrottlerModuleOptions } from '@nestjs/throttler';
@@ -8,8 +9,11 @@ import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
 import { ImpersonationGuard } from './common/guards/impersonation.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AdminModule } from './modules/admin/admin.module';
+import { GlobalAnnouncementsModule } from './modules/global-announcements/global-announcements.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { HealthModule } from './health/health.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -55,6 +59,7 @@ import type { AppConfig } from './config/configuration';
         ],
       }),
     }),
+    JwtModule.register({}), // provides JwtService for MaintenanceGuard
     PrismaModule,
     RedisModule,
     StorageModule,
@@ -81,12 +86,16 @@ import type { AppConfig } from './config/configuration';
     ScheduleModule.forRoot(),
     DripModule,
     AdminModule,
+    GlobalAnnouncementsModule,
+    MaintenanceModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: MaintenanceGuard }, // before JWT — blocks non-admins during maintenance
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ImpersonationGuard },
+    MaintenanceGuard, // explicit provider so JwtService dep resolves in AppModule scope
   ],
 })
 export class AppModule {}
