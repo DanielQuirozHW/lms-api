@@ -6,6 +6,10 @@ export interface JwtPayload {
   roles: UserRole[];
   type: 'access';
   isVerified?: boolean;
+  /** Present only on impersonation tokens — ID of the admin who initiated. */
+  impersonatedBy?: string;
+  /** Unique ID for this impersonation session; used to revoke via Redis. */
+  impersonationTokenId?: string;
   iat?: number;
   exp?: number;
 }
@@ -23,4 +27,7 @@ export interface AuthenticatedUser {
   email: string;
   roles: UserRole[];
   isVerified?: boolean;
+  /** Set when the request is made with an impersonation token. */
+  impersonatedBy?: string;
+  impersonationTokenId?: string;
 }

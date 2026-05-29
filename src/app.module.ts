@@ -6,8 +6,10 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { configuration } from './config/configuration';
 import { validate } from './config/env.validation';
+import { ImpersonationGuard } from './common/guards/impersonation.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AdminModule } from './modules/admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -78,11 +80,13 @@ import type { AppConfig } from './config/configuration';
     UploadModule,
     ScheduleModule.forRoot(),
     DripModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: ImpersonationGuard },
   ],
 })
 export class AppModule {}

@@ -179,6 +179,20 @@ private checkRateLimit(client: Socket): boolean {
 
 ---
 
+## [017] Impersonation token design — three rules that must always hold
+**Date:** 2026-05
+**Category:** Broken Authentication / Privilege Escalation
+**What happened:** (Preventive — documenting invariants before bugs occur.) Admin impersonation tokens are structurally different from regular tokens but share the same JWT signing secret. Three design constraints must be preserved forever:
+
+1. **Impersonation tokens must never be renewable.** The impersonation refresh token is stored under `impersonation:` in Redis, NOT `rt:`. The standard `/auth/refresh` endpoint looks only in `rt:` — so it naturally rejects impersonation refresh tokens. If a developer ever changes the namespace or adds a fallback lookup, impersonation sessions could be silently renewed past their 60-minute cap.
+
+2. **`impersonatedBy` must be checked before allowing admin-privileged actions during impersonation.** The impersonation token carries the *target user's* roles (STUDENT or INSTRUCTOR), not the admin's. A guard or service that checks `user.roles.includes(ADMIN)` during an impersonation will correctly see non-admin roles. However, any feature that needs to know "is this action being performed by a real admin or just a user being observed?" must inspect `user.impersonatedBy`. Example: audit logs should record both `user.id` (target) and `user.impersonatedBy` (admin) when the field is set.
+
+3. **Actions taken during impersonation are attributed to the target user in the DB — by design.** This is intentional: admins use impersonation to see exactly what the target user sees. Write operations (e.g., a progress update triggered by viewing a lesson) will record the target's `userId` as the actor. Document this in any feature that has audit implications. Do not silently re-attribute writes to the admin — that would break the UX-testing purpose of impersonation.
+**Rule:** Any change to impersonation token issuance, refresh logic, or Redis key structure must be reviewed against all three constraints above. Add a comment in the code pointing here if you touch `issueImpersonationTokens` or `ImpersonationGuard`.
+
+---
+
 ## [015] R2 uploads served inline — PDF embedded-JS attack vector
 **Date:** 2026-05
 **Category:** Stored XSS / Content Injection

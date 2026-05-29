@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -158,6 +159,80 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
     return this.toUserResponse(user);
+  }
+
+  /** Finds a user by ID or throws 404. Used by AdminService for impersonation target lookup. */
+  async findUserByIdOrFail(userId: string): Promise<User> {
+    const user = await this.authRepository.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  /**
+   * Issues a 60-minute impersonation token pair for the target user.
+   * The access token carries impersonatedBy + impersonationTokenId claims.
+   * The refresh token is stored in impersonation: Redis namespace — NOT rt: —
+   * so it cannot be renewed via the standard /auth/refresh endpoint.
+   */
+  async issueImpersonationTokens(
+    adminId: string,
+    targetUser: User,
+  ): Promise<AuthResponseDto & { impersonationTokenId: string }> {
+    const IMPERSONATION_TTL_SECS = 60 * 60; // 60 minutes — max per spec
+    const impersonationTokenId = randomUUID();
+
+    const accessPayload: JwtPayload = {
+      sub: targetUser.id,
+      email: targetUser.email,
+      roles: targetUser.roles,
+      type: 'access',
+      isVerified: targetUser.isVerified,
+      impersonatedBy: adminId,
+      impersonationTokenId,
+    };
+    const accessToken = await this.jwtService.signAsync(accessPayload, {
+      secret: this.config.get('jwt.secret', { infer: true }),
+      expiresIn: IMPERSONATION_TTL_SECS,
+    });
+
+    // Refresh token uses impersonationTokenId as jti and is stored under
+    // impersonation: not rt: — prevents renewal via standard refresh flow.
+    const refreshPayload: RefreshTokenPayload = {
+      sub: targetUser.id,
+      jti: impersonationTokenId,
+      type: 'refresh',
+    };
+    const refreshToken = await this.jwtService.signAsync(refreshPayload, {
+      secret: this.config.get('jwt.refreshSecret', { infer: true }),
+      expiresIn: IMPERSONATION_TTL_SECS,
+    });
+
+    // Store adminId so stop-impersonation can recover it without a DB round-trip.
+    await this.redisService.set(
+      `impersonation:${impersonationTokenId}`,
+      adminId,
+      'EX',
+      IMPERSONATION_TTL_SECS,
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      user: this.toUserResponse(targetUser),
+      impersonationTokenId,
+    };
+  }
+
+  /** Removes the impersonation token from Redis (revocation on stop). */
+  async revokeImpersonationToken(impersonationTokenId: string): Promise<void> {
+    await this.redisService.del(`impersonation:${impersonationTokenId}`);
+  }
+
+  /** Re-issues regular tokens for the original admin after stopping impersonation. */
+  async resumeAdminSession(adminId: string): Promise<AuthResponseDto> {
+    const admin = await this.authRepository.findById(adminId);
+    if (!admin) throw new UnauthorizedException('Admin user not found');
+    return this.buildAuthResponse(admin);
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponseDto> {
