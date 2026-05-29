@@ -33,12 +33,17 @@ export class StorageService {
 
   async upload(key: string, body: Buffer, contentType: string): Promise<string> {
     const safeKey = this.sanitizeKey(key);
+    const submission = this.isSubmissionKey(safeKey);
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: safeKey,
         Body: body,
-        ContentType: contentType,
+        // Force safe serving for user-submitted files: octet-stream + attachment
+        // prevents browsers from rendering PDFs (which can execute embedded JS).
+        // Avatar / course-cover images keep their real MIME for inline display.
+        ContentType: submission ? 'application/octet-stream' : contentType,
+        ...(submission && { ContentDisposition: 'attachment' }),
       }),
     );
     this.logger.log(`Uploaded: ${safeKey}`);
@@ -53,9 +58,15 @@ export class StorageService {
 
   async getPresignedUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
     const safeKey = this.sanitizeKey(key);
+    const submission = this.isSubmissionKey(safeKey);
     return getSignedUrl(
       this.client,
-      new PutObjectCommand({ Bucket: this.bucket, Key: safeKey, ContentType: contentType }),
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey,
+        ContentType: submission ? 'application/octet-stream' : contentType,
+        ...(submission && { ContentDisposition: 'attachment' }),
+      }),
       { expiresIn },
     );
   }
@@ -69,6 +80,10 @@ export class StorageService {
 
   getPublicUrl(key: string): string {
     return `${this.publicUrl ?? ''}/${this.sanitizeKey(key)}`;
+  }
+
+  private isSubmissionKey(key: string): boolean {
+    return key.startsWith('submissions/') || key.includes('/submissions/');
   }
 
   private sanitizeKey(key: string): string {

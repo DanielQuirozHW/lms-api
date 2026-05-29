@@ -179,6 +179,15 @@ private checkRateLimit(client: Socket): boolean {
 
 ---
 
+## [015] R2 uploads served inline — PDF embedded-JS attack vector
+**Date:** 2026-05
+**Category:** Stored XSS / Content Injection
+**What happened:** `StorageService.upload()` and `getPresignedUploadUrl()` passed the caller-supplied MIME type directly as `ContentType` in `PutObjectCommand` with no `ContentDisposition` header. Files in the `submissions/` path (assignment uploads) were therefore served inline by R2. PDF engines (Adobe Reader, Chrome's built-in viewer) can execute JavaScript embedded in PDFs, so a malicious PDF uploaded as an assignment submission became executable in the browser of any user who opened its CDN URL.
+**Fix:** Added a private `isSubmissionKey()` check in `StorageService`. For any key under `submissions/`, both `upload()` and `getPresignedUploadUrl()` now force `ContentType: 'application/octet-stream'` and `ContentDisposition: 'attachment'`. Avatar and course-cover images keep their real MIME types — inline serving is correct and expected for those paths.
+**Rule:** Always set `ContentDisposition: 'attachment'` and `ContentType: 'application/octet-stream'` on R2/S3 objects written by users. Inline serving is only safe for assets you control entirely (avatars, thumbnails). Magic-bytes MIME validation blocks HTML uploads but does not protect against PDFs or other formats that browsers can render and that support active content.
+
+---
+
 ## [014] Role check instead of ownership check on new resource modules
 **Date:** 2026-05
 **Category:** Broken Object Level Authorization
