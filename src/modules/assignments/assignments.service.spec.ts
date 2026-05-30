@@ -103,6 +103,7 @@ describe('AssignmentsService', () => {
       | 'findUserGroupId'
       | 'findSubmissionsByGroupAndLesson'
       | 'completeLessonProgress'
+      | 'transaction'
     >
   >;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
@@ -123,6 +124,7 @@ describe('AssignmentsService', () => {
       findUserGroupId: jest.fn(),
       findSubmissionsByGroupAndLesson: jest.fn(),
       completeLessonProgress: jest.fn(),
+      transaction: jest.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn({})),
     };
     notificationsSvc = { notify: jest.fn() };
     rubricsSvc = { createAssessment: jest.fn() };
@@ -364,8 +366,13 @@ describe('AssignmentsService', () => {
       expect(repo.updateSubmission).toHaveBeenCalledWith(
         'sub-123',
         expect.objectContaining({ grade: 85, gradedById: 'instructor-123' }),
+        expect.anything(),
       );
-      expect(repo.completeLessonProgress).toHaveBeenCalledWith('enrollment-123', 'lesson-123');
+      expect(repo.completeLessonProgress).toHaveBeenCalledWith(
+        'enrollment-123',
+        'lesson-123',
+        expect.anything(),
+      );
       expect(notificationsSvc.notify).toHaveBeenCalledWith(
         'student-123',
         NotificationType.ASSIGNMENT_GRADED,
@@ -456,10 +463,19 @@ describe('AssignmentsService', () => {
       expect(repo.updateSubmission).toHaveBeenCalledWith(
         'sub-456',
         expect.objectContaining({ grade: 90 }),
+        expect.anything(),
       );
       // Progress updated for both primary and member
-      expect(repo.completeLessonProgress).toHaveBeenCalledWith('enrollment-123', 'lesson-123');
-      expect(repo.completeLessonProgress).toHaveBeenCalledWith('enrollment-456', 'lesson-123');
+      expect(repo.completeLessonProgress).toHaveBeenCalledWith(
+        'enrollment-123',
+        'lesson-123',
+        expect.anything(),
+      );
+      expect(repo.completeLessonProgress).toHaveBeenCalledWith(
+        'enrollment-456',
+        'lesson-123',
+        expect.anything(),
+      );
     });
 
     it('throws NotFoundException when submission not found', async () => {

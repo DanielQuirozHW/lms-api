@@ -112,4 +112,8 @@ export class MessagesRepository {
       data: { readAt: new Date() },
     });
   }
+
+  findUserById(id: string): Promise<{ id: string } | null> {
+    return this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+  }
 }

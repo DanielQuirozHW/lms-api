@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory, type NestApplication } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { json, urlencoded } from 'express';
 import type { ServerOptions } from 'socket.io';
 import { AppModule } from './app.module';
@@ -10,12 +11,14 @@ import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import type { AppConfig } from './config/configuration';
+import { RedisService } from './redis/redis.service';
 import helmet from 'helmet';
 
 class SocketIoCorsAdapter extends IoAdapter {
   constructor(
     app: NestApplication,
     private readonly origins: string[],
+    private readonly ioAdapter?: ServerOptions['adapter'],
   ) {
     super(app);
   }
@@ -25,6 +28,7 @@ class SocketIoCorsAdapter extends IoAdapter {
       ...options,
       maxHttpBufferSize: 1e6,
       cors: { origin: this.origins, credentials: true },
+      ...(this.ioAdapter && { adapter: this.ioAdapter }),
     });
   }
 }
@@ -56,7 +60,18 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  app.useWebSocketAdapter(new SocketIoCorsAdapter(app as NestApplication, corsOrigins));
+  // Duplicate the existing Redis connection for Socket.io pub/sub so real-time events
+  // broadcast correctly across multiple server instances (horizontal scaling on Railway).
+  const redisService = app.get(RedisService);
+  const pubClient = redisService.duplicate();
+  const subClient = redisService.duplicate();
+  app.useWebSocketAdapter(
+    new SocketIoCorsAdapter(
+      app as NestApplication,
+      corsOrigins,
+      createAdapter(pubClient, subClient),
+    ),
+  );
 
   const apiPrefix = config.get('apiPrefix', { infer: true }) ?? 'api/v1';
   app.setGlobalPrefix(apiPrefix);

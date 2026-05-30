@@ -223,21 +223,27 @@ export class QuizService {
 
     const score = this.calculateScore(questions, dto);
     const completedAt = new Date();
-    await this.quizRepository.completeAttempt(attemptId, dto.answers, score, completedAt);
 
     const settings = lesson.quizSettings;
     const passed = settings?.passingScore != null ? score >= settings.passingScore : null;
 
-    if (passed === true) {
-      await this.quizRepository.completeLessonProgress(attempt.enrollmentId, lessonId);
-      if (settings?.blocksProgress) {
-        await this.quizRepository.unlockNextLesson(
-          attempt.enrollmentId,
-          lesson.module.id,
-          lesson.order,
-        );
+    // Atomic: record answers + mark attempt complete + update lesson progress + unlock next lesson.
+    // All succeed or all roll back — prevents a student seeing "attempt complete" without progress credit.
+    await this.quizRepository.transaction(async (tx) => {
+      await this.quizRepository.completeAttempt(attemptId, dto.answers, score, completedAt, tx);
+
+      if (passed === true) {
+        await this.quizRepository.completeLessonProgress(attempt.enrollmentId, lessonId, tx);
+        if (settings?.blocksProgress) {
+          await this.quizRepository.unlockNextLesson(
+            attempt.enrollmentId,
+            lesson.module.id,
+            lesson.order,
+            tx,
+          );
+        }
       }
-    }
+    });
 
     const notifType =
       passed === false ? NotificationType.QUIZ_FAILED : NotificationType.QUIZ_PASSED;

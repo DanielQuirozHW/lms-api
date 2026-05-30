@@ -201,6 +201,10 @@ export class AssignmentsService {
    * On pass (grade >= passingScore), marks lesson progress complete for the submission owner and all group members.
    * Notifies the student via ASSIGNMENT_GRADED.
    * Propagates the grade to all other group members' submissions when groupId is set.
+   *
+   * Write ordering: rubric assessment is created first (outside transaction), then all grade writes
+   * (primary submission + group propagation + lesson progress) are committed atomically so a partial
+   * failure cannot leave some group members graded while others are not.
    */
   async gradeSubmission(
     lessonId: string,
@@ -216,13 +220,10 @@ export class AssignmentsService {
     if (submission.lessonId !== lessonId) throw new NotFoundException('Submission not found');
 
     const gradedAt = new Date();
-    const updated = await this.assignmentsRepository.updateSubmission(submissionId, {
-      grade: dto.grade,
-      feedback: dto.feedback ?? null,
-      gradedById: user.id,
-      gradedAt,
-    });
+    const settings = lesson.assignmentSettings;
+    const passed = settings?.passingScore != null ? dto.grade >= settings.passingScore : null;
 
+    // Rubric assessment is created before the grade transaction. If it fails, no grade is written.
     if (lesson.rubricId && dto.rubricAnswers && dto.rubricAnswers.length > 0) {
       await this.rubricsService.createAssessment(
         lesson.module.courseId,
@@ -241,31 +242,48 @@ export class AssignmentsService {
       );
     }
 
-    const settings = lesson.assignmentSettings;
-    const passed = settings?.passingScore != null ? dto.grade >= settings.passingScore : null;
+    // Fetch group members before the transaction (read-only, no concurrent grading expected).
+    const otherSubmissions = submission.groupId
+      ? (
+          await this.assignmentsRepository.findSubmissionsByGroupAndLesson(
+            submission.groupId,
+            lessonId,
+          )
+        ).filter((s) => s.id !== submissionId)
+      : [];
 
-    if (passed === true) {
-      await this.assignmentsRepository.completeLessonProgress(submission.enrollmentId, lessonId);
-    }
+    const gradePayload = {
+      grade: dto.grade,
+      feedback: dto.feedback ?? null,
+      gradedById: user.id,
+      gradedAt,
+    };
 
-    if (submission.groupId) {
-      const otherSubmissions = await this.assignmentsRepository.findSubmissionsByGroupAndLesson(
-        submission.groupId,
-        lessonId,
+    // Atomic: grade primary submission + group member submissions + lesson progress completions.
+    const updated = await this.assignmentsRepository.transaction(async (tx) => {
+      const graded = await this.assignmentsRepository.updateSubmission(
+        submissionId,
+        gradePayload,
+        tx,
       );
+
+      if (passed === true) {
+        await this.assignmentsRepository.completeLessonProgress(
+          submission.enrollmentId,
+          lessonId,
+          tx,
+        );
+      }
+
       for (const other of otherSubmissions) {
-        if (other.id === submissionId) continue;
-        await this.assignmentsRepository.updateSubmission(other.id, {
-          grade: dto.grade,
-          feedback: dto.feedback ?? null,
-          gradedById: user.id,
-          gradedAt,
-        });
+        await this.assignmentsRepository.updateSubmission(other.id, gradePayload, tx);
         if (passed === true) {
-          await this.assignmentsRepository.completeLessonProgress(other.enrollmentId, lessonId);
+          await this.assignmentsRepository.completeLessonProgress(other.enrollmentId, lessonId, tx);
         }
       }
-    }
+
+      return graded;
+    });
 
     void this.notificationsService.notify(
       submission.enrollment.userId,

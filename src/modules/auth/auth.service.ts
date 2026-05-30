@@ -266,6 +266,9 @@ export class AuthService {
     });
     await this.redisService.set(this.rtKey(user.id, jti), '1', 'EX', REFRESH_TTL_SECONDS);
     await this.redisService.sadd(this.rtSetKey(user.id), jti);
+    // Reset TTL on the tracking Set so it expires with the longest-lived token in it.
+    // Without this, the Set persists forever for inactive users (memory leak).
+    await this.redisService.expire(this.rtSetKey(user.id), REFRESH_TTL_SECONDS);
     return token;
   }
 

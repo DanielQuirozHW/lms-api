@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsInt,
   IsOptional,
@@ -76,8 +77,13 @@ export class CreateRubricDto {
   @Min(1)
   totalPoints!: number;
 
-  @ApiProperty({ type: [CreateRubricCriterionDto], description: 'Assessment criteria' })
+  @ApiProperty({
+    type: [CreateRubricCriterionDto],
+    description: 'Assessment criteria',
+    minItems: 1,
+  })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CreateRubricCriterionDto)
   criteria!: CreateRubricCriterionDto[];

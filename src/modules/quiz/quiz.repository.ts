@@ -8,6 +8,7 @@ import type {
   QuizAttempt,
   QuizSettings,
 } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type LessonWithContext = Lesson & {
@@ -34,6 +35,10 @@ export type AttemptWithAnswers = QuizAttempt & {
 @Injectable()
 export class QuizRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn);
+  }
 
   findLessonWithContext(lessonId: string): Promise<LessonWithContext | null> {
     return this.prisma.lesson.findUnique({
@@ -243,27 +248,32 @@ export class QuizRepository {
     answers: { questionId: string; selectedOptionId?: string; textAnswer?: string }[],
     score: number,
     completedAt: Date,
+    tx?: Prisma.TransactionClient,
   ): Promise<QuizAttempt> {
-    return this.prisma.$transaction(async (tx) => {
-      if (answers.length > 0) {
-        await tx.quizAnswer.createMany({
-          data: answers.map((a) => ({
-            attemptId: id,
-            questionId: a.questionId,
-            selectedOptionId: a.selectedOptionId ?? null,
-            textAnswer: a.textAnswer ?? null,
-          })),
-        });
-      }
-      return tx.quizAttempt.update({
-        where: { id },
-        data: { score, completedAt },
+    const client = tx ?? this.prisma;
+    if (answers.length > 0) {
+      await client.quizAnswer.createMany({
+        data: answers.map((a) => ({
+          attemptId: id,
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId ?? null,
+          textAnswer: a.textAnswer ?? null,
+        })),
       });
+    }
+    return client.quizAttempt.update({
+      where: { id },
+      data: { score, completedAt },
     });
   }
 
-  async completeLessonProgress(enrollmentId: string, lessonId: string): Promise<void> {
-    await this.prisma.lessonProgress.upsert({
+  async completeLessonProgress(
+    enrollmentId: string,
+    lessonId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+    await client.lessonProgress.upsert({
       where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
       update: { completedAt: new Date() },
       create: { enrollmentId, lessonId, completedAt: new Date() },
@@ -274,14 +284,16 @@ export class QuizRepository {
     enrollmentId: string,
     moduleId: string,
     currentOrder: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
-    const next = await this.prisma.lesson.findFirst({
+    const client = tx ?? this.prisma;
+    const next = await client.lesson.findFirst({
       where: { moduleId, order: { gt: currentOrder } },
       orderBy: { order: 'asc' },
       select: { id: true },
     });
     if (!next) return;
-    await this.prisma.lessonProgress.upsert({
+    await client.lessonProgress.upsert({
       where: { enrollmentId_lessonId: { enrollmentId, lessonId: next.id } },
       update: { isLocked: false },
       create: { enrollmentId, lessonId: next.id, isLocked: false },

@@ -37,7 +37,9 @@ describe('AuthService', () => {
     >
   >;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
-  let redisService: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem'>>;
+  let redisService: jest.Mocked<
+    Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem' | 'expire'>
+  >;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   beforeEach(async () => {
@@ -60,6 +62,7 @@ describe('AuthService', () => {
       del: jest.fn().mockResolvedValue(1),
       sadd: jest.fn().mockResolvedValue(1),
       srem: jest.fn().mockResolvedValue(1),
+      expire: jest.fn().mockResolvedValue(1),
     };
 
     configService = {

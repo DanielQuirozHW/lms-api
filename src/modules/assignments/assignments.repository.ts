@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { AssignmentSettings, Enrollment, Lesson, Submission } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type LessonWithAssignmentContext = Lesson & {
@@ -18,6 +19,10 @@ export type SubmissionWithContext = Submission & {
 @Injectable()
 export class AssignmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn);
+  }
 
   findLessonWithContext(lessonId: string): Promise<LessonWithAssignmentContext | null> {
     return this.prisma.lesson.findUnique({
@@ -130,8 +135,10 @@ export class AssignmentsRepository {
       gradedById: string;
       gradedAt: Date;
     },
+    tx?: Prisma.TransactionClient,
   ): Promise<Submission> {
-    return this.prisma.submission.update({
+    const client = tx ?? this.prisma;
+    return client.submission.update({
       where: { id },
       data: {
         grade: data.grade,
@@ -163,8 +170,13 @@ export class AssignmentsRepository {
     return this.prisma.submission.findMany({ where: { groupId, lessonId } });
   }
 
-  async completeLessonProgress(enrollmentId: string, lessonId: string): Promise<void> {
-    await this.prisma.lessonProgress.upsert({
+  async completeLessonProgress(
+    enrollmentId: string,
+    lessonId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+    await client.lessonProgress.upsert({
       where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
       update: { completedAt: new Date() },
       create: { enrollmentId, lessonId, completedAt: new Date() },

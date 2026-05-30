@@ -144,6 +144,7 @@ describe('QuizService', () => {
       | 'unlockNextLesson'
       | 'findAllAttemptsByLesson'
       | 'hasCompletedAttempt'
+      | 'transaction'
     >
   >;
   let notificationsService: jest.Mocked<Pick<NotificationsService, 'notify'>>;
@@ -170,6 +171,7 @@ describe('QuizService', () => {
       unlockNextLesson: jest.fn(),
       findAllAttemptsByLesson: jest.fn(),
       hasCompletedAttempt: jest.fn(),
+      transaction: jest.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn({})),
     };
 
     notificationsService = {
@@ -314,6 +316,7 @@ describe('QuizService', () => {
         dto.answers,
         100,
         expect.any(Date),
+        expect.anything(),
       );
       expect(result.score).toBe(100);
     });
@@ -371,11 +374,13 @@ describe('QuizService', () => {
       expect(quizRepository.completeLessonProgress).toHaveBeenCalledWith(
         'enrollment-123',
         'lesson-123',
+        expect.anything(),
       );
       expect(quizRepository.unlockNextLesson).toHaveBeenCalledWith(
         'enrollment-123',
         'module-123',
         2, // lesson.order
+        expect.anything(),
       );
     });
 

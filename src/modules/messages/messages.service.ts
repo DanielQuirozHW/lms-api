@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Message } from '@prisma/client';
 import { paginate, type PaginatedResult } from '../../common/dto/pagination.dto';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
@@ -19,6 +19,8 @@ export class MessagesService {
     if (senderId === receiverId) {
       throw new BadRequestException('Cannot send a message to yourself');
     }
+    const receiver = await this.messagesRepository.findUserById(receiverId);
+    if (!receiver) throw new NotFoundException('Recipient user not found');
     const message = await this.messagesRepository.create({
       senderId,
       receiverId,

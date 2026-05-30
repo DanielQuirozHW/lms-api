@@ -1,6 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { GradingType } from '@prisma/client';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CreateAssignmentSettingsDto {
   @ApiProperty({ enum: GradingType, example: GradingType.MANUAL })
@@ -16,6 +25,7 @@ export class CreateAssignmentSettingsDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(100)
   passingScore?: number;
 
   @ApiPropertyOptional({ example: '2026-06-01T23:59:59.000Z' })

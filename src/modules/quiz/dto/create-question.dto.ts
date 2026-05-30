@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -35,9 +36,10 @@ export class CreateQuestionDto {
   @Min(1)
   points?: number;
 
-  @ApiPropertyOptional({ type: [CreateOptionDto] })
+  @ApiPropertyOptional({ type: [CreateOptionDto], minItems: 2 })
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(2)
   @ValidateNested({ each: true })
   @Type(() => CreateOptionDto)
   options?: CreateOptionDto[];

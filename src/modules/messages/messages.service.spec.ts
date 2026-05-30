@@ -38,7 +38,10 @@ const pagination = {
 describe('MessagesService', () => {
   let service: MessagesService;
   let repo: jest.Mocked<
-    Pick<MessagesRepository, 'create' | 'findInbox' | 'findConversation' | 'markConversationRead'>
+    Pick<
+      MessagesRepository,
+      'create' | 'findInbox' | 'findConversation' | 'markConversationRead' | 'findUserById'
+    >
   >;
 
   beforeEach(async () => {
@@ -47,6 +50,7 @@ describe('MessagesService', () => {
       findInbox: jest.fn(),
       findConversation: jest.fn(),
       markConversationRead: jest.fn(),
+      findUserById: jest.fn().mockResolvedValue({ id: 'user-2' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

@@ -475,6 +475,7 @@ model ForumPost {
 
   @@index([threadId])
   @@index([authorId])
+  @@index([parentId])
   @@map("forum_posts")
 }
 
@@ -803,6 +804,7 @@ model LessonBookmark {
 
   @@unique([userId, lessonId])
   @@index([userId])
+  @@index([lessonId])
   @@map("lesson_bookmarks")
 }
 
