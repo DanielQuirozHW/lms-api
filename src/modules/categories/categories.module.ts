@@ -6,5 +6,6 @@ import { CategoriesService } from './categories.service';
 @Module({
   controllers: [CategoriesController],
   providers: [CategoriesService, CategoriesRepository],
+  exports: [], // internal — not consumed cross-module
 })
 export class CategoriesModule {}

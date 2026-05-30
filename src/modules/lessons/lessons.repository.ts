@@ -20,6 +20,10 @@ export type LessonWithDetails = Lesson & {
 export class LessonsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findCourseStatus(courseId: string): Promise<{ status: string } | null> {
+    return this.prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
+  }
+
   findByModuleId(moduleId: string, publishedOnly?: boolean): Promise<Lesson[]> {
     return this.prisma.lesson.findMany({
       where: {

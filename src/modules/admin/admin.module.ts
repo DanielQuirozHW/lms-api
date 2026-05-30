@@ -8,5 +8,6 @@ import { ImpersonationLogService } from './impersonation.log.service';
   imports: [AuthModule],
   controllers: [AdminController],
   providers: [AdminService, ImpersonationLogService],
+  exports: [], // internal — not consumed cross-module
 })
 export class AdminModule {}

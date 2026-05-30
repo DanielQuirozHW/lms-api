@@ -20,7 +20,7 @@ import { JoinThreadWsDto } from './dto/join-thread-ws.dto';
 import { ForumRepository } from './forum.repository';
 
 const WS_RATE_LIMIT = 20;
-const WS_RATE_WINDOW_MS = 10_000;
+const WS_RATE_WINDOW_SECS = 10;
 
 @WebSocketGateway({ namespace: '/forum' })
 export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -44,8 +44,6 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     (client.data as Record<string, unknown>)['user'] = user;
-    (client.data as Record<string, unknown>)['rl_window'] = Date.now();
-    (client.data as Record<string, unknown>)['rl_count'] = 0;
     this.logger.log(`Forum client connected: ${client.id} (user: ${user.id})`);
   }
 
@@ -58,7 +56,7 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody(new ValidationPipe({ whitelist: true })) payload: JoinThreadWsDto,
   ): Promise<void> {
-    if (!this.checkRateLimit(client)) {
+    if (!(await this.checkRateLimit(client))) {
       this.logger.warn(`Forum rate limit exceeded: ${client.id}`);
       client.disconnect();
       return;
@@ -69,11 +67,11 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('leaveThread')
-  handleLeaveThread(
+  async handleLeaveThread(
     @ConnectedSocket() client: Socket,
     @MessageBody(new ValidationPipe({ whitelist: true })) payload: JoinThreadWsDto,
-  ): void {
-    if (!this.checkRateLimit(client)) {
+  ): Promise<void> {
+    if (!(await this.checkRateLimit(client))) {
       this.logger.warn(`Forum rate limit exceeded: ${client.id}`);
       client.disconnect();
       return;
@@ -102,21 +100,13 @@ export class ForumGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  private checkRateLimit(client: Socket): boolean {
-    const now = Date.now();
-    const data = client.data as Record<string, unknown>;
-    const windowStart = (data['rl_window'] as number | undefined) ?? now;
-    const count = (data['rl_count'] as number | undefined) ?? 0;
-
-    if (now - windowStart > WS_RATE_WINDOW_MS) {
-      data['rl_window'] = now;
-      data['rl_count'] = 1;
-      return true;
-    }
-
-    if (count >= WS_RATE_LIMIT) return false;
-    data['rl_count'] = count + 1;
-    return true;
+  private async checkRateLimit(client: Socket): Promise<boolean> {
+    const user = (client.data as Record<string, unknown>)['user'] as AuthenticatedUser | undefined;
+    if (!user) return false;
+    const key = `ratelimit:ws:${user.id}`;
+    const count = await this.redisService.incr(key);
+    if (count === 1) await this.redisService.expire(key, WS_RATE_WINDOW_SECS);
+    return count <= WS_RATE_LIMIT;
   }
 
   private async authenticate(client: Socket): Promise<AuthenticatedUser | null> {

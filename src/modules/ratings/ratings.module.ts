@@ -9,5 +9,6 @@ import { RatingsService } from './ratings.service';
   imports: [EnrollmentsModule, NotificationsModule],
   controllers: [RatingsController],
   providers: [RatingsService, RatingsRepository],
+  exports: [], // internal — not consumed cross-module
 })
 export class RatingsModule {}

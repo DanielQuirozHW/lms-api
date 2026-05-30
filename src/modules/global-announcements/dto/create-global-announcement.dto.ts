@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { GlobalAnnouncementType } from '@prisma/client';
 import { IsDateString, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
@@ -15,26 +15,26 @@ export class CreateGlobalAnnouncementDto {
   @MaxLength(2000)
   message!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: GlobalAnnouncementType,
     default: GlobalAnnouncementType.INFO,
-    required: false,
+    example: GlobalAnnouncementType.INFO,
   })
   @IsOptional()
   @IsEnum(GlobalAnnouncementType)
   type?: GlobalAnnouncementType;
 
-  @ApiProperty({
-    required: false,
+  @ApiPropertyOptional({
     description: 'ISO 8601 — announcement becomes visible at this time',
+    example: '2026-06-01T00:00:00.000Z',
   })
   @IsOptional()
   @IsDateString()
   startsAt?: string;
 
-  @ApiProperty({
-    required: false,
+  @ApiPropertyOptional({
     description: 'ISO 8601 — announcement stops being visible at this time',
+    example: '2026-06-08T00:00:00.000Z',
   })
   @IsOptional()
   @IsDateString()

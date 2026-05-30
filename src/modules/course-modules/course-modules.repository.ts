@@ -8,6 +8,10 @@ export type CourseModuleWithLessons = CourseModule & { lessons: Lesson[] };
 export class CourseModulesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findCourseStatus(courseId: string): Promise<{ status: string } | null> {
+    return this.prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
+  }
+
   findByCourseId(courseId: string, publishedOnly?: boolean): Promise<CourseModule[]> {
     return this.prisma.courseModule.findMany({
       where: {

@@ -9,5 +9,6 @@ import { AnnouncementsService } from './announcements.service';
   imports: [EnrollmentsModule, NotificationsModule],
   controllers: [AnnouncementsController],
   providers: [AnnouncementsService, AnnouncementsRepository],
+  exports: [], // internal — not consumed cross-module
 })
 export class AnnouncementsModule {}

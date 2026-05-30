@@ -33,9 +33,13 @@ export class GradebookController {
   constructor(private readonly gradebookService: GradebookService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get the full gradebook structure for a course' })
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get the full gradebook structure for a course (instructor/admin only)',
+  })
   @ApiResponse({ status: 200, type: GradebookResponseDto })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findStructure(
     @Param('courseId', ParseUUIDPipe) courseId: string,

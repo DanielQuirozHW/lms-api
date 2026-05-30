@@ -9,5 +9,6 @@ import { MessagesService } from './messages.service';
   imports: [JwtModule.register({})],
   controllers: [MessagesController],
   providers: [MessagesService, MessagesRepository, MessagesGateway],
+  exports: [], // internal — not consumed cross-module
 })
 export class MessagesModule {}

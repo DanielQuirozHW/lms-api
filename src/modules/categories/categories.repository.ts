@@ -7,7 +7,7 @@ export class CategoriesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll(): Promise<Category[]> {
-    return this.prisma.category.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.category.findMany({ orderBy: { name: 'asc' }, take: 200 });
   }
 
   findById(id: string): Promise<Category | null> {

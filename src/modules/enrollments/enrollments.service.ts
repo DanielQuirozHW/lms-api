@@ -65,7 +65,8 @@ export class EnrollmentsService {
 
     if (settings?.maxEnrollments != null) {
       const lockKey = `enroll-lock:${dto.courseId}`;
-      const acquired = (await this.redisService.set(lockKey, '1', 'PX', 5000, 'NX')) as
+      // 30 s: DB writes (enrollment + progress seeding) can exceed 5 s under load
+      const acquired = (await this.redisService.set(lockKey, '1', 'PX', 30000, 'NX')) as
         | string
         | null;
       if (!acquired) throw new ConflictException('Enrollment in progress, please retry');

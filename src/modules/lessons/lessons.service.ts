@@ -64,7 +64,9 @@ export class LessonsService {
     return this.map(lesson);
   }
 
-  /** Returns all lessons in a module. Verifies module belongs to courseId. Unpublished hidden from students when publishedOnly is true. */
+  /** Returns all lessons in a module. Verifies module belongs to courseId. Unpublished hidden from students when publishedOnly is true.
+   * For public access (publishedOnly=true), the course must be PUBLISHED (MISTAKES.md [007]).
+   */
   async findAll(
     courseId: string,
     moduleId: string,
@@ -72,6 +74,10 @@ export class LessonsService {
   ): Promise<LessonResponseDto[]> {
     const module = await this.lessonsRepository.findModuleByCourseId(moduleId, courseId);
     if (!module) throw new NotFoundException('Module not found');
+    if (publishedOnly) {
+      const course = await this.lessonsRepository.findCourseStatus(courseId);
+      if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Module not found');
+    }
     const lessons = await this.lessonsRepository.findByModuleId(moduleId, publishedOnly);
     return lessons.map((l) => this.map(l));
   }
@@ -101,6 +107,9 @@ export class LessonsService {
 
     if (!isInstructorOrAdmin) {
       if (!lesson.isPublished) throw new NotFoundException('Lesson not found');
+      // Also hide lessons from draft/archived courses (MISTAKES.md [007])
+      const course = await this.lessonsRepository.findCourseStatus(courseId);
+      if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Lesson not found');
       if (!lesson.isPreview) {
         if (!user) throw new ForbiddenException('Authentication required to access this lesson');
         const enrolled = await this.lessonsRepository.isEnrolled(user.id, courseId);

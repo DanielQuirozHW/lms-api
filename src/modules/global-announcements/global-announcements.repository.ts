@@ -14,6 +14,7 @@ export class GlobalAnnouncementsRepository {
         AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
       },
       orderBy: { createdAt: 'desc' },
+      take: 200,
     });
   }
 

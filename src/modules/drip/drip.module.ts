@@ -6,5 +6,6 @@ import { DripService } from './drip.service';
 @Module({
   imports: [NotificationsModule],
   providers: [DripService, DripRepository],
+  exports: [], // internal — not consumed cross-module
 })
 export class DripModule {}

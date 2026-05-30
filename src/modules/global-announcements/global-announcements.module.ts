@@ -6,5 +6,6 @@ import { GlobalAnnouncementsService } from './global-announcements.service';
 @Module({
   controllers: [GlobalAnnouncementsController],
   providers: [GlobalAnnouncementsService, GlobalAnnouncementsRepository],
+  exports: [GlobalAnnouncementsService],
 })
 export class GlobalAnnouncementsModule {}

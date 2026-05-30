@@ -16,6 +16,12 @@ export class AdminController {
   // NOTE: 'impersonate/stop' must be declared before 'impersonate/:userId' so NestJS
   // does not match the literal segment 'stop' as the :userId parameter.
 
+  /**
+   * @Roles is intentionally absent here. The caller holds an impersonation token (type: 'access',
+   * but with target-user roles, NOT the admin's ADMIN role). RolesGuard would reject it if
+   * @Roles(UserRole.ADMIN) were applied. Authorization is handled by ImpersonationGuard in the
+   * global chain, which validates the impersonationTokenId claim and that the admin still exists.
+   */
   @Post('impersonate/stop')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

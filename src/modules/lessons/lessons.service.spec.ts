@@ -71,6 +71,7 @@ describe('LessonsService', () => {
       | 'findCourseIsSequential'
       | 'findNextPublishedLesson'
       | 'unlockLessonProgress'
+      | 'findCourseStatus'
     >
   >;
   let enrollmentsSvc: jest.Mocked<Pick<EnrollmentsService, 'checkAndCompleteCourse'>>;
@@ -98,6 +99,7 @@ describe('LessonsService', () => {
       findCourseIsSequential: jest.fn(),
       findNextPublishedLesson: jest.fn(),
       unlockLessonProgress: jest.fn(),
+      findCourseStatus: jest.fn().mockResolvedValue({ status: 'PUBLISHED' }),
     };
     enrollmentsSvc = { checkAndCompleteCourse: jest.fn().mockResolvedValue(undefined) };
 

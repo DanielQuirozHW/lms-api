@@ -3,7 +3,6 @@ import { CalendarEventType } from '@prisma/client';
 import {
   IsBoolean,
   IsDateString,
-  IsEnum,
   IsIn,
   IsOptional,
   IsString,
@@ -31,8 +30,13 @@ export class CreateCalendarEventDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ enum: CalendarEventType, example: CalendarEventType.CUSTOM })
-  @IsEnum(CalendarEventType)
+  // System types (LESSON_AVAILABLE, COURSE_START, COURSE_END) are set programmatically only.
+  // Users may only submit CUSTOM, ASSIGNMENT_DUE, or QUIZ_DUE.
+  @ApiProperty({
+    enum: [CalendarEventType.CUSTOM, CalendarEventType.ASSIGNMENT_DUE, CalendarEventType.QUIZ_DUE],
+    example: CalendarEventType.CUSTOM,
+  })
+  @IsIn([CalendarEventType.CUSTOM, CalendarEventType.ASSIGNMENT_DUE, CalendarEventType.QUIZ_DUE])
   type!: CalendarEventType;
 
   @ApiProperty({ example: '2026-06-01T09:00:00Z' })

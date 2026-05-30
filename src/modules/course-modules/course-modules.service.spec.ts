@@ -52,6 +52,7 @@ describe('CourseModulesService', () => {
       | 'delete'
       | 'reorder'
       | 'findIdsByCourseId'
+      | 'findCourseStatus'
     >
   >;
 
@@ -67,6 +68,7 @@ describe('CourseModulesService', () => {
       delete: jest.fn(),
       reorder: jest.fn(),
       findIdsByCourseId: jest.fn(),
+      findCourseStatus: jest.fn().mockResolvedValue({ status: 'PUBLISHED' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

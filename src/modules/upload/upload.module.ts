@@ -10,5 +10,6 @@ import { UploadService } from './upload.service';
   imports: [StorageModule, UsersModule, CoursesModule, LessonsModule],
   controllers: [UploadController],
   providers: [UploadService],
+  exports: [], // internal — not consumed cross-module
 })
 export class UploadModule {}
