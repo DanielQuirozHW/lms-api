@@ -81,6 +81,21 @@ export class CoursesController {
     return this.coursesService.findOne(id, user);
   }
 
+  @Post(':id/duplicate')
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
+  @UseGuards(CourseOwnerGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Duplicate a course as a new DRAFT (owner or admin only)' })
+  @ApiResponse({ status: 201, type: CourseResponseDto })
+  @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  duplicate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CourseResponseDto> {
+    return this.coursesService.duplicate(id, user.id);
+  }
+
   @Patch(':id')
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
   @UseGuards(CourseOwnerGuard)

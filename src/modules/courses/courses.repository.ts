@@ -1,5 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import type { Course, CourseStatus, Prisma } from '@prisma/client';
+import type {
+  AssignmentSettings,
+  Course,
+  CourseModule,
+  CourseStatus,
+  Lesson,
+  Prisma,
+  Question,
+  QuestionOption,
+  QuizSettings,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface FindCoursesParams {
@@ -13,6 +23,20 @@ export interface FindCoursesParams {
 export type CourseWithCount = Course & {
   lessonsCount: number;
   enrollmentsCount: number;
+};
+
+export type CourseForDuplicate = Course & {
+  modules: Array<
+    CourseModule & {
+      lessons: Array<
+        Lesson & {
+          quizSettings: QuizSettings | null;
+          questions: Array<Question & { options: QuestionOption[] }>;
+          assignmentSettings: AssignmentSettings | null;
+        }
+      >;
+    }
+  >;
 };
 
 @Injectable()
@@ -79,6 +103,139 @@ export class CoursesRepository {
 
   countLessons(courseId: string): Promise<number> {
     return this.prisma.lesson.count({ where: { module: { courseId } } });
+  }
+
+  /** Fetches a course with all nested modules, lessons, quiz settings, questions, and assignment settings needed for duplication. */
+  findByIdForDuplicate(id: string): Promise<CourseForDuplicate | null> {
+    return this.prisma.course.findUnique({
+      where: { id },
+      include: {
+        modules: {
+          orderBy: { order: 'asc' },
+          include: {
+            lessons: {
+              orderBy: { order: 'asc' },
+              include: {
+                quizSettings: true,
+                questions: {
+                  orderBy: { order: 'asc' },
+                  include: { options: { orderBy: { order: 'asc' } } },
+                },
+                assignmentSettings: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Deep-copies a course (modules → lessons → quiz + assignment settings) inside a single
+   * Prisma interactive transaction. rubricId and groupId are never copied.
+   * See MISTAKES.md [014] — duplication must preserve instructorId from the requesting user.
+   */
+  async duplicateCourse(
+    source: CourseForDuplicate,
+    overrides: { title: string; slug: string; instructorId: string },
+  ): Promise<Course> {
+    return this.prisma.$transaction(async (tx) => {
+      const newCourse = await tx.course.create({
+        data: {
+          title: overrides.title,
+          slug: overrides.slug,
+          description: source.description,
+          coverUrl: source.coverUrl,
+          price: source.price,
+          status: 'DRAFT',
+          instructorId: overrides.instructorId,
+          ...(source.categoryId && { categoryId: source.categoryId }),
+        },
+      });
+
+      for (const mod of source.modules) {
+        const newMod = await tx.courseModule.create({
+          data: {
+            courseId: newCourse.id,
+            title: mod.title,
+            description: mod.description,
+            order: mod.order,
+            unlockAfterDays: mod.unlockAfterDays,
+            isPublished: false,
+          },
+        });
+
+        for (const lesson of mod.lessons) {
+          const newLesson = await tx.lesson.create({
+            data: {
+              moduleId: newMod.id,
+              title: lesson.title,
+              order: lesson.order,
+              type: lesson.type,
+              content: lesson.content,
+              videoUrl: lesson.videoUrl,
+              duration: lesson.duration,
+              isPreview: lesson.isPreview,
+              isPublished: false,
+              // rubricId not copied — rubrics are course-specific
+            },
+          });
+
+          if (lesson.quizSettings) {
+            await tx.quizSettings.create({
+              data: {
+                lessonId: newLesson.id,
+                maxAttempts: lesson.quizSettings.maxAttempts,
+                passingScore: lesson.quizSettings.passingScore,
+                blocksProgress: lesson.quizSettings.blocksProgress,
+                shuffleQuestions: lesson.quizSettings.shuffleQuestions,
+              },
+            });
+
+            for (const q of lesson.questions) {
+              const newQ = await tx.question.create({
+                data: {
+                  lessonId: newLesson.id,
+                  text: q.text,
+                  type: q.type,
+                  order: q.order,
+                  points: q.points,
+                },
+              });
+
+              if (q.options.length > 0) {
+                await tx.questionOption.createMany({
+                  data: q.options.map((opt) => ({
+                    questionId: newQ.id,
+                    text: opt.text,
+                    order: opt.order,
+                    isCorrect: opt.isCorrect,
+                  })),
+                });
+              }
+            }
+          }
+
+          if (lesson.assignmentSettings) {
+            await tx.assignmentSettings.create({
+              data: {
+                lessonId: newLesson.id,
+                gradingType: lesson.assignmentSettings.gradingType,
+                maxScore: lesson.assignmentSettings.maxScore,
+                passingScore: lesson.assignmentSettings.passingScore,
+                dueDate: lesson.assignmentSettings.dueDate,
+                allowLateSubmission: lesson.assignmentSettings.allowLateSubmission,
+                isGroupAssignment: lesson.assignmentSettings.isGroupAssignment,
+                maxAttempts: lesson.assignmentSettings.maxAttempts,
+                // groupId not copied — groups belong to the source course
+              },
+            });
+          }
+        }
+      }
+
+      return newCourse;
+    });
   }
 
   create(data: Prisma.CourseCreateInput): Promise<Course> {

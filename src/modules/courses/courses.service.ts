@@ -108,6 +108,28 @@ export class CoursesService {
     return this.map(course);
   }
 
+  /**
+   * Deep-copies a course as a new DRAFT owned by the requesting instructor.
+   * Title is prefixed with "Copia de ". Slug uniqueness is ensured server-side.
+   * Copies modules, lessons, quiz settings + questions, and assignment settings.
+   * Does NOT copy enrollments, progress, ratings, announcements, rubric links, or group IDs.
+   */
+  async duplicate(courseId: string, instructorId: string): Promise<CourseResponseDto> {
+    const source = await this.coursesRepository.findByIdForDuplicate(courseId);
+    if (!source) throw new NotFoundException('Course not found');
+
+    const baseTitle = `Copia de ${source.title}`;
+    const baseSlug = slugify(baseTitle);
+    const slug = await this.generateUniqueSlug(baseSlug);
+
+    const newCourse = await this.coursesRepository.duplicateCourse(source, {
+      title: baseTitle,
+      slug,
+      instructorId,
+    });
+    return this.map(newCourse);
+  }
+
   /** Deletes the course. Throws 409 if the course has any non-cancelled enrollments (ACTIVE or COMPLETED). */
   async remove(courseId: string): Promise<void> {
     const enrollmentCount = await this.coursesRepository.countNonCancelledEnrollments(courseId);
@@ -115,6 +137,16 @@ export class CoursesService {
       throw new ConflictException('Cannot delete a course with active or completed enrollments');
     }
     await this.coursesRepository.delete(courseId);
+  }
+
+  private async generateUniqueSlug(base: string): Promise<string> {
+    if (!(await this.coursesRepository.findBySlug(base))) return base;
+    const copy = `${base}-copy`;
+    if (!(await this.coursesRepository.findBySlug(copy))) return copy;
+    for (let i = 2; ; i++) {
+      const candidate = `${base}-${String(i)}`;
+      if (!(await this.coursesRepository.findBySlug(candidate))) return candidate;
+    }
   }
 
   private map(course: Course): CourseResponseDto {

@@ -3,7 +3,11 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { Course } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CourseQueryDto } from './dto/course-query.dto';
-import { type CourseWithCount, CoursesRepository } from './courses.repository';
+import {
+  type CourseForDuplicate,
+  type CourseWithCount,
+  CoursesRepository,
+} from './courses.repository';
 import { CoursesService } from './courses.service';
 
 const mockCourse: Course = {
@@ -34,6 +38,9 @@ describe('CoursesService', () => {
       | 'findMany'
       | 'findById'
       | 'findByIdWithCount'
+      | 'findBySlug'
+      | 'findByIdForDuplicate'
+      | 'duplicateCourse'
       | 'countNonCancelledEnrollments'
       | 'countLessons'
       | 'create'
@@ -47,6 +54,9 @@ describe('CoursesService', () => {
       findMany: jest.fn(),
       findById: jest.fn(),
       findByIdWithCount: jest.fn(),
+      findBySlug: jest.fn().mockResolvedValue(null),
+      findByIdForDuplicate: jest.fn(),
+      duplicateCourse: jest.fn(),
       countNonCancelledEnrollments: jest.fn(),
       countLessons: jest.fn(),
       create: jest.fn(),
@@ -237,6 +247,193 @@ describe('CoursesService', () => {
 
       expect(coursesRepository.countNonCancelledEnrollments).toHaveBeenCalledWith('course-123');
       expect(coursesRepository.delete).toHaveBeenCalledWith('course-123');
+    });
+  });
+
+  describe('duplicate', () => {
+    const baseLesson = {
+      id: 'lesson-001',
+      moduleId: 'module-001',
+      title: 'What is TypeScript?',
+      order: 1,
+      type: 'TEXT' as const,
+      content: 'TS is typed JS.',
+      videoUrl: null,
+      duration: null,
+      isPreview: false,
+      isPublished: true,
+      rubricId: null,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+
+    const lessonWithQuiz = {
+      ...baseLesson,
+      id: 'lesson-002',
+      title: 'Quiz Lesson',
+      quizSettings: {
+        id: 'qs-001',
+        lessonId: 'lesson-002',
+        maxAttempts: 3,
+        passingScore: 70,
+        blocksProgress: true,
+        shuffleQuestions: false,
+      },
+      questions: [
+        {
+          id: 'q-001',
+          lessonId: 'lesson-002',
+          text: 'What is TypeScript?',
+          type: 'SINGLE_CHOICE' as const,
+          order: 1,
+          points: 10,
+          options: [
+            {
+              id: 'opt-1',
+              questionId: 'q-001',
+              text: 'A typed superset of JS',
+              order: 1,
+              isCorrect: true,
+            },
+            { id: 'opt-2', questionId: 'q-001', text: 'A database', order: 2, isCorrect: false },
+          ],
+        },
+      ],
+      assignmentSettings: null,
+    };
+
+    const lessonWithAssignment = {
+      ...baseLesson,
+      id: 'lesson-003',
+      title: 'Assignment Lesson',
+      quizSettings: null,
+      questions: [],
+      assignmentSettings: {
+        id: 'as-001',
+        lessonId: 'lesson-003',
+        gradingType: 'MANUAL' as const,
+        maxScore: 100,
+        passingScore: 60,
+        dueDate: new Date('2025-12-31'),
+        allowLateSubmission: false,
+        isGroupAssignment: false,
+        groupId: 'group-original',
+        maxAttempts: 2,
+      },
+    };
+
+    const mockSource: CourseForDuplicate = {
+      ...mockCourse,
+      status: 'PUBLISHED',
+      modules: [
+        {
+          id: 'module-001',
+          courseId: 'course-123',
+          title: 'Module 1',
+          description: 'Introduction',
+          order: 1,
+          isPublished: true,
+          unlockAfterDays: null,
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-01'),
+          lessons: [
+            { ...baseLesson, quizSettings: null, questions: [], assignmentSettings: null },
+            lessonWithQuiz,
+            lessonWithAssignment,
+          ],
+        },
+      ],
+    };
+
+    const mockDuplicated: Course = {
+      ...mockCourse,
+      id: 'course-999',
+      title: 'Copia de TypeScript Basics',
+      slug: 'copia-de-typescript-basics',
+      status: 'DRAFT',
+      instructorId: 'instructor-123',
+    };
+
+    beforeEach(() => {
+      coursesRepository.findByIdForDuplicate.mockResolvedValue(mockSource);
+      coursesRepository.findBySlug.mockResolvedValue(null); // slug is available
+      coursesRepository.duplicateCourse.mockResolvedValue(mockDuplicated);
+    });
+
+    it('returns a new DRAFT course with prefixed title and unique slug', async () => {
+      const result = await service.duplicate('course-123', 'instructor-123');
+
+      expect(coursesRepository.findByIdForDuplicate).toHaveBeenCalledWith('course-123');
+      expect(coursesRepository.duplicateCourse).toHaveBeenCalledWith(
+        mockSource,
+        expect.objectContaining({
+          title: 'Copia de TypeScript Basics',
+          slug: 'copia-de-typescript-basics',
+          instructorId: 'instructor-123',
+        }),
+      );
+      expect(result.status).toBe('DRAFT');
+      expect(result.title).toBe('Copia de TypeScript Basics');
+      expect(result.id).toBe('course-999');
+    });
+
+    it('throws NotFoundException when source course does not exist', async () => {
+      coursesRepository.findByIdForDuplicate.mockResolvedValue(null);
+
+      await expect(service.duplicate('nonexistent', 'instructor-123')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(coursesRepository.duplicateCourse).not.toHaveBeenCalled();
+    });
+
+    it('appends -copy when base slug is already taken', async () => {
+      coursesRepository.findBySlug
+        .mockResolvedValueOnce(mockCourse) // base slug exists
+        .mockResolvedValueOnce(null); // -copy is free
+
+      await service.duplicate('course-123', 'instructor-123');
+
+      expect(coursesRepository.duplicateCourse).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ slug: 'copia-de-typescript-basics-copy' }),
+      );
+    });
+
+    it('appends -2 when base and -copy slugs are both taken', async () => {
+      coursesRepository.findBySlug
+        .mockResolvedValueOnce(mockCourse) // base slug exists
+        .mockResolvedValueOnce(mockCourse) // -copy exists
+        .mockResolvedValueOnce(null); // -2 is free
+
+      await service.duplicate('course-123', 'instructor-123');
+
+      expect(coursesRepository.duplicateCourse).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ slug: 'copia-de-typescript-basics-2' }),
+      );
+    });
+
+    it('passes the source with quiz settings through to duplicateCourse', async () => {
+      await service.duplicate('course-123', 'instructor-123');
+
+      const sourceArg = coursesRepository.duplicateCourse.mock.calls[0][0];
+      const quizLesson = sourceArg.modules[0].lessons.find((l) => l.quizSettings !== null);
+      expect(quizLesson).toBeDefined();
+      expect(quizLesson?.quizSettings?.passingScore).toBe(70);
+      expect(quizLesson?.questions).toHaveLength(1);
+      expect(quizLesson?.questions[0].options).toHaveLength(2);
+    });
+
+    it('passes the source with assignment settings through to duplicateCourse', async () => {
+      await service.duplicate('course-123', 'instructor-123');
+
+      const sourceArg = coursesRepository.duplicateCourse.mock.calls[0][0];
+      const assignmentLesson = sourceArg.modules[0].lessons.find(
+        (l) => l.assignmentSettings !== null,
+      );
+      expect(assignmentLesson).toBeDefined();
+      expect(assignmentLesson?.assignmentSettings?.maxScore).toBe(100);
+      expect(assignmentLesson?.assignmentSettings?.gradingType).toBe('MANUAL');
     });
   });
 });
