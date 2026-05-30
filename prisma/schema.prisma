@@ -109,6 +109,8 @@ model User {
   groupMemberships      CourseGroupMember[]
   calendarEvents        CalendarEvent[]
   globalAnnouncements   GlobalAnnouncement[]
+  lessonNotes           LessonNote[]
+  lessonBookmarks       LessonBookmark[]
 
   @@map("users")
 }
@@ -235,6 +237,8 @@ model Lesson {
   submissions        Submission[]
   gradebookItem      GradebookItem?
   rubric             Rubric?             @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  notes              LessonNote[]
+  bookmarks          LessonBookmark[]
 
   @@unique([moduleId, order])
   @@index([moduleId])
@@ -762,4 +766,39 @@ model GlobalAnnouncement {
   @@index([createdBy])
   @@index([isActive])
   @@map("global_announcements")
+}
+
+// ─── LessonNote ───────────────────────────────────────────────────────────────
+
+model LessonNote {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  lessonId  String   @map("lesson_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("lesson_notes")
+}
+
+// ─── LessonBookmark ───────────────────────────────────────────────────────────
+
+model LessonBookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  lessonId  String   @map("lesson_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@map("lesson_bookmarks")
 }
