@@ -13,6 +13,7 @@ import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AdminModule } from './modules/admin/admin.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
 import { GlobalAnnouncementsModule } from './modules/global-announcements/global-announcements.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { NotesModule } from './modules/notes/notes.module';
@@ -92,6 +93,7 @@ import type { AppConfig } from './config/configuration';
     MaintenanceModule,
     NotesModule,
     BookmarksModule,
+    CertificatesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -111,6 +111,7 @@ model User {
   globalAnnouncements   GlobalAnnouncement[]
   lessonNotes           LessonNote[]
   lessonBookmarks       LessonBookmark[]
+  certificates          Certificate[]
 
   @@map("users")
 }
@@ -164,6 +165,7 @@ model Course {
   rubrics             Rubric[]
   groups              CourseGroup[]
   calendarEvents      CalendarEvent[]
+  certificates        Certificate[]
 
   @@index([instructorId])
   @@index([categoryId])
@@ -408,6 +410,7 @@ model Enrollment {
   progress     LessonProgress[]
   quizAttempts QuizAttempt[]
   submissions  Submission[]
+  certificate  Certificate?
 
   @@unique([userId, courseId])
   @@index([userId])
@@ -801,4 +804,24 @@ model LessonBookmark {
   @@unique([userId, lessonId])
   @@index([userId])
   @@map("lesson_bookmarks")
+}
+
+// ─── Certificate ──────────────────────────────────────────────────────────────
+
+model Certificate {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  courseId        String   @map("course_id")
+  enrollmentId    String   @unique @map("enrollment_id")
+  certificateCode String   @unique @default(cuid()) @map("certificate_code")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+  finalGrade      Float?   @map("final_grade")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+  @@map("certificates")
 }
