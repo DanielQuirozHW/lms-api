@@ -233,3 +233,11 @@ if (!user.roles.includes(UserRole.INSTRUCTOR)) {
 }
 ```
 **Rule:** `INSTRUCTOR` role only proves the user can teach. It does NOT prove they own this specific resource. Always verify `resource.ownerId === user.id || user.roles.includes(ADMIN)` before any write or sensitive read. Never use role alone as a substitute for resource ownership.
+
+---
+
+## [018] Lessons → Enrollments → Courses potential circular dependency
+**Date:** 2026-05
+**Category:** Architecture
+**What happened:** `LessonsModule` imports `EnrollmentsModule`, `EnrollmentsModule` imports `CoursesModule`. One more cross-import involving any of these three modules could close the cycle (e.g. `CoursesModule` importing `LessonsModule` for lesson counts would create `Courses → Lessons → Enrollments → Courses`).
+**Rule:** Before adding a new cross-module import involving `LessonsModule`, `EnrollmentsModule`, or `CoursesModule`, draw the full dependency graph and verify it remains acyclic. Use the `import/no-cycle` ESLint rule as the automated backstop — a lint error here means a real circular import.

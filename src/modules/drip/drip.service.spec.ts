@@ -46,69 +46,71 @@ describe('DripService', () => {
     service = module.get<DripService>(DripService);
   });
 
-  it('does nothing when there are no active enrollments', async () => {
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([]);
-    await service.unlockDripContent();
-    expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
-    expect(notificationsService.notify).not.toHaveBeenCalled();
-  });
+  describe('unlockDripContent', () => {
+    it('does nothing when there are no active enrollments', async () => {
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([]);
+      await service.unlockDripContent();
+      expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
+      expect(notificationsService.notify).not.toHaveBeenCalled();
+    });
 
-  it('does not unlock when daysEnrolled < unlockAfterDays', async () => {
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
-      makeEnrollment(3, 7),
-    ] as never);
-    await service.unlockDripContent();
-    expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
-  });
+    it('does not unlock when daysEnrolled < unlockAfterDays', async () => {
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
+        makeEnrollment(3, 7),
+      ] as never);
+      await service.unlockDripContent();
+      expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
+    });
 
-  it('unlocks lessons and sends notification when daysEnrolled >= unlockAfterDays', async () => {
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
-      makeEnrollment(8, 7, ['les-1', 'les-2']),
-    ] as never);
-    dripRepository.unlockModuleLessons.mockResolvedValue(2);
+    it('unlocks lessons and sends notification when daysEnrolled >= unlockAfterDays', async () => {
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
+        makeEnrollment(8, 7, ['les-1', 'les-2']),
+      ] as never);
+      dripRepository.unlockModuleLessons.mockResolvedValue(2);
 
-    await service.unlockDripContent();
+      await service.unlockDripContent();
 
-    expect(dripRepository.unlockModuleLessons).toHaveBeenCalledWith('enr-1', ['les-1', 'les-2']);
-    expect(notificationsService.notify).toHaveBeenCalledWith(
-      'user-1',
-      NotificationType.NEW_LESSON,
-      expect.any(String),
-      expect.stringContaining('Module 1'),
-      'course-1',
-      'course',
-    );
-  });
+      expect(dripRepository.unlockModuleLessons).toHaveBeenCalledWith('enr-1', ['les-1', 'les-2']);
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        'user-1',
+        NotificationType.NEW_LESSON,
+        expect.any(String),
+        expect.stringContaining('Module 1'),
+        'course-1',
+        'course',
+      );
+    });
 
-  it('does not notify when all lessons were already unlocked (count = 0)', async () => {
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
-      makeEnrollment(10, 7),
-    ] as never);
-    dripRepository.unlockModuleLessons.mockResolvedValue(0);
+    it('does not notify when all lessons were already unlocked (count = 0)', async () => {
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
+        makeEnrollment(10, 7),
+      ] as never);
+      dripRepository.unlockModuleLessons.mockResolvedValue(0);
 
-    await service.unlockDripContent();
+      await service.unlockDripContent();
 
-    expect(dripRepository.unlockModuleLessons).toHaveBeenCalled();
-    expect(notificationsService.notify).not.toHaveBeenCalled();
-  });
+      expect(dripRepository.unlockModuleLessons).toHaveBeenCalled();
+      expect(notificationsService.notify).not.toHaveBeenCalled();
+    });
 
-  it('skips modules with no published lessons', async () => {
-    const enrollment = makeEnrollment(10, 7, []);
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([enrollment] as never);
+    it('skips modules with no published lessons', async () => {
+      const enrollment = makeEnrollment(10, 7, []);
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([enrollment] as never);
 
-    await service.unlockDripContent();
+      await service.unlockDripContent();
 
-    expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
-  });
+      expect(dripRepository.unlockModuleLessons).not.toHaveBeenCalled();
+    });
 
-  it('unlocks exactly on the threshold day (daysEnrolled === unlockAfterDays)', async () => {
-    dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
-      makeEnrollment(7, 7),
-    ] as never);
-    dripRepository.unlockModuleLessons.mockResolvedValue(1);
+    it('unlocks exactly on the threshold day (daysEnrolled === unlockAfterDays)', async () => {
+      dripRepository.findActiveEnrollmentsWithDripModules.mockResolvedValue([
+        makeEnrollment(7, 7),
+      ] as never);
+      dripRepository.unlockModuleLessons.mockResolvedValue(1);
 
-    await service.unlockDripContent();
+      await service.unlockDripContent();
 
-    expect(dripRepository.unlockModuleLessons).toHaveBeenCalled();
+      expect(dripRepository.unlockModuleLessons).toHaveBeenCalled();
+    });
   });
 });

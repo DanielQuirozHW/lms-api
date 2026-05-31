@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -38,7 +39,7 @@ export class AdminController {
   }
 
   @Post('impersonate/:userId')
-  @Roles('ADMIN')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Impersonate a STUDENT or INSTRUCTOR (admin only)' })
   @ApiResponse({ status: 201, description: 'Impersonation tokens issued', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Cannot impersonate yourself' })
