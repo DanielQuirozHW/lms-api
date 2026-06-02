@@ -32,6 +32,15 @@
    - [Announcements](#announcements)
    - [Calendar](#calendar)
    - [Upload](#upload)
+   - [Admin](#admin)
+   - [Maintenance](#maintenance)
+   - [Global Announcements](#global-announcements)
+   - [Enrollment Codes](#enrollment-codes)
+   - [Bulk Enrollment](#bulk-enrollment)
+   - [User Assignments](#user-assignments)
+   - [Lesson Notes](#lesson-notes)
+   - [Bookmarks](#bookmarks)
+   - [Certificates](#certificates)
 7. [WebSocket Events](#7-websocket-events)
 8. [File Uploads](#8-file-uploads)
 9. [Data Models](#9-data-models)
@@ -218,6 +227,8 @@ All rate limits use a **sliding window** (TTL in milliseconds).
 | `POST /auth/refresh` | 5 | 60 seconds |
 | `POST /auth/send-verification` | 3 | 10 minutes |
 | `POST /enrollments` | 5 | 60 seconds |
+| `POST /enrollments/bulk` | 5 | 60 seconds |
+| `POST /auth/oauth` | 5 | 60 seconds |
 | `POST /forum/threads/:id/posts` | 10 | 60 seconds |
 | `POST /messages/:userId` | 20 | 60 seconds |
 | `POST /upload/avatar` | 10 | 60 seconds |
@@ -308,6 +319,29 @@ When rate limited, the response is `429 Too Many Requests`.
 **Response** (`200`): Same shape as register.
 
 **Errors**: `400` validation, `401` invalid credentials, `429` rate limited.
+
+---
+
+#### `POST /api/v1/auth/oauth`
+**Auth**: None (`@Public`) | **Rate limit**: 5/min
+
+Logs in or registers a user via an OAuth provider (Google or Microsoft). If no account exists for the given `providerAccountId`, one is created automatically.
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `email` | string | Yes | Valid email address from the provider |
+| `firstName` | string | Yes | Min 2 characters |
+| `lastName` | string | Yes | Min 2 characters |
+| `avatarUrl` | string | No | Valid URL; provider profile photo |
+| `provider` | string | Yes | Enum: `google` \| `microsoft` |
+| `providerAccountId` | string | Yes | Subject ID from the OAuth provider (1–256 chars) |
+
+**Response** (`200`): Same shape as `POST /auth/login` — `{ accessToken, refreshToken, user }`.
+
+**Errors**: `400` validation failed, `429` rate limited.
+
+**Security note**: This endpoint accepts OAuth claims from the frontend after the OAuth flow completes. See [MISTAKES.md #016](../MISTAKES.md) — server-side token verification with the provider is planned for a future release.
 
 ---
 
@@ -941,6 +975,7 @@ All lesson endpoints are nested under `/api/v1/courses/:courseId/modules/:module
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
 | `courseId` | UUID | Yes | Existing published course ID |
+| `code` | string | No | Enrollment code — **required** when the course `enrollmentType` is `CODE` |
 
 **Response** (`201`): `EnrollmentResponseDto`.
 ```json
@@ -955,7 +990,17 @@ All lesson endpoints are nested under `/api/v1/courses/:courseId/modules/:module
 }
 ```
 
-**Errors**: `403` email not verified or instructor self-enrollment attempted, `409` already enrolled or course is full.
+**Errors**: `400` course not available or code missing/invalid for CODE courses, `403` email not verified, instructor self-enrollment, or student attempting enrollment in ASSIGNED/CORPORATE-mode course, `409` already enrolled or course is full.
+
+**Enrollment types** — behavior varies by `course.enrollmentType`:
+| Type | Behavior |
+|------|----------|
+| `FREE` | Any verified user may self-enroll |
+| `PAID` | Self-enrollment allowed; payment integration handled externally |
+| `ASSIGNED` | Only ADMIN or INSTRUCTOR may call this endpoint; students receive `403` |
+| `CODE` | `code` field is required; validated against active enrollment codes for the course |
+
+**Portal mode** — when `PORTAL_MODE=CORPORATE`, only ADMIN/INSTRUCTOR may enroll (students receive `403` regardless of `enrollmentType`). When `PORTAL_MODE=ACADEMIC`, both enrollment start and end dates must be set and `now` must fall within the window.
 
 ---
 
@@ -973,7 +1018,20 @@ All lesson endpoints are nested under `/api/v1/courses/:courseId/modules/:module
 
 **Query Parameters**: Pagination (`page`, `limit`).
 
-**Response** (`200`): Paginated list of all enrollments for the specified course.
+**Response** (`200`): Paginated list of `CourseEnrollmentItemDto` — includes user identity and progress percentage.
+```json
+{
+  "enrollmentId": "clenroll1",
+  "userId": "cluser1",
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "avatarUrl": null,
+  "status": "ACTIVE",
+  "enrolledAt": "2026-05-24T10:00:00.000Z",
+  "progressPercentage": 41.7
+}
+```
 
 ---
 
@@ -1022,6 +1080,36 @@ All lesson endpoints are nested under `/api/v1/courses/:courseId/modules/:module
 **Response** (`200`): `EnrollmentResponseDto` with `status: "COMPLETED"`.
 
 **Errors**: `409` enrollment is not active.
+
+---
+
+#### `POST /api/v1/enrollments/bulk`
+**Auth**: Required | **Roles**: ADMIN | **Rate limit**: 5/min
+
+Bulk-enrolls multiple users into a single course in one atomic transaction. Users already ACTIVE or COMPLETED are silently skipped. CANCELLED enrollments are reactivated. Non-existent user IDs are counted as `failed`.
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `userIds` | UUID[] | Yes | 1–100 user IDs |
+| `courseId` | UUID | Yes | Existing published course ID |
+
+**Response** (`201`): `BulkEnrollResultDto`.
+```json
+{
+  "enrolled": 8,
+  "skipped": 2,
+  "failed": 0
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `enrolled` | Users successfully (re-)enrolled |
+| `skipped` | Users who were already ACTIVE or COMPLETED — unchanged |
+| `failed` | User IDs that did not match any existing user |
+
+**Errors**: `400` course is not PUBLISHED, `403` ADMIN only, `404` course not found.
 
 ---
 
@@ -2207,6 +2295,431 @@ All upload endpoints require authentication. Files are stored in Cloudflare R2 a
 
 ---
 
+### Admin
+
+Admin impersonation lets an ADMIN experience the platform as a specific student or instructor without knowing their password. The impersonation session is capped at 60 minutes and cannot be renewed.
+
+#### `POST /api/v1/admin/impersonate/:userId`
+**Auth**: Required | **Roles**: ADMIN
+
+Starts an impersonation session. Returns a new token pair scoped to the target user (their roles, not the admin's).
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `userId` | UUID | ID of the user to impersonate (STUDENT or INSTRUCTOR only) |
+
+**Request Body**: None.
+
+**Response** (`201`): `AuthResponseDto` — same shape as login. The returned `accessToken` carries the target user's roles and an additional `impersonatedBy` claim (the admin's user ID). The `refreshToken` is stored under a separate `impersonation:` Redis namespace and **cannot** be used to obtain a regular session.
+
+**Errors**: `400` cannot impersonate yourself, `403` target is ADMIN or caller is already inside an impersonation session, `404` target user not found.
+
+**Security notes**:
+- Impersonation tokens expire in 60 minutes and are not renewable.
+- Any DB writes made during impersonation are attributed to the **target user** (by design — the admin sees exactly what the target sees).
+- Audit-sensitive features should inspect the `impersonatedBy` claim to distinguish real actions from observed ones.
+
+---
+
+#### `POST /api/v1/admin/impersonate/stop`
+**Auth**: Required (caller must hold an impersonation access token — no `@Roles(ADMIN)` guard, as the token carries target-user roles)
+
+Ends the impersonation session, revokes the impersonation tokens, and restores the admin's own session.
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `adminId` | UUID | Yes | ID of the admin whose session should be restored |
+
+**Response** (`200`): `AuthResponseDto` — a fresh token pair for the admin (their own roles restored).
+
+**Errors**: `400` no active impersonation session or `adminId` mismatch, `401` missing or invalid token.
+
+---
+
+### Maintenance
+
+A lightweight maintenance-mode flag stored in Redis. When enabled, the frontend should display a maintenance banner or redirect to a static page. The API itself continues to function normally — it is up to the frontend to gate access.
+
+#### `GET /api/v1/admin/maintenance`
+**Auth**: None (`@Public`)
+
+**Response** (`200`): `MaintenanceResponseDto`.
+```json
+{
+  "enabled": false,
+  "message": "",
+  "estimatedEnd": null
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `enabled` | boolean | `true` while maintenance is active |
+| `message` | string | Human-readable status message |
+| `estimatedEnd` | string \| undefined | ISO 8601 estimated end time; omitted if not set |
+
+---
+
+#### `POST /api/v1/admin/maintenance`
+**Auth**: Required | **Roles**: ADMIN
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `enabled` | boolean | Yes | `true` to enable, `false` to disable |
+| `message` | string | Yes | Status message shown to users (max 500 chars) |
+| `estimatedEnd` | ISO date string | No | e.g. `"2026-06-01T04:00:00Z"` |
+
+**Response** (`200`): `MaintenanceResponseDto` (updated state).
+
+---
+
+### Global Announcements
+
+Platform-wide banners visible to all users regardless of enrollment. Controlled by admins. The frontend should poll `GET /announcements/global` on app load and display active announcements.
+
+#### `GET /api/v1/announcements/global`
+**Auth**: None (`@Public`)
+
+Returns all announcements where `isActive` is `true` and `now` is within `[startsAt, endsAt]` (or dates are not set).
+
+**Response** (`200`): Array of `GlobalAnnouncementResponseDto`.
+```json
+{
+  "id": "clann1",
+  "title": "Scheduled maintenance on Saturday",
+  "message": "The platform will be offline from 02:00–04:00 UTC.",
+  "type": "WARNING",
+  "isActive": true,
+  "startsAt": "2026-06-07T02:00:00.000Z",
+  "endsAt": "2026-06-07T04:00:00.000Z",
+  "createdBy": "cladmin1",
+  "createdAt": "2026-06-01T10:00:00.000Z",
+  "updatedAt": "2026-06-01T10:00:00.000Z"
+}
+```
+
+**Type values**: `INFO` | `WARNING` | `MAINTENANCE` | `SUCCESS`
+
+---
+
+#### `POST /api/v1/announcements/global`
+**Auth**: Required | **Roles**: ADMIN
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `title` | string | Yes | 3–200 characters |
+| `message` | string | Yes | 1–2000 characters |
+| `type` | string | No | Enum: `INFO`, `WARNING`, `MAINTENANCE`, `SUCCESS`; default `INFO` |
+| `startsAt` | ISO date string | No | Announcement becomes visible at this time |
+| `endsAt` | ISO date string | No | Announcement stops being visible at this time |
+
+**Response** (`201`): `GlobalAnnouncementResponseDto`.
+
+---
+
+#### `PATCH /api/v1/announcements/global/:id`
+**Auth**: Required | **Roles**: ADMIN
+
+**Request Body**: All `CreateGlobalAnnouncementDto` fields optional.
+
+**Response** (`200`): Updated `GlobalAnnouncementResponseDto`.
+
+**Errors**: `404` announcement not found.
+
+---
+
+#### `DELETE /api/v1/announcements/global/:id`
+**Auth**: Required | **Roles**: ADMIN
+
+**Response** (`204`): No body.
+
+**Errors**: `404` announcement not found.
+
+---
+
+### Enrollment Codes
+
+Enrollment codes restrict access to `CODE`-type courses. Only the course owner (INSTRUCTOR) or an ADMIN can manage codes. Students supply a code in `POST /enrollments` to gain access.
+
+#### `GET /api/v1/courses/:courseId/enrollment-codes`
+**Auth**: Required | **Roles**: INSTRUCTOR, ADMIN (course owner or admin)
+
+**Response** (`200`): Array of `EnrollmentCodeResponseDto`.
+```json
+{
+  "id": "clcode1",
+  "courseId": "clcourse1",
+  "code": "ML2026",
+  "maxUses": 50,
+  "usedCount": 12,
+  "expiresAt": null,
+  "isActive": true,
+  "createdAt": "2026-05-24T10:00:00.000Z"
+}
+```
+
+**Errors**: `403` not the course owner (unless ADMIN), `404` course not found.
+
+---
+
+#### `POST /api/v1/courses/:courseId/enrollment-codes`
+**Auth**: Required | **Roles**: INSTRUCTOR, ADMIN (course owner or admin)
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `code` | string | Yes | 3–50 characters; must be globally unique |
+| `maxUses` | integer | No | Min 1; `null` = unlimited uses |
+| `expiresAt` | ISO date string | No | e.g. `"2026-12-31T23:59:59Z"`; `null` = never expires |
+
+**Response** (`201`): `EnrollmentCodeResponseDto`.
+
+**Errors**: `403` not the course owner (unless ADMIN), `404` course not found, `409` code string already in use.
+
+---
+
+#### `DELETE /api/v1/courses/:courseId/enrollment-codes/:id`
+**Auth**: Required | **Roles**: INSTRUCTOR, ADMIN (course owner or admin)
+
+Soft-deletes the code by setting `isActive: false`. The code record is retained for audit purposes.
+
+**Response** (`204`): No body.
+
+**Errors**: `403` not the course owner (unless ADMIN), `404` code not found in this course.
+
+---
+
+### Bulk Enrollment
+
+See [`POST /api/v1/enrollments/bulk`](#post-apiv1enrollmentsbulk) in the Enrollments section above.
+
+---
+
+### User Assignments
+
+Admin-only endpoints for managing a specific user's course assignments from the user-centric direction.
+
+#### `GET /api/v1/users/:userId/enrollments`
+**Auth**: Required | **Roles**: ADMIN
+
+**Query Parameters**: Pagination (`page`, `limit`).
+
+**Response** (`200`): Paginated list of `UserEnrollmentItemDto`.
+```json
+{
+  "enrollmentId": "clenroll1",
+  "courseId": "clcourse1",
+  "courseTitle": "Machine Learning Práctico",
+  "coverUrl": "https://cdn.example.com/cover.jpg",
+  "enrollmentType": "CODE",
+  "status": "ACTIVE",
+  "progressPercentage": 33.3,
+  "enrolledAt": "2026-05-24T10:00:00.000Z"
+}
+```
+
+---
+
+#### `DELETE /api/v1/users/:userId/enrollments/:courseId`
+**Auth**: Required | **Roles**: ADMIN
+
+Hard-deletes the enrollment (and all associated progress, attempts, submissions via cascade). Use this to remove a manually-assigned student from a course.
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `userId` | UUID | User to remove |
+| `courseId` | UUID | Course to remove them from |
+
+**Response** (`204`): No body.
+
+**Errors**: `404` enrollment not found, `409` cannot remove a COMPLETED enrollment.
+
+---
+
+### Lesson Notes
+
+Per-user, per-lesson freeform notes. One note per (user, lesson) pair — subsequent `PUT` calls overwrite the existing note.
+
+#### `GET /api/v1/lessons/:lessonId/notes`
+**Auth**: Required
+
+**Response** (`200`): `NoteResponseDto`.
+```json
+{
+  "id": "clnote1",
+  "lessonId": "cllesson1",
+  "content": "Great explanation of closures here.",
+  "createdAt": "2026-05-24T10:00:00.000Z",
+  "updatedAt": "2026-05-24T10:15:00.000Z"
+}
+```
+
+**Errors**: `404` note not found (user has not yet written a note for this lesson).
+
+---
+
+#### `PUT /api/v1/lessons/:lessonId/notes`
+**Auth**: Required
+
+Creates the note if it does not exist; updates it if it does (upsert).
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `content` | string | Yes | 1–10,000 characters |
+
+**Response** (`200`): `NoteResponseDto`.
+
+---
+
+#### `DELETE /api/v1/lessons/:lessonId/notes`
+**Auth**: Required
+
+**Response** (`204`): No body.
+
+**Errors**: `404` note not found.
+
+---
+
+### Bookmarks
+
+Users can bookmark any lesson for quick retrieval later. One bookmark per (user, lesson) pair.
+
+#### `GET /api/v1/bookmarks`
+**Auth**: Required
+
+**Query Parameters**: Pagination (`page`, `limit`).
+
+**Response** (`200`): Paginated list of `BookmarkResponseDto`.
+```json
+{
+  "id": "clbookmark1",
+  "lessonId": "cllesson1",
+  "lessonTitle": "Introduction to Variables",
+  "lessonType": "VIDEO",
+  "moduleId": "clmod1",
+  "courseId": "clcourse1",
+  "courseTitle": "TypeScript de Cero a Experto",
+  "createdAt": "2026-05-24T10:00:00.000Z"
+}
+```
+
+---
+
+#### `GET /api/v1/bookmarks/:lessonId/check`
+**Auth**: Required
+
+Check whether the current user has bookmarked a specific lesson — useful for toggling a bookmark icon without fetching the full list.
+
+**Response** (`200`): `CheckBookmarkResponseDto`.
+```json
+{ "bookmarked": true }
+```
+
+---
+
+#### `POST /api/v1/bookmarks`
+**Auth**: Required
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `lessonId` | UUID | Yes | Lesson to bookmark |
+
+**Response** (`201`): `BookmarkResponseDto`.
+
+**Errors**: `409` lesson already bookmarked.
+
+---
+
+#### `DELETE /api/v1/bookmarks/:lessonId`
+**Auth**: Required
+
+**Response** (`204`): No body.
+
+**Errors**: `404` bookmark not found.
+
+---
+
+### Certificates
+
+Certificates are issued when a student completes a course. Each certificate has a unique `certificateCode` used for public verification and PDF download.
+
+#### `POST /api/v1/certificates`
+**Auth**: Required
+
+Issues a certificate for a completed enrollment. Idempotent — if a certificate for this enrollment already exists, the existing record is returned (not duplicated).
+
+**Request Body**:
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `enrollmentId` | UUID | Yes | Must belong to the caller and have `status: "COMPLETED"` |
+
+**Response** (`201`): `CertificateResponseDto`.
+```json
+{
+  "id": "clcert1",
+  "certificateCode": "clxyz-unique-code",
+  "userId": "cluser1",
+  "courseId": "clcourse1",
+  "enrollmentId": "clenroll1",
+  "issuedAt": "2026-05-24T10:00:00.000Z",
+  "finalGrade": 92.0,
+  "course": {
+    "title": "TypeScript de Cero a Experto",
+    "slug": "typescript-de-cero-a-experto"
+  },
+  "instructor": {
+    "firstName": "Luis",
+    "lastName": "Quiroz"
+  }
+}
+```
+
+**Errors**: `403` enrollment does not belong to caller or course is not COMPLETED.
+
+---
+
+#### `GET /api/v1/certificates`
+**Auth**: Required
+
+**Response** (`200`): Array of `CertificateResponseDto` for the current user.
+
+---
+
+#### `GET /api/v1/certificates/:certificateCode`
+**Auth**: None (`@Public`)
+
+Retrieve certificate data for public display / verification. The `certificateCode` is the unique string from `CertificateResponseDto.certificateCode`.
+
+**Response** (`200`): `CertificateResponseDto`.
+
+**Errors**: `404` certificate not found.
+
+---
+
+#### `GET /api/v1/certificates/:certificateCode/download`
+**Auth**: None (`@Public`)
+
+Streams the certificate as a PDF file. Suitable for direct `<a href="...">` download links.
+
+**Response** (`200`): Binary PDF stream.
+
+| Response Header | Value |
+|-----------------|-------|
+| `Content-Type` | `application/pdf` |
+| `Content-Disposition` | `attachment; filename="certificate-<code>.pdf"` |
+| `Content-Length` | PDF byte count |
+
+**Errors**: `404` certificate not found.
+
+---
+
 ## 7. WebSocket Events
 
 Authentication is required for both namespaces. Pass the access token in the Socket.io handshake:
@@ -2295,6 +2808,7 @@ Handles real-time private messaging.
 ```typescript
 enum UserRole        { STUDENT | INSTRUCTOR | ADMIN }
 enum CourseStatus    { DRAFT | PUBLISHED | ARCHIVED }
+enum EnrollmentType  { FREE | ASSIGNED | CODE | PAID }
 enum EnrollmentStatus { ACTIVE | COMPLETED | CANCELLED }
 enum LessonType      { VIDEO | TEXT | QUIZ | ASSIGNMENT }
 enum QuestionType    { MULTIPLE_CHOICE | SINGLE_CHOICE | TRUE_FALSE | SHORT_TEXT | LONG_TEXT }
@@ -2302,6 +2816,7 @@ enum GradingType     { AUTOMATIC | MANUAL }
 enum RatingScale     { STARS_5 | NUMERIC_10 | NUMERIC_100 }
 enum NotificationType { ENROLLMENT | NEW_LESSON | FORUM_REPLY | ASSIGNMENT_GRADED | QUIZ_PASSED | QUIZ_FAILED | COURSE_COMPLETED | ANNOUNCEMENT }
 enum CalendarEventType { ASSIGNMENT_DUE | QUIZ_DUE | LESSON_AVAILABLE | COURSE_START | COURSE_END | CUSTOM }
+enum GlobalAnnouncementType { INFO | WARNING | MAINTENANCE | SUCCESS }
 ```
 
 ### User
@@ -2328,6 +2843,7 @@ enum CalendarEventType { ASSIGNMENT_DUE | QUIZ_DUE | LESSON_AVAILABLE | COURSE_S
 | `description` | string \| null | |
 | `coverUrl` | string \| null | |
 | `status` | CourseStatus | Default: `DRAFT` |
+| `enrollmentType` | EnrollmentType | Default: `FREE`. Controls who can self-enroll. |
 | `price` | number \| null | USD; `null` = free |
 | `instructorId` | string | FK to User |
 | `categoryId` | string \| null | FK to Category |
@@ -2378,6 +2894,21 @@ enum CalendarEventType { ASSIGNMENT_DUE | QUIZ_DUE | LESSON_AVAILABLE | COURSE_S
 | `enrolledAt` | Date | |
 | `updatedAt` | Date | |
 | `finalGrade` | number \| null | Calculated weighted grade (0–100) |
+
+### EnrollmentCode
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string (cuid) | |
+| `courseId` | string | FK to Course |
+| `code` | string | Unique across all courses |
+| `maxUses` | integer \| null | `null` = unlimited |
+| `usedCount` | integer | Incremented on each successful redemption |
+| `expiresAt` | Date \| null | `null` = never expires |
+| `isActive` | boolean | Set to `false` by soft-delete |
+| `createdAt` | Date | |
+
+---
 
 ### LessonProgress
 
