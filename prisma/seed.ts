@@ -4,6 +4,7 @@ import {
   PrismaClient,
   UserRole,
   CourseStatus,
+  EnrollmentType,
   LessonType,
   QuestionType,
   EnrollmentStatus,
@@ -98,23 +99,32 @@ async function main(): Promise<void> {
     console.error('❌ Categories failed', e);
   }
 
-  // ── 3. Courses ─────────────────────────────────────────────────────────────
+  // ── 3. Courses (existing 5 + 6 new) ───────────────────────────────────────
   let c1Id = '';
   let c2Id = '';
   let c3Id = '';
   let c4Id = '';
   let c5Id = '';
+  // New courses
+  let c6Id = '';
+  let c7Id = '';
+  let c8Id = '';
+  let c9Id = '';
+  let c10Id = '';
+  let c11Id = '';
 
   try {
+    // Course 1 — TypeScript → PAID
     const c1 = await prisma.course.upsert({
       where: { slug: 'typescript-de-cero-a-experto' },
-      update: {},
+      update: { enrollmentType: EnrollmentType.PAID, status: CourseStatus.PUBLISHED },
       create: {
         title: 'TypeScript de Cero a Experto',
         slug: 'typescript-de-cero-a-experto',
         description:
           'Aprende TypeScript desde los fundamentos hasta técnicas avanzadas en este curso completo.',
         status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.PAID,
         price: '29.99',
         instructorId: adminUser.id,
         categoryId: categories['desarrollo-web'] ?? null,
@@ -122,28 +132,32 @@ async function main(): Promise<void> {
     });
     c1Id = c1.id;
 
+    // Course 2 — Python → FREE
     const c2 = await prisma.course.upsert({
       where: { slug: 'python-para-data-science' },
-      update: {},
+      update: { enrollmentType: EnrollmentType.FREE, status: CourseStatus.PUBLISHED },
       create: {
         title: 'Python para Data Science',
         slug: 'python-para-data-science',
         description: 'Domina Python y las principales librerías para ciencia de datos.',
         status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.FREE,
         instructorId: adminUser.id,
         categoryId: categories['ciencia-de-datos'] ?? null,
       },
     });
     c2Id = c2.id;
 
+    // Course 3 — Figma → ASSIGNED
     const c3 = await prisma.course.upsert({
       where: { slug: 'diseno-de-interfaces-con-figma' },
-      update: {},
+      update: { enrollmentType: EnrollmentType.ASSIGNED, status: CourseStatus.PUBLISHED },
       create: {
         title: 'Diseño de Interfaces con Figma',
         slug: 'diseno-de-interfaces-con-figma',
         description: 'Aprende a diseñar interfaces profesionales usando Figma desde cero.',
         status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.ASSIGNED,
         price: '19.99',
         instructorId: adminUser.id,
         categoryId: categories['diseno-ux-ui'] ?? null,
@@ -151,14 +165,16 @@ async function main(): Promise<void> {
     });
     c3Id = c3.id;
 
+    // Course 4 — Machine Learning → CODE
     const c4 = await prisma.course.upsert({
       where: { slug: 'machine-learning-practico' },
-      update: {},
+      update: { enrollmentType: EnrollmentType.CODE, status: CourseStatus.PUBLISHED },
       create: {
         title: 'Machine Learning Práctico',
         slug: 'machine-learning-practico',
         description: 'Implementa algoritmos de ML con Python, scikit-learn y TensorFlow.',
         status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.CODE,
         price: '49.99',
         instructorId: adminUser.id,
         categoryId: categories['inteligencia-artificial'] ?? null,
@@ -166,21 +182,124 @@ async function main(): Promise<void> {
     });
     c4Id = c4.id;
 
+    // Course 5 — SEO → FREE, now PUBLISHED
     const c5 = await prisma.course.upsert({
       where: { slug: 'seo-y-marketing-de-contenidos' },
-      update: {},
+      update: { enrollmentType: EnrollmentType.FREE, status: CourseStatus.PUBLISHED },
       create: {
         title: 'SEO y Marketing de Contenidos',
         slug: 'seo-y-marketing-de-contenidos',
         description:
           'Estrategias de SEO y marketing de contenidos para aumentar tu visibilidad online.',
-        status: CourseStatus.DRAFT,
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.FREE,
         price: '24.99',
         instructorId: adminUser.id,
         categoryId: categories['marketing-digital'] ?? null,
       },
     });
     c5Id = c5.id;
+
+    // Course 6 — React con Next.js → FREE
+    const c6 = await prisma.course.upsert({
+      where: { slug: 'react-con-nextjs' },
+      update: { enrollmentType: EnrollmentType.FREE },
+      create: {
+        title: 'React con Next.js',
+        slug: 'react-con-nextjs',
+        description: 'Construye aplicaciones web modernas con React y Next.js desde cero.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.FREE,
+        instructorId: adminUser.id,
+        categoryId: categories['desarrollo-web'] ?? null,
+      },
+    });
+    c6Id = c6.id;
+
+    // Course 7 — SQL y Bases de Datos → FREE
+    const c7 = await prisma.course.upsert({
+      where: { slug: 'sql-y-bases-de-datos' },
+      update: { enrollmentType: EnrollmentType.FREE },
+      create: {
+        title: 'SQL y Bases de Datos',
+        slug: 'sql-y-bases-de-datos',
+        description:
+          'Aprende SQL desde los fundamentos y domina el diseño de bases de datos relacionales.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.FREE,
+        instructorId: adminUser.id,
+        categoryId: categories['desarrollo-web'] ?? null,
+      },
+    });
+    c7Id = c7.id;
+
+    // Course 8 — Docker y DevOps → ASSIGNED
+    const c8 = await prisma.course.upsert({
+      where: { slug: 'docker-y-devops' },
+      update: { enrollmentType: EnrollmentType.ASSIGNED },
+      create: {
+        title: 'Docker y DevOps',
+        slug: 'docker-y-devops',
+        description:
+          'Domina Docker, Kubernetes y las prácticas DevOps para despliegue de aplicaciones.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.ASSIGNED,
+        instructorId: adminUser.id,
+        categoryId: categories['desarrollo-web'] ?? null,
+      },
+    });
+    c8Id = c8.id;
+
+    // Course 9 — Diseño Gráfico con Adobe XD → PAID
+    const c9 = await prisma.course.upsert({
+      where: { slug: 'diseno-grafico-con-adobe-xd' },
+      update: { enrollmentType: EnrollmentType.PAID },
+      create: {
+        title: 'Diseño Gráfico con Adobe XD',
+        slug: 'diseno-grafico-con-adobe-xd',
+        description: 'Aprende a crear prototipos y diseños profesionales con Adobe XD.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.PAID,
+        price: '24.99',
+        instructorId: adminUser.id,
+        categoryId: categories['diseno-ux-ui'] ?? null,
+      },
+    });
+    c9Id = c9.id;
+
+    // Course 10 — Estadística para Data Science → CODE
+    const c10 = await prisma.course.upsert({
+      where: { slug: 'estadistica-para-data-science' },
+      update: { enrollmentType: EnrollmentType.CODE },
+      create: {
+        title: 'Estadística para Data Science',
+        slug: 'estadistica-para-data-science',
+        description:
+          'Fundamentos estadísticos esenciales para ciencia de datos y machine learning.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.CODE,
+        instructorId: adminUser.id,
+        categoryId: categories['ciencia-de-datos'] ?? null,
+      },
+    });
+    c10Id = c10.id;
+
+    // Course 11 — Redes Neuronales Avanzadas → PAID
+    const c11 = await prisma.course.upsert({
+      where: { slug: 'redes-neuronales-avanzadas' },
+      update: { enrollmentType: EnrollmentType.PAID },
+      create: {
+        title: 'Redes Neuronales Avanzadas',
+        slug: 'redes-neuronales-avanzadas',
+        description: 'Arquitecturas avanzadas de deep learning: CNNs, RNNs, Transformers y más.',
+        status: CourseStatus.PUBLISHED,
+        enrollmentType: EnrollmentType.PAID,
+        price: '59.99',
+        instructorId: adminUser.id,
+        categoryId: categories['inteligencia-artificial'] ?? null,
+      },
+    });
+    c11Id = c11.id;
 
     console.log('✅ Courses created');
   } catch (e) {
@@ -194,11 +313,51 @@ async function main(): Promise<void> {
   let quizLessonId = '';
 
   try {
-    if (c1Id) {
-      type LessonDef = { title: string; order: number; type: LessonType; isPreview?: boolean };
-      type ModDef = { title: string; order: number; lessons: LessonDef[] };
+    // Helper to upsert a module and its lessons, returning lesson IDs
+    type LessonSpec = {
+      title: string;
+      order: number;
+      type: LessonType;
+      isPreview?: boolean;
+      isPublished?: boolean;
+    };
+    type ModSpec = { title: string; order: number; lessons: LessonSpec[]; isPublished?: boolean };
 
-      const c1Mods: ModDef[] = [
+    async function upsertModules(courseId: string, mods: ModSpec[]): Promise<string[]> {
+      const lessonIds: string[] = [];
+      for (const mod of mods) {
+        const m = await prisma.courseModule.upsert({
+          where: { courseId_order: { courseId, order: mod.order } },
+          update: {},
+          create: {
+            courseId,
+            title: mod.title,
+            order: mod.order,
+            isPublished: mod.isPublished ?? true,
+          },
+        });
+        for (const les of mod.lessons) {
+          const l = await prisma.lesson.upsert({
+            where: { moduleId_order: { moduleId: m.id, order: les.order } },
+            update: {},
+            create: {
+              moduleId: m.id,
+              title: les.title,
+              order: les.order,
+              type: les.type,
+              isPreview: les.isPreview ?? false,
+              isPublished: les.isPublished ?? true,
+              content: `Contenido de la lección: ${les.title}`,
+            },
+          });
+          lessonIds.push(l.id);
+        }
+      }
+      return lessonIds;
+    }
+
+    if (c1Id) {
+      const ids = await upsertModules(c1Id, [
         {
           title: 'Fundamentos',
           order: 1,
@@ -226,38 +385,13 @@ async function main(): Promise<void> {
             { title: 'Evaluación final', order: 3, type: LessonType.QUIZ },
           ],
         },
-      ];
-
-      for (const mod of c1Mods) {
-        const m = await prisma.courseModule.upsert({
-          where: { courseId_order: { courseId: c1Id, order: mod.order } },
-          update: {},
-          create: { courseId: c1Id, title: mod.title, order: mod.order, isPublished: true },
-        });
-        for (const les of mod.lessons) {
-          const l = await prisma.lesson.upsert({
-            where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: {},
-            create: {
-              moduleId: m.id,
-              title: les.title,
-              order: les.order,
-              type: les.type,
-              isPreview: les.isPreview ?? false,
-              isPublished: true,
-              content: `Contenido de la lección: ${les.title}`,
-            },
-          });
-          c1Lessons.push(l.id);
-          if (les.type === LessonType.QUIZ && mod.order === 3) {
-            quizLessonId = l.id;
-          }
-        }
-      }
+      ]);
+      c1Lessons.push(...ids);
+      quizLessonId = ids[ids.length - 1]; // last lesson is the QUIZ
     }
 
     if (c2Id) {
-      const c2Mods = [
+      const ids = await upsertModules(c2Id, [
         {
           title: 'Introducción a Python',
           order: 1,
@@ -276,34 +410,12 @@ async function main(): Promise<void> {
             { title: 'Visualización con Matplotlib', order: 3, type: LessonType.TEXT },
           ],
         },
-      ];
-      for (const mod of c2Mods) {
-        const m = await prisma.courseModule.upsert({
-          where: { courseId_order: { courseId: c2Id, order: mod.order } },
-          update: {},
-          create: { courseId: c2Id, title: mod.title, order: mod.order, isPublished: true },
-        });
-        for (const les of mod.lessons) {
-          const l = await prisma.lesson.upsert({
-            where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: {},
-            create: {
-              moduleId: m.id,
-              title: les.title,
-              order: les.order,
-              type: les.type,
-              isPreview: false,
-              isPublished: true,
-              content: `Contenido de la lección: ${les.title}`,
-            },
-          });
-          c2Lessons.push(l.id);
-        }
-      }
+      ]);
+      c2Lessons.push(...ids);
     }
 
     if (c3Id) {
-      const c3Mods = [
+      const ids = await upsertModules(c3Id, [
         {
           title: 'Fundamentos de Figma',
           order: 1,
@@ -322,34 +434,12 @@ async function main(): Promise<void> {
             { title: 'Entrega al desarrollador', order: 3, type: LessonType.TEXT },
           ],
         },
-      ];
-      for (const mod of c3Mods) {
-        const m = await prisma.courseModule.upsert({
-          where: { courseId_order: { courseId: c3Id, order: mod.order } },
-          update: {},
-          create: { courseId: c3Id, title: mod.title, order: mod.order, isPublished: true },
-        });
-        for (const les of mod.lessons) {
-          const l = await prisma.lesson.upsert({
-            where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: {},
-            create: {
-              moduleId: m.id,
-              title: les.title,
-              order: les.order,
-              type: les.type,
-              isPreview: false,
-              isPublished: true,
-              content: `Contenido de la lección: ${les.title}`,
-            },
-          });
-          c3Lessons.push(l.id);
-        }
-      }
+      ]);
+      c3Lessons.push(...ids);
     }
 
     if (c4Id) {
-      const c4Mods = [
+      await upsertModules(c4Id, [
         {
           title: 'Fundamentos de ML',
           order: 1,
@@ -377,60 +467,176 @@ async function main(): Promise<void> {
             { title: 'Proyecto final de ML', order: 3, type: LessonType.TEXT },
           ],
         },
-      ];
-      for (const mod of c4Mods) {
-        const m = await prisma.courseModule.upsert({
-          where: { courseId_order: { courseId: c4Id, order: mod.order } },
-          update: {},
-          create: { courseId: c4Id, title: mod.title, order: mod.order, isPublished: true },
-        });
-        for (const les of mod.lessons) {
-          await prisma.lesson.upsert({
-            where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: {},
-            create: {
-              moduleId: m.id,
-              title: les.title,
-              order: les.order,
-              type: les.type,
-              isPreview: false,
-              isPublished: true,
-              content: `Contenido de la lección: ${les.title}`,
-            },
-          });
-        }
-      }
+      ]);
     }
 
     if (c5Id) {
-      const m = await prisma.courseModule.upsert({
-        where: { courseId_order: { courseId: c5Id, order: 1 } },
-        update: {},
-        create: {
-          courseId: c5Id,
+      await upsertModules(c5Id, [
+        {
           title: 'Introducción al SEO',
           order: 1,
-          isPublished: false,
+          lessons: [
+            { title: '¿Qué es el SEO?', order: 1, type: LessonType.TEXT },
+            { title: 'Investigación de palabras clave', order: 2, type: LessonType.TEXT },
+          ],
         },
-      });
-      for (const les of [
-        { title: '¿Qué es el SEO?', order: 1 },
-        { title: 'Investigación de palabras clave', order: 2 },
-      ]) {
-        await prisma.lesson.upsert({
-          where: { moduleId_order: { moduleId: m.id, order: les.order } },
-          update: {},
-          create: {
-            moduleId: m.id,
-            title: les.title,
-            order: les.order,
-            type: LessonType.TEXT,
-            isPreview: false,
-            isPublished: false,
-            content: `Contenido de la lección: ${les.title}`,
-          },
-        });
-      }
+      ]);
+    }
+
+    // ── New courses ──────────────────────────────────────────────────────────
+
+    if (c6Id) {
+      await upsertModules(c6Id, [
+        {
+          title: 'Fundamentos de React',
+          order: 1,
+          lessons: [
+            { title: 'Introducción a React', order: 1, type: LessonType.TEXT, isPreview: true },
+            { title: 'Componentes y props', order: 2, type: LessonType.VIDEO },
+            { title: 'Estado y hooks', order: 3, type: LessonType.TEXT },
+            { title: 'React Router', order: 4, type: LessonType.VIDEO },
+          ],
+        },
+        {
+          title: 'Next.js en Profundidad',
+          order: 2,
+          lessons: [
+            { title: 'App Router y Server Components', order: 1, type: LessonType.TEXT },
+            { title: 'Data fetching en Next.js', order: 2, type: LessonType.VIDEO },
+            { title: 'Optimización y despliegue', order: 3, type: LessonType.TEXT },
+            { title: 'Proyecto: Blog con Next.js', order: 4, type: LessonType.VIDEO },
+          ],
+        },
+      ]);
+    }
+
+    if (c7Id) {
+      await upsertModules(c7Id, [
+        {
+          title: 'SQL Básico',
+          order: 1,
+          lessons: [
+            {
+              title: 'Introducción a las bases de datos',
+              order: 1,
+              type: LessonType.TEXT,
+              isPreview: true,
+            },
+            { title: 'SELECT, FROM y WHERE', order: 2, type: LessonType.TEXT },
+            { title: 'JOINs y relaciones', order: 3, type: LessonType.VIDEO },
+          ],
+        },
+        {
+          title: 'SQL Avanzado',
+          order: 2,
+          lessons: [
+            { title: 'Subconsultas y CTEs', order: 1, type: LessonType.TEXT },
+            { title: 'Índices y optimización', order: 2, type: LessonType.VIDEO },
+            { title: 'Stored procedures y triggers', order: 3, type: LessonType.TEXT },
+          ],
+        },
+      ]);
+    }
+
+    if (c8Id) {
+      await upsertModules(c8Id, [
+        {
+          title: 'Docker Esencial',
+          order: 1,
+          lessons: [
+            { title: '¿Qué es Docker?', order: 1, type: LessonType.TEXT },
+            { title: 'Imágenes y contenedores', order: 2, type: LessonType.VIDEO },
+            { title: 'Docker Compose', order: 3, type: LessonType.TEXT },
+          ],
+        },
+        {
+          title: 'DevOps y CI/CD',
+          order: 2,
+          lessons: [
+            { title: 'Pipelines de CI/CD', order: 1, type: LessonType.TEXT },
+            { title: 'Kubernetes básico', order: 2, type: LessonType.VIDEO },
+            { title: 'Monitoreo y logs', order: 3, type: LessonType.TEXT },
+          ],
+        },
+      ]);
+    }
+
+    if (c9Id) {
+      await upsertModules(c9Id, [
+        {
+          title: 'Diseño con Adobe XD',
+          order: 1,
+          lessons: [
+            { title: 'Interfaz de Adobe XD', order: 1, type: LessonType.TEXT },
+            { title: 'Wireframing y mockups', order: 2, type: LessonType.VIDEO },
+            { title: 'Sistemas de diseño', order: 3, type: LessonType.TEXT },
+          ],
+        },
+        {
+          title: 'Prototipado Avanzado',
+          order: 2,
+          lessons: [
+            { title: 'Animaciones y transiciones', order: 1, type: LessonType.VIDEO },
+            { title: 'Pruebas de usabilidad', order: 2, type: LessonType.TEXT },
+            { title: 'Exportar y entregar assets', order: 3, type: LessonType.TEXT },
+          ],
+        },
+      ]);
+    }
+
+    if (c10Id) {
+      await upsertModules(c10Id, [
+        {
+          title: 'Estadística Descriptiva',
+          order: 1,
+          lessons: [
+            { title: 'Media, mediana y moda', order: 1, type: LessonType.TEXT },
+            { title: 'Distribuciones de probabilidad', order: 2, type: LessonType.VIDEO },
+            { title: 'Visualización estadística', order: 3, type: LessonType.TEXT },
+          ],
+        },
+        {
+          title: 'Estadística Inferencial',
+          order: 2,
+          lessons: [
+            { title: 'Pruebas de hipótesis', order: 1, type: LessonType.TEXT },
+            { title: 'Regresión estadística', order: 2, type: LessonType.VIDEO },
+            { title: 'Análisis bayesiano', order: 3, type: LessonType.TEXT },
+          ],
+        },
+      ]);
+    }
+
+    if (c11Id) {
+      await upsertModules(c11Id, [
+        {
+          title: 'Redes Convolucionales',
+          order: 1,
+          lessons: [
+            { title: 'CNNs y visión por computadora', order: 1, type: LessonType.TEXT },
+            { title: 'Implementación con PyTorch', order: 2, type: LessonType.VIDEO },
+            { title: 'Transfer Learning', order: 3, type: LessonType.TEXT },
+          ],
+        },
+        {
+          title: 'Redes Recurrentes',
+          order: 2,
+          lessons: [
+            { title: 'LSTMs y GRUs', order: 1, type: LessonType.TEXT },
+            { title: 'NLP con redes recurrentes', order: 2, type: LessonType.VIDEO },
+            { title: 'Generación de texto', order: 3, type: LessonType.TEXT },
+          ],
+        },
+        {
+          title: 'Transformers y Atención',
+          order: 3,
+          lessons: [
+            { title: 'Mecanismo de atención', order: 1, type: LessonType.TEXT },
+            { title: 'Fine-tuning de LLMs', order: 2, type: LessonType.VIDEO },
+            { title: 'Proyecto final', order: 3, type: LessonType.TEXT },
+          ],
+        },
+      ]);
     }
 
     console.log('✅ Modules and lessons created');
@@ -438,7 +644,7 @@ async function main(): Promise<void> {
     console.error('❌ Modules/Lessons failed', e);
   }
 
-  // ── 5. Quiz (Course 1 Module 3) ────────────────────────────────────────────
+  // ── 5. Quiz (Course 1 Module 3 — Evaluación final) ─────────────────────────
   try {
     if (quizLessonId) {
       await prisma.quizSettings.upsert({
@@ -546,14 +752,37 @@ async function main(): Promise<void> {
     console.error('❌ Quiz failed', e);
   }
 
-  // ── 6. Enrollments ─────────────────────────────────────────────────────────
+  // ── 6. Enrollment Codes ────────────────────────────────────────────────────
+  try {
+    if (c4Id) {
+      await prisma.enrollmentCode.upsert({
+        where: { code: 'ML2026' },
+        update: {},
+        create: { courseId: c4Id, code: 'ML2026', maxUses: 50 },
+      });
+    }
+    if (c10Id) {
+      await prisma.enrollmentCode.upsert({
+        where: { code: 'STATS2026' },
+        update: {},
+        create: { courseId: c10Id, code: 'STATS2026', maxUses: 30 },
+      });
+    }
+    console.log('✅ Enrollment codes created');
+  } catch (e) {
+    console.error('❌ Enrollment codes failed', e);
+  }
+
+  // ── 7. Enrollments ─────────────────────────────────────────────────────────
   let enrollC1: { id: string } | null = null;
   let enrollC2: { id: string } | null = null;
   let enrollC3: { id: string } | null = null;
 
+  // FREE courses: c2 (Python), c5 (SEO), c6 (React), c7 (SQL)
   try {
     const now = new Date();
 
+    // ldquiroz enrollments (existing)
     if (c1Id) {
       enrollC1 = await prisma.enrollment.upsert({
         where: { userId_courseId: { userId: adminUser.id, courseId: c1Id } },
@@ -561,7 +790,6 @@ async function main(): Promise<void> {
         create: { userId: adminUser.id, courseId: c1Id, status: EnrollmentStatus.ACTIVE },
       });
     }
-
     if (c2Id) {
       enrollC2 = await prisma.enrollment.upsert({
         where: { userId_courseId: { userId: adminUser.id, courseId: c2Id } },
@@ -569,7 +797,6 @@ async function main(): Promise<void> {
         create: { userId: adminUser.id, courseId: c2Id, status: EnrollmentStatus.ACTIVE },
       });
     }
-
     if (c3Id) {
       enrollC3 = await prisma.enrollment.upsert({
         where: { userId_courseId: { userId: adminUser.id, courseId: c3Id } },
@@ -584,47 +811,38 @@ async function main(): Promise<void> {
       });
     }
 
-    // 5 students → course 1
-    for (let i = 0; i < 5 && i < studentUsers.length; i++) {
-      if (c1Id) {
-        await prisma.enrollment.upsert({
-          where: { userId_courseId: { userId: studentUsers[i].id, courseId: c1Id } },
-          update: {},
-          create: {
-            userId: studentUsers[i].id,
-            courseId: c1Id,
-            status: EnrollmentStatus.ACTIVE,
-          },
-        });
-      }
+    // ldquiroz in all FREE courses (c5, c6, c7)
+    for (const courseId of [c5Id, c6Id, c7Id].filter(Boolean)) {
+      await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: adminUser.id, courseId } },
+        update: {},
+        create: { userId: adminUser.id, courseId, status: EnrollmentStatus.ACTIVE },
+      });
     }
 
-    // 3 students (6–8) → course 2
-    for (let i = 5; i < 8 && i < studentUsers.length; i++) {
-      if (c2Id) {
-        await prisma.enrollment.upsert({
-          where: { userId_courseId: { userId: studentUsers[i].id, courseId: c2Id } },
-          update: {},
-          create: {
-            userId: studentUsers[i].id,
-            courseId: c2Id,
-            status: EnrollmentStatus.ACTIVE,
-          },
-        });
-      }
-    }
+    // Student enrollments — 3-5 students per course using rotating subsets
+    const enrollments: { courseId: string; studentIndices: number[] }[] = [
+      { courseId: c1Id, studentIndices: [0, 1, 2, 3, 4] }, // 5 students — PAID
+      { courseId: c2Id, studentIndices: [5, 6, 7] }, // 3 students — FREE
+      { courseId: c3Id, studentIndices: [0, 1, 2] }, // 3 students — ASSIGNED
+      { courseId: c4Id, studentIndices: [0, 1, 2, 3, 4, 5, 6, 7] }, // 8 students — CODE
+      { courseId: c5Id, studentIndices: [3, 4, 5] }, // 3 students — FREE
+      { courseId: c6Id, studentIndices: [1, 2, 3, 4] }, // 4 students — FREE
+      { courseId: c7Id, studentIndices: [6, 7, 8] }, // 3 students — FREE
+      { courseId: c8Id, studentIndices: [0, 1, 2] }, // 3 students — ASSIGNED
+      { courseId: c9Id, studentIndices: [3, 4, 5] }, // 3 students — PAID
+      { courseId: c10Id, studentIndices: [2, 4, 6] }, // 3 students — CODE
+      { courseId: c11Id, studentIndices: [1, 3, 5, 7] }, // 4 students — PAID
+    ];
 
-    // 8 students (1–8) → course 4
-    for (let i = 0; i < 8 && i < studentUsers.length; i++) {
-      if (c4Id) {
+    for (const { courseId, studentIndices } of enrollments) {
+      if (!courseId) continue;
+      for (const idx of studentIndices) {
+        const student = studentUsers[idx];
         await prisma.enrollment.upsert({
-          where: { userId_courseId: { userId: studentUsers[i].id, courseId: c4Id } },
+          where: { userId_courseId: { userId: student.id, courseId } },
           update: {},
-          create: {
-            userId: studentUsers[i].id,
-            courseId: c4Id,
-            status: EnrollmentStatus.ACTIVE,
-          },
+          create: { userId: student.id, courseId, status: EnrollmentStatus.ACTIVE },
         });
       }
     }
@@ -634,17 +852,15 @@ async function main(): Promise<void> {
     console.error('❌ Enrollments failed', e);
   }
 
-  // ── 7. Lesson Progress ─────────────────────────────────────────────────────
+  // ── 8. Lesson Progress (ldquiroz only) ─────────────────────────────────────
   try {
     const now = new Date();
 
-    // Course 1: first 3 lessons (40% of 8)
+    // Course 1: first 3 lessons (40% of 9)
     if (enrollC1) {
       for (let i = 0; i < 3 && i < c1Lessons.length; i++) {
         await prisma.lessonProgress.upsert({
-          where: {
-            enrollmentId_lessonId: { enrollmentId: enrollC1.id, lessonId: c1Lessons[i] },
-          },
+          where: { enrollmentId_lessonId: { enrollmentId: enrollC1.id, lessonId: c1Lessons[i] } },
           update: {},
           create: {
             enrollmentId: enrollC1.id,
@@ -660,9 +876,7 @@ async function main(): Promise<void> {
     if (enrollC2) {
       for (let i = 0; i < 5 && i < c2Lessons.length; i++) {
         await prisma.lessonProgress.upsert({
-          where: {
-            enrollmentId_lessonId: { enrollmentId: enrollC2.id, lessonId: c2Lessons[i] },
-          },
+          where: { enrollmentId_lessonId: { enrollmentId: enrollC2.id, lessonId: c2Lessons[i] } },
           update: {},
           create: {
             enrollmentId: enrollC2.id,
@@ -674,18 +888,13 @@ async function main(): Promise<void> {
       }
     }
 
-    // Course 3: all lessons completed
+    // Course 3: all 6 lessons completed
     if (enrollC3) {
       for (const lessonId of c3Lessons) {
         await prisma.lessonProgress.upsert({
           where: { enrollmentId_lessonId: { enrollmentId: enrollC3.id, lessonId } },
           update: {},
-          create: {
-            enrollmentId: enrollC3.id,
-            lessonId,
-            startedAt: now,
-            completedAt: now,
-          },
+          create: { enrollmentId: enrollC3.id, lessonId, startedAt: now, completedAt: now },
         });
       }
     }
@@ -695,7 +904,7 @@ async function main(): Promise<void> {
     console.error('❌ Lesson progress failed', e);
   }
 
-  // ── 8. Announcements ───────────────────────────────────────────────────────
+  // ── 9. Announcements ───────────────────────────────────────────────────────
   try {
     if (c1Id) {
       for (const ann of [
@@ -723,18 +932,13 @@ async function main(): Promise<void> {
     console.error('❌ Announcements failed', e);
   }
 
-  // ── 9. Ratings ─────────────────────────────────────────────────────────────
+  // ── 10. Ratings ────────────────────────────────────────────────────────────
   try {
     if (c3Id) {
       await prisma.courseRating.upsert({
         where: { userId_courseId: { userId: adminUser.id, courseId: c3Id } },
         update: {},
-        create: {
-          userId: adminUser.id,
-          courseId: c3Id,
-          score: 90,
-          review: 'Excelente curso',
-        },
+        create: { userId: adminUser.id, courseId: c3Id, score: 90, review: 'Excelente curso' },
       });
     }
 
@@ -753,7 +957,7 @@ async function main(): Promise<void> {
     console.error('❌ Ratings failed', e);
   }
 
-  // ── 10. Forum Thread ───────────────────────────────────────────────────────
+  // ── 11. Forum Thread ───────────────────────────────────────────────────────
   try {
     if (c1Id && studentUsers.length >= 2) {
       let thread = await prisma.forumThread.findFirst({
@@ -761,11 +965,7 @@ async function main(): Promise<void> {
       });
       if (!thread) {
         thread = await prisma.forumThread.create({
-          data: {
-            courseId: c1Id,
-            authorId: adminUser.id,
-            title: '¿Cómo instalar TypeScript?',
-          },
+          data: { courseId: c1Id, authorId: adminUser.id, title: '¿Cómo instalar TypeScript?' },
         });
       }
 
@@ -779,7 +979,7 @@ async function main(): Promise<void> {
         {
           authorId: studentUsers[0].id,
           content:
-            'También lo pueden instalar localmente en el proyecto con `npm install --save-dev typescript`. Así cada proyecto usa su propia versión.',
+            'También lo pueden instalar localmente con `npm install --save-dev typescript`. Así cada proyecto usa su propia versión.',
           parentId: null as string | null,
         },
         {
@@ -790,17 +990,17 @@ async function main(): Promise<void> {
         },
       ];
 
-      // Create the first post and capture its id for replies
       for (let i = 0; i < postDefs.length; i++) {
+        const pd = postDefs[i];
         const existing = await prisma.forumPost.findFirst({
-          where: { threadId: thread.id, authorId: postDefs[i].authorId },
+          where: { threadId: thread.id, authorId: pd.authorId },
         });
         if (!existing) {
           const post = await prisma.forumPost.create({
             data: {
               threadId: thread.id,
-              authorId: postDefs[i].authorId,
-              content: postDefs[i].content,
+              authorId: pd.authorId,
+              content: pd.content,
               parentId: i > 0 ? postDefs[0].parentId : null,
             },
           });
@@ -816,7 +1016,7 @@ async function main(): Promise<void> {
     console.error('❌ Forum thread failed', e);
   }
 
-  // ── 11. Global Announcement ────────────────────────────────────────────────
+  // ── 12. Global Announcement ────────────────────────────────────────────────
   try {
     const existing = await prisma.globalAnnouncement.findFirst({
       where: { title: '¡Bienvenidos a NexusLMS!' },

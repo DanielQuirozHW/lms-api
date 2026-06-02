@@ -81,6 +81,7 @@ export class CoursesRepository {
       description: course.description,
       coverUrl: course.coverUrl,
       status: course.status,
+      enrollmentType: course.enrollmentType,
       price: course.price,
       instructorId: course.instructorId,
       categoryId: course.categoryId,

@@ -6,13 +6,14 @@ import {
 } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Enrollment } from '@prisma/client';
-import { EnrollmentStatus, UserRole } from '@prisma/client';
+import { EnrollmentStatus, EnrollmentType, UserRole } from '@prisma/client';
 import type { PaginatedResult } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CourseDetailResponseDto } from '../courses/dto/course-response.dto';
 import { CoursesService } from '../courses/courses.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EnrollmentCodesRepository } from './enrollment-codes.repository';
 import type { CourseWithSettings } from './enrollments.repository';
 import { EnrollmentsRepository } from './enrollments.repository';
 import { EnrollmentsService } from './enrollments.service';
@@ -38,6 +39,7 @@ const mockCourse: CourseWithSettings = {
   price: null,
   categoryId: null,
   status: 'PUBLISHED',
+  enrollmentType: EnrollmentType.FREE,
   instructorId: 'instructor-1',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
@@ -96,6 +98,7 @@ describe('EnrollmentsService', () => {
       | 'createCalendarEvent'
     >
   >;
+  let codesRepo: jest.Mocked<Pick<EnrollmentCodesRepository, 'findValidCode' | 'incrementUsage'>>;
   let coursesService: jest.Mocked<Pick<CoursesService, 'findOne'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'set' | 'del'>>;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
@@ -120,6 +123,10 @@ describe('EnrollmentsService', () => {
       updateCompletion: jest.fn(),
       createCalendarEvent: jest.fn().mockResolvedValue({}),
     };
+    codesRepo = {
+      findValidCode: jest.fn().mockResolvedValue(null),
+      incrementUsage: jest.fn().mockResolvedValue(undefined),
+    };
     coursesService = { findOne: jest.fn() };
     redisService = {
       set: jest.fn().mockResolvedValue('OK'),
@@ -131,6 +138,7 @@ describe('EnrollmentsService', () => {
       providers: [
         EnrollmentsService,
         { provide: EnrollmentsRepository, useValue: repo },
+        { provide: EnrollmentCodesRepository, useValue: codesRepo },
         { provide: CoursesService, useValue: coursesService },
         { provide: RedisService, useValue: redisService },
         { provide: NotificationsService, useValue: notificationsSvc },
@@ -620,6 +628,119 @@ describe('EnrollmentsService', () => {
       const result = await service.getProgressSummary('enrollment-1', 'admin-1', true);
 
       expect(result.totalLessons).toBe(0);
+    });
+  });
+
+  describe('enroll — enrollment type checks', () => {
+    const assignedCourse: CourseWithSettings = {
+      ...mockCourse,
+      enrollmentType: EnrollmentType.ASSIGNED,
+    };
+    const codeCourse: CourseWithSettings = {
+      ...mockCourse,
+      enrollmentType: EnrollmentType.CODE,
+    };
+    const paidCourse: CourseWithSettings = {
+      ...mockCourse,
+      enrollmentType: EnrollmentType.PAID,
+    };
+
+    it('should throw ForbiddenException when student tries to self-enroll in ASSIGNED course', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(assignedCourse);
+
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw ForbiddenException with Spanish message for ASSIGNED course', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(assignedCourse);
+
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        'Este curso requiere asignación por un administrador',
+      );
+    });
+
+    it('should allow admin to enroll in ASSIGNED course', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(assignedCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockAdmin, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+    });
+
+    it('should allow instructor to enroll in ASSIGNED course they do not own', async () => {
+      const otherInstructor: AuthenticatedUser = {
+        id: 'other-instructor',
+        email: 'other@test.com',
+        roles: [UserRole.INSTRUCTOR],
+      };
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(assignedCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue({ ...mockEnrollment, userId: 'other-instructor' });
+
+      const result = await service.enroll(otherInstructor, { courseId: 'course-1' });
+
+      expect(result.userId).toBe('other-instructor');
+    });
+
+    it('should throw BadRequestException when no code is provided for CODE course', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(codeCourse);
+
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException when enrollment code is invalid', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(codeCourse);
+      codesRepo.findValidCode.mockResolvedValue(null);
+
+      await expect(
+        service.enroll(mockStudent, { courseId: 'course-1', code: 'BADCODE' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should enroll successfully and increment code usage when valid code provided', async () => {
+      const validCode = {
+        id: 'code-1',
+        courseId: 'course-1',
+        code: 'ML2026',
+        maxUses: 50,
+        usedCount: 5,
+        expiresAt: null,
+        isActive: true,
+        createdAt: new Date(),
+      };
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(codeCourse);
+      codesRepo.findValidCode.mockResolvedValue(validCode);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockStudent, { courseId: 'course-1', code: 'ML2026' });
+
+      expect(result.id).toBe('enrollment-1');
+      expect(codesRepo.incrementUsage).toHaveBeenCalledWith('code-1');
+    });
+
+    it('should allow self-enrollment in PAID course', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(paidCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
     });
   });
 });

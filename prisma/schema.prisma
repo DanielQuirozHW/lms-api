@@ -79,6 +79,13 @@ enum GlobalAnnouncementType {
   SUCCESS
 }
 
+enum EnrollmentType {
+  FREE
+  ASSIGNED
+  CODE
+  PAID
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
@@ -146,9 +153,10 @@ model Course {
   slug         String       @unique
   description  String?
   coverUrl     String?      @map("cover_url")
-  status       CourseStatus @default(DRAFT)
-  price        Decimal?     @db.Decimal(10, 2)
-  instructorId String       @map("instructor_id")
+  status          CourseStatus   @default(DRAFT)
+  enrollmentType  EnrollmentType @default(FREE)  @map("enrollment_type")
+  price           Decimal?       @db.Decimal(10, 2)
+  instructorId    String         @map("instructor_id")
   categoryId   String?      @map("category_id")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
@@ -166,6 +174,7 @@ model Course {
   groups              CourseGroup[]
   calendarEvents      CalendarEvent[]
   certificates        Certificate[]
+  enrollmentCodes     EnrollmentCode[]
 
   @@index([instructorId])
   @@index([categoryId])
@@ -826,4 +835,23 @@ model Certificate {
   @@index([userId])
   @@index([courseId])
   @@map("certificates")
+}
+
+// ─── EnrollmentCode ───────────────────────────────────────────────────────────
+
+model EnrollmentCode {
+  id        String    @id @default(cuid())
+  courseId  String    @map("course_id")
+  code      String    @unique
+  maxUses   Int?      @map("max_uses")
+  usedCount Int       @default(0) @map("used_count")
+  expiresAt DateTime? @map("expires_at")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([code])
+  @@map("enrollment_codes")
 }

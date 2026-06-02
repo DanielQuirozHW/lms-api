@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CourseSettings, Enrollment } from '@prisma/client';
-import { CalendarEventType, NotificationType, UserRole } from '@prisma/client';
+import { CalendarEventType, EnrollmentType, NotificationType, UserRole } from '@prisma/client';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -18,18 +18,20 @@ import type {
   EnrollmentResponseDto,
   ProgressSummaryDto,
 } from './dto/enrollment-response.dto';
+import { EnrollmentCodesRepository } from './enrollment-codes.repository';
 import { type EnrollmentWithProgress, EnrollmentsRepository } from './enrollments.repository';
 
 @Injectable()
 export class EnrollmentsService {
   constructor(
     private readonly enrollmentsRepository: EnrollmentsRepository,
+    private readonly enrollmentCodesRepository: EnrollmentCodesRepository,
     private readonly coursesService: CoursesService,
     private readonly redisService: RedisService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  /** Enrolls a user in a published course. Validates verification, status, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
+  /** Enrolls a user in a published course. Validates verification, enrollment type, window, and capacity. Seeds LessonProgress records. Re-enrollment is allowed after cancellation. */
   async enroll(user: AuthenticatedUser, dto: CreateEnrollmentDto): Promise<EnrollmentResponseDto> {
     if (user.isVerified === false) {
       throw new ForbiddenException('Email verification required before enrolling');
@@ -53,6 +55,31 @@ export class EnrollmentsService {
       throw new ForbiddenException('Instructors cannot enroll in their own course');
     }
 
+    // Enrollment type gate (MISTAKES.md [008])
+    let validatedCodeId: string | undefined;
+
+    if (course.enrollmentType === EnrollmentType.ASSIGNED) {
+      const isPrivileged =
+        user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.INSTRUCTOR);
+      if (!isPrivileged) {
+        throw new ForbiddenException('Este curso requiere asignación por un administrador');
+      }
+    }
+
+    if (course.enrollmentType === EnrollmentType.CODE) {
+      if (!dto.code) {
+        throw new BadRequestException('Este curso requiere un código de inscripción');
+      }
+      const enrollmentCode = await this.enrollmentCodesRepository.findValidCode(
+        dto.code,
+        dto.courseId,
+      );
+      if (!enrollmentCode) {
+        throw new BadRequestException('Código de inscripción inválido o expirado');
+      }
+      validatedCodeId = enrollmentCode.id;
+    }
+
     const now = new Date();
     const settings = course.settings;
 
@@ -62,6 +89,8 @@ export class EnrollmentsService {
     if (settings?.enrollmentEndDate && now > settings.enrollmentEndDate) {
       throw new BadRequestException('Enrollment period has ended');
     }
+
+    let enrollment: EnrollmentResponseDto;
 
     if (settings?.maxEnrollments != null) {
       const lockKey = `enroll-lock:${dto.courseId}`;
@@ -75,13 +104,31 @@ export class EnrollmentsService {
         if (activeCount >= settings.maxEnrollments) {
           throw new ConflictException('Course enrollment limit has been reached');
         }
-        return await this.createEnrollmentRecord(userId, dto.courseId, settings, now, existing?.id);
+        enrollment = await this.createEnrollmentRecord(
+          userId,
+          dto.courseId,
+          settings,
+          now,
+          existing?.id,
+        );
       } finally {
         await this.redisService.del(lockKey);
       }
+    } else {
+      enrollment = await this.createEnrollmentRecord(
+        userId,
+        dto.courseId,
+        settings,
+        now,
+        existing?.id,
+      );
     }
 
-    return this.createEnrollmentRecord(userId, dto.courseId, settings, now, existing?.id);
+    if (validatedCodeId) {
+      await this.enrollmentCodesRepository.incrementUsage(validatedCodeId);
+    }
+
+    return enrollment;
   }
 
   /** Returns the authenticated user's own enrollments, paginated. */

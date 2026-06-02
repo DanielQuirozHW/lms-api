@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Course } from '@prisma/client';
+import { EnrollmentType } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CourseQueryDto } from './dto/course-query.dto';
 import {
@@ -17,6 +18,7 @@ const mockCourse: Course = {
   description: 'Learn TypeScript from scratch',
   coverUrl: null,
   status: 'DRAFT',
+  enrollmentType: EnrollmentType.FREE,
   price: null,
   instructorId: 'instructor-123',
   categoryId: null,
