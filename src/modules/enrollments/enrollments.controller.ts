@@ -18,8 +18,11 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
+import { BulkEnrollDto } from './dto/bulk-enroll.dto';
+import { BulkEnrollResultDto } from './dto/bulk-enroll-result.dto';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import {
+  CourseEnrollmentItemDto,
   EnrollmentDetailResponseDto,
   EnrollmentResponseDto,
   ProgressSummaryDto,
@@ -48,6 +51,18 @@ export class EnrollmentsController {
     return this.enrollmentsService.enroll(user, dto);
   }
 
+  @Post('bulk')
+  @Roles(UserRole.ADMIN)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Bulk-enroll multiple users in a course (admin only)' })
+  @ApiResponse({ status: 201, type: BulkEnrollResultDto })
+  @ApiResponse({ status: 400, description: 'Course not available' })
+  @ApiResponse({ status: 403, description: 'Admin only' })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  bulkEnroll(@Body() dto: BulkEnrollDto): Promise<BulkEnrollResultDto> {
+    return this.enrollmentsService.bulkEnroll(dto);
+  }
+
   @Get()
   @ApiOperation({ summary: "Get current user's enrollments (paginated)" })
   @ApiResponse({ status: 200, type: EnrollmentResponseDto, isArray: true })
@@ -70,7 +85,7 @@ export class EnrollmentsController {
     @Param('courseId', ParseUUIDPipe) courseId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PaginationDto,
-  ): Promise<PaginatedResult<EnrollmentResponseDto>> {
+  ): Promise<PaginatedResult<CourseEnrollmentItemDto>> {
     return this.enrollmentsService.getByCourseId(courseId, user, pagination);
   }
 

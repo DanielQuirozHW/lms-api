@@ -37,3 +37,32 @@ export class EnrollmentDetailResponseDto extends EnrollmentResponseDto {
   @ApiProperty({ type: ProgressSummaryDto })
   progress!: ProgressSummaryDto;
 }
+
+export class CourseEnrollmentItemDto {
+  @ApiProperty()
+  enrollmentId!: string;
+
+  @ApiProperty()
+  userId!: string;
+
+  @ApiProperty()
+  firstName!: string;
+
+  @ApiProperty()
+  lastName!: string;
+
+  @ApiProperty()
+  email!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  avatarUrl!: string | null;
+
+  @ApiProperty({ enum: EnrollmentStatus })
+  status!: EnrollmentStatus;
+
+  @ApiProperty()
+  enrolledAt!: Date;
+
+  @ApiProperty({ example: 40.0 })
+  progressPercentage!: number;
+}

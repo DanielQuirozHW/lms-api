@@ -18,8 +18,17 @@ import type {
   EnrollmentResponseDto,
   ProgressSummaryDto,
 } from './dto/enrollment-response.dto';
+import type { BulkEnrollDto } from './dto/bulk-enroll.dto';
+import type { BulkEnrollResultDto } from './dto/bulk-enroll-result.dto';
+import type { UserEnrollmentItemDto } from './dto/user-enrollment-response.dto';
+import type { CourseEnrollmentItemDto } from './dto/enrollment-response.dto';
 import { EnrollmentCodesRepository } from './enrollment-codes.repository';
-import { type EnrollmentWithProgress, EnrollmentsRepository } from './enrollments.repository';
+import {
+  type EnrollmentWithProgress,
+  type EnrollmentForCourseView,
+  type EnrollmentForUserView,
+  EnrollmentsRepository,
+} from './enrollments.repository';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../../config/configuration';
 
@@ -216,7 +225,7 @@ export class EnrollmentsService {
     courseId: string,
     user: AuthenticatedUser,
     pagination: PaginationDto,
-  ): Promise<PaginatedResult<EnrollmentResponseDto>> {
+  ): Promise<PaginatedResult<CourseEnrollmentItemDto>> {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
     if (!isAdmin) {
       const course = await this.coursesService.findOne(courseId, user);
@@ -225,12 +234,12 @@ export class EnrollmentsService {
       }
     }
 
-    const [enrollments, total] = await this.enrollmentsRepository.findManyByCourseId(
+    const [enrollments, total] = await this.enrollmentsRepository.findManyByCourseIdWithUser(
       courseId,
       pagination,
     );
     return paginate(
-      enrollments.map((e) => this.map(e)),
+      enrollments.map((e) => this.mapCourseEnrollment(e)),
       total,
       pagination,
     );
@@ -320,6 +329,80 @@ export class EnrollmentsService {
       progressPercentage,
       finalGrade: enrollment.finalGrade ?? null,
       status: enrollment.status,
+    };
+  }
+
+  /** Bulk-enrolls a list of users in a course (admin assignment). Skips already-active enrollments. */
+  async bulkEnroll(dto: BulkEnrollDto): Promise<BulkEnrollResultDto> {
+    const course = await this.enrollmentsRepository.findCourseWithSettings(dto.courseId);
+    if (!course) throw new NotFoundException('Course not found');
+    if (course.status !== 'PUBLISHED') {
+      throw new BadRequestException('Course is not available for enrollment');
+    }
+    const lessons = await this.enrollmentsRepository.findPublishedLessons(dto.courseId);
+    return this.enrollmentsRepository.bulkCreateWithProgress({
+      userIds: dto.userIds,
+      courseId: dto.courseId,
+      lessons,
+    });
+  }
+
+  /** Returns all enrollments for a specific user with course details. Admin only. */
+  async getAdminUserEnrollments(
+    userId: string,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<UserEnrollmentItemDto>> {
+    const [enrollments, total] = await this.enrollmentsRepository.findManyByUserIdWithCourse(
+      userId,
+      pagination,
+    );
+    return paginate(
+      enrollments.map((e) => this.mapUserEnrollment(e)),
+      total,
+      pagination,
+    );
+  }
+
+  /** Removes a user's enrollment from a course. Cannot remove COMPLETED enrollments. Admin only. */
+  async removeUserEnrollment(userId: string, courseId: string): Promise<void> {
+    const enrollment = await this.enrollmentsRepository.findByUserAndCourse(userId, courseId);
+    if (!enrollment) throw new NotFoundException('Enrollment not found');
+    if (enrollment.status === 'COMPLETED') {
+      throw new ConflictException('Cannot remove a completed enrollment');
+    }
+    await this.enrollmentsRepository.deleteByUserAndCourse(userId, courseId);
+  }
+
+  private mapCourseEnrollment(e: EnrollmentForCourseView): CourseEnrollmentItemDto {
+    const completed = e.progress.filter((p) => p.completedAt !== null).length;
+    const total = e.progress.length;
+    const progressPercentage = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0;
+    return {
+      enrollmentId: e.id,
+      userId: e.userId,
+      firstName: e.user.firstName,
+      lastName: e.user.lastName,
+      email: e.user.email,
+      avatarUrl: e.user.avatarUrl,
+      status: e.status,
+      enrolledAt: e.enrolledAt,
+      progressPercentage,
+    };
+  }
+
+  private mapUserEnrollment(e: EnrollmentForUserView): UserEnrollmentItemDto {
+    const completed = e.progress.filter((p) => p.completedAt !== null).length;
+    const total = e.progress.length;
+    const progressPercentage = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0;
+    return {
+      enrollmentId: e.id,
+      courseId: e.courseId,
+      courseTitle: e.course.title,
+      coverUrl: e.course.coverUrl,
+      enrollmentType: e.course.enrollmentType,
+      status: e.status,
+      progressPercentage,
+      enrolledAt: e.enrolledAt,
     };
   }
 

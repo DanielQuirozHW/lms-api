@@ -6,6 +6,7 @@ import type {
   CourseSettings,
   Enrollment,
   EnrollmentStatus,
+  EnrollmentType,
   Lesson,
   LessonProgress,
 } from '@prisma/client';
@@ -24,6 +25,25 @@ export type GradebookCategoryRow = {
       submissions: { grade: number | null }[];
     };
   }[];
+};
+
+export type EnrollmentForCourseView = Enrollment & {
+  user: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatarUrl: string | null;
+  };
+  progress: { completedAt: Date | null }[];
+};
+
+export type EnrollmentForUserView = Enrollment & {
+  course: {
+    title: string;
+    coverUrl: string | null;
+    enrollmentType: EnrollmentType;
+  };
+  progress: { completedAt: Date | null }[];
 };
 
 @Injectable()
@@ -223,5 +243,120 @@ export class EnrollmentsRepository {
     referenceType: string;
   }): Promise<CalendarEvent> {
     return this.prisma.calendarEvent.create({ data });
+  }
+
+  async findManyByCourseIdWithUser(
+    courseId: string,
+    pagination: PaginationDto,
+  ): Promise<[EnrollmentForCourseView[], number]> {
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.enrollment.findMany({
+        where: { courseId },
+        skip: pagination.skip,
+        take: pagination.limit ?? 20,
+        orderBy: { enrolledAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true, avatarUrl: true } },
+          progress: { select: { completedAt: true } },
+        },
+      }),
+      this.prisma.enrollment.count({ where: { courseId } }),
+    ]);
+    return [data, total];
+  }
+
+  async findManyByUserIdWithCourse(
+    userId: string,
+    pagination: PaginationDto,
+  ): Promise<[EnrollmentForUserView[], number]> {
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.enrollment.findMany({
+        where: { userId },
+        skip: pagination.skip,
+        take: pagination.limit ?? 20,
+        orderBy: { enrolledAt: 'desc' },
+        include: {
+          course: { select: { title: true, coverUrl: true, enrollmentType: true } },
+          progress: { select: { completedAt: true } },
+        },
+      }),
+      this.prisma.enrollment.count({ where: { userId } }),
+    ]);
+    return [data, total];
+  }
+
+  async bulkCreateWithProgress(params: {
+    userIds: string[];
+    courseId: string;
+    lessons: Lesson[];
+  }): Promise<{ enrolled: number; skipped: number; failed: number }> {
+    const uniqueIds = [...new Set(params.userIds)];
+
+    const existingUsers = await this.prisma.user.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+    const validSet = new Set(existingUsers.map((u) => u.id));
+    const failed = uniqueIds.filter((id) => !validSet.has(id)).length;
+    const validIds = uniqueIds.filter((id) => validSet.has(id));
+
+    if (validIds.length === 0) {
+      return { enrolled: 0, skipped: 0, failed };
+    }
+
+    const transactionResult = await this.prisma.$transaction(async (tx) => {
+      const existingEnrollments = await tx.enrollment.findMany({
+        where: {
+          userId: { in: validIds },
+          courseId: params.courseId,
+          status: { in: ['ACTIVE', 'COMPLETED'] },
+        },
+        select: { userId: true },
+      });
+      const skipSet = new Set(existingEnrollments.map((e) => e.userId));
+      const toProcess = validIds.filter((id) => !skipSet.has(id));
+
+      if (toProcess.length === 0) {
+        return { enrolled: 0, skipped: skipSet.size };
+      }
+
+      await tx.enrollment.updateMany({
+        where: {
+          userId: { in: toProcess },
+          courseId: params.courseId,
+          status: 'CANCELLED',
+        },
+        data: { status: 'ACTIVE', completedAt: null },
+      });
+
+      await tx.enrollment.createMany({
+        data: toProcess.map((userId) => ({ userId, courseId: params.courseId })),
+        skipDuplicates: true,
+      });
+
+      const enrollments = await tx.enrollment.findMany({
+        where: { userId: { in: toProcess }, courseId: params.courseId },
+        select: { id: true },
+      });
+
+      if (params.lessons.length > 0 && enrollments.length > 0) {
+        await tx.lessonProgress.deleteMany({
+          where: { enrollmentId: { in: enrollments.map((e) => e.id) } },
+        });
+        await tx.lessonProgress.createMany({
+          data: enrollments.flatMap((e) =>
+            params.lessons.map((l) => ({ enrollmentId: e.id, lessonId: l.id })),
+          ),
+        });
+      }
+
+      return { enrolled: toProcess.length, skipped: skipSet.size };
+    });
+
+    return { ...transactionResult, failed };
+  }
+
+  deleteByUserAndCourse(userId: string, courseId: string): Promise<Enrollment> {
+    return this.prisma.enrollment.delete({ where: { userId_courseId: { userId, courseId } } });
   }
 }

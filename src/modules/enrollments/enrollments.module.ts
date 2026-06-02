@@ -7,10 +7,11 @@ import { EnrollmentCodesService } from './enrollment-codes.service';
 import { EnrollmentsController } from './enrollments.controller';
 import { EnrollmentsRepository } from './enrollments.repository';
 import { EnrollmentsService } from './enrollments.service';
+import { UserEnrollmentsController } from './user-enrollments.controller';
 
 @Module({
   imports: [CoursesModule, NotificationsModule],
-  controllers: [EnrollmentsController, EnrollmentCodesController],
+  controllers: [EnrollmentsController, EnrollmentCodesController, UserEnrollmentsController],
   providers: [
     EnrollmentsService,
     EnrollmentsRepository,

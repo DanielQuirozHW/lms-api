@@ -98,6 +98,10 @@ describe('EnrollmentsService', () => {
       | 'findGradebookData'
       | 'updateCompletion'
       | 'createCalendarEvent'
+      | 'findManyByCourseIdWithUser'
+      | 'findManyByUserIdWithCourse'
+      | 'bulkCreateWithProgress'
+      | 'deleteByUserAndCourse'
     >
   >;
   let codesRepo: jest.Mocked<Pick<EnrollmentCodesRepository, 'findValidCode' | 'incrementUsage'>>;
@@ -125,6 +129,10 @@ describe('EnrollmentsService', () => {
       findGradebookData: jest.fn().mockResolvedValue([]),
       updateCompletion: jest.fn(),
       createCalendarEvent: jest.fn().mockResolvedValue({}),
+      findManyByCourseIdWithUser: jest.fn(),
+      findManyByUserIdWithCourse: jest.fn(),
+      bulkCreateWithProgress: jest.fn(),
+      deleteByUserAndCourse: jest.fn(),
     };
     codesRepo = {
       findValidCode: jest.fn().mockResolvedValue(null),
@@ -425,7 +433,12 @@ describe('EnrollmentsService', () => {
 
   describe('getByCourseId', () => {
     it('should return enrollments for admin without ownership check', async () => {
-      repo.findManyByCourseId.mockResolvedValue([[mockEnrollment], 1]);
+      const mockView = {
+        ...mockEnrollment,
+        user: { firstName: 'John', lastName: 'Doe', email: 'john@test.com', avatarUrl: null },
+        progress: [],
+      };
+      repo.findManyByCourseIdWithUser.mockResolvedValue([[mockView], 1]);
 
       const result = await service.getByCourseId('course-1', mockAdmin, {
         page: 1,
@@ -775,6 +788,94 @@ describe('EnrollmentsService', () => {
       const result = await service.enroll(mockAdmin, { courseId: 'course-1' });
 
       expect(result.id).toBe('enrollment-1');
+    });
+  });
+
+  describe('bulkEnroll', () => {
+    it('should enroll users and return counts', async () => {
+      repo.findCourseWithSettings.mockResolvedValue(mockCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.bulkCreateWithProgress.mockResolvedValue({ enrolled: 3, skipped: 1, failed: 0 });
+
+      const result = await service.bulkEnroll({
+        userIds: ['u1', 'u2', 'u3', 'u4'],
+        courseId: 'course-1',
+      });
+
+      expect(result.enrolled).toBe(3);
+      expect(result.skipped).toBe(1);
+      expect(result.failed).toBe(0);
+      expect(repo.bulkCreateWithProgress).toHaveBeenCalledWith(
+        expect.objectContaining({ courseId: 'course-1' }),
+      );
+    });
+
+    it('should throw NotFoundException when course not found', async () => {
+      repo.findCourseWithSettings.mockResolvedValue(null);
+
+      await expect(service.bulkEnroll({ userIds: ['u1'], courseId: 'course-1' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException when course is not PUBLISHED', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({ ...mockCourse, status: 'DRAFT' });
+
+      await expect(service.bulkEnroll({ userIds: ['u1'], courseId: 'course-1' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('getAdminUserEnrollments', () => {
+    it('should return paginated enrollments with course details', async () => {
+      const mockView = {
+        ...mockEnrollment,
+        course: { title: 'Test Course', coverUrl: null, enrollmentType: 'FREE' },
+        progress: [],
+      };
+      repo.findManyByUserIdWithCourse.mockResolvedValue([[mockView as never], 1]);
+
+      const result = await service.getAdminUserEnrollments('user-1', {
+        page: 1,
+        limit: 20,
+        get skip() {
+          return 0;
+        },
+      });
+
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0].courseTitle).toBe('Test Course');
+    });
+  });
+
+  describe('removeUserEnrollment', () => {
+    it('should delete enrollment successfully', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(mockEnrollment);
+      repo.deleteByUserAndCourse.mockResolvedValue(mockEnrollment);
+
+      await expect(service.removeUserEnrollment('user-1', 'course-1')).resolves.toBeUndefined();
+      expect(repo.deleteByUserAndCourse).toHaveBeenCalledWith('user-1', 'course-1');
+    });
+
+    it('should throw NotFoundException when enrollment not found', async () => {
+      repo.findByUserAndCourse.mockResolvedValue(null);
+
+      await expect(service.removeUserEnrollment('user-1', 'course-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ConflictException when enrollment is COMPLETED', async () => {
+      repo.findByUserAndCourse.mockResolvedValue({
+        ...mockEnrollment,
+        status: EnrollmentStatus.COMPLETED,
+      });
+
+      await expect(service.removeUserEnrollment('user-1', 'course-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
