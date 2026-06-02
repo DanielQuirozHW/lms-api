@@ -20,11 +20,14 @@ import type {
 } from './dto/enrollment-response.dto';
 import { EnrollmentCodesRepository } from './enrollment-codes.repository';
 import { type EnrollmentWithProgress, EnrollmentsRepository } from './enrollments.repository';
+import { ConfigService } from '@nestjs/config';
+import type { AppConfig } from '../../config/configuration';
 
 @Injectable()
 export class EnrollmentsService {
   constructor(
     private readonly enrollmentsRepository: EnrollmentsRepository,
+    private readonly configService: ConfigService<AppConfig>,
     private readonly enrollmentCodesRepository: EnrollmentCodesRepository,
     private readonly coursesService: CoursesService,
     private readonly redisService: RedisService,
@@ -55,6 +58,29 @@ export class EnrollmentsService {
       throw new ForbiddenException('Instructors cannot enroll in their own course');
     }
 
+    const now = new Date();
+    const settings = course.settings;
+
+    // Portal mode gate
+    const portalMode = this.configService.get('portalMode', { infer: true });
+    if (portalMode === 'CORPORATE') {
+      const isPrivilegedPortal =
+        user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.INSTRUCTOR);
+      if (!isPrivilegedPortal) {
+        throw new ForbiddenException(
+          'En este portal los cursos son asignados por un administrador',
+        );
+      }
+    } else if (portalMode === 'ACADEMIC') {
+      if (
+        settings?.enrollmentStartDate != null &&
+        settings.enrollmentEndDate != null &&
+        (now < settings.enrollmentStartDate || now > settings.enrollmentEndDate)
+      ) {
+        throw new ForbiddenException('El período de inscripción para este curso no está activo');
+      }
+    }
+
     // Enrollment type gate (MISTAKES.md [008])
     let validatedCodeId: string | undefined;
 
@@ -79,9 +105,6 @@ export class EnrollmentsService {
       }
       validatedCodeId = enrollmentCode.id;
     }
-
-    const now = new Date();
-    const settings = course.settings;
 
     if (settings?.enrollmentStartDate && now < settings.enrollmentStartDate) {
       throw new BadRequestException('Enrollment has not started yet');

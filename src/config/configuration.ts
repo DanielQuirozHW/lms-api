@@ -33,6 +33,7 @@ export interface AppConfig {
     bucketName: string;
     publicUrl: string | undefined;
   };
+  portalMode: 'CORPORATE' | 'MARKETPLACE' | 'ACADEMIC';
 }
 
 export const configuration = (env: Env): AppConfig => ({
@@ -74,4 +75,6 @@ export const configuration = (env: Env): AppConfig => ({
     bucketName: env.R2_BUCKET_NAME,
     publicUrl: env.R2_PUBLIC_URL,
   },
+
+  portalMode: env.PORTAL_MODE,
 });

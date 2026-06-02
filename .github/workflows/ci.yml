@@ -39,6 +39,7 @@ jobs:
       THROTTLE_TTL: 60000
       THROTTLE_LIMIT: 100
       R2_BUCKET_NAME: lms-assets
+      PORTAL_MODE: MARKETPLACE
 
     steps:
       - name: Checkout

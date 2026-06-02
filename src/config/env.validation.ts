@@ -31,6 +31,8 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform((v) => v === 'true'),
+
+  PORTAL_MODE: z.enum(['CORPORATE', 'MARKETPLACE', 'ACADEMIC']).default('MARKETPLACE'),
 });
 
 export type Env = z.infer<typeof envSchema>;

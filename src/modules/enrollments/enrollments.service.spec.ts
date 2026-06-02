@@ -13,6 +13,8 @@ import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CourseDetailResponseDto } from '../courses/dto/course-response.dto';
 import { CoursesService } from '../courses/courses.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ConfigService } from '@nestjs/config';
+import type { AppConfig } from '../../config/configuration';
 import { EnrollmentCodesRepository } from './enrollment-codes.repository';
 import type { CourseWithSettings } from './enrollments.repository';
 import { EnrollmentsRepository } from './enrollments.repository';
@@ -102,6 +104,7 @@ describe('EnrollmentsService', () => {
   let coursesService: jest.Mocked<Pick<CoursesService, 'findOne'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'set' | 'del'>>;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
+  let configService: jest.Mocked<Pick<ConfigService<AppConfig>, 'get'>>;
 
   beforeEach(async () => {
     repo = {
@@ -133,6 +136,7 @@ describe('EnrollmentsService', () => {
       del: jest.fn().mockResolvedValue(1),
     };
     notificationsSvc = { notify: jest.fn().mockResolvedValue(undefined) };
+    configService = { get: jest.fn().mockReturnValue('MARKETPLACE') };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -142,6 +146,7 @@ describe('EnrollmentsService', () => {
         { provide: CoursesService, useValue: coursesService },
         { provide: RedisService, useValue: redisService },
         { provide: NotificationsService, useValue: notificationsSvc },
+        { provide: ConfigService, useValue: configService },
       ],
     }).compile();
 
@@ -735,6 +740,135 @@ describe('EnrollmentsService', () => {
     it('should allow self-enrollment in PAID course', async () => {
       repo.findByUserAndCourse.mockResolvedValue(null);
       repo.findCourseWithSettings.mockResolvedValue(paidCourse);
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+    });
+  });
+
+  describe('enroll — CORPORATE portal mode', () => {
+    beforeEach(() => {
+      configService.get.mockReturnValue('CORPORATE');
+      repo.findByUserAndCourse.mockResolvedValue(null);
+      repo.findCourseWithSettings.mockResolvedValue(mockCourse);
+    });
+
+    it('should throw ForbiddenException when student tries to self-enroll', async () => {
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw ForbiddenException with Spanish message about admin assignment', async () => {
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        'En este portal los cursos son asignados por un administrador',
+      );
+    });
+
+    it('should allow admin to enroll in CORPORATE portal mode', async () => {
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockAdmin, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+    });
+  });
+
+  describe('enroll — ACADEMIC portal mode', () => {
+    const academicSettings = {
+      id: 'settings-1',
+      courseId: 'course-1',
+      enrollmentStartDate: null as Date | null,
+      enrollmentEndDate: null as Date | null,
+      courseStartDate: null,
+      hasModules: true,
+      forumEnabled: true,
+      forumPublic: false,
+      certificateEnabled: false,
+      ratingEnabled: true,
+      ratingScale: 'STARS_5' as const,
+      maxEnrollments: null,
+      isSequential: false,
+    };
+
+    beforeEach(() => {
+      configService.get.mockReturnValue('ACADEMIC');
+      repo.findByUserAndCourse.mockResolvedValue(null);
+    });
+
+    it('should throw ForbiddenException when both enrollment dates are in the future', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: {
+          ...academicSettings,
+          enrollmentStartDate: new Date('2099-01-01'),
+          enrollmentEndDate: new Date('2099-06-01'),
+        },
+      });
+
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw ForbiddenException with Spanish message when enrollment window has passed', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: {
+          ...academicSettings,
+          enrollmentStartDate: new Date('2020-01-01'),
+          enrollmentEndDate: new Date('2020-06-01'),
+        },
+      });
+
+      await expect(service.enroll(mockStudent, { courseId: 'course-1' })).rejects.toThrow(
+        'El período de inscripción para este curso no está activo',
+      );
+    });
+
+    it('should succeed when enrollment window is currently active', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: {
+          ...academicSettings,
+          enrollmentStartDate: new Date('2020-01-01'),
+          enrollmentEndDate: new Date('2099-01-01'),
+        },
+      });
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+    });
+
+    it('should succeed when both enrollment dates are null', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: { ...academicSettings, enrollmentStartDate: null, enrollmentEndDate: null },
+      });
+      repo.findPublishedLessons.mockResolvedValue([]);
+      repo.createWithProgress.mockResolvedValue(mockEnrollment);
+
+      const result = await service.enroll(mockStudent, { courseId: 'course-1' });
+
+      expect(result.id).toBe('enrollment-1');
+    });
+
+    it('should succeed when start date is set to the past and end date is null', async () => {
+      repo.findCourseWithSettings.mockResolvedValue({
+        ...mockCourse,
+        settings: {
+          ...academicSettings,
+          enrollmentStartDate: new Date('2020-01-01'),
+          enrollmentEndDate: null,
+        },
+      });
       repo.findPublishedLessons.mockResolvedValue([]);
       repo.createWithProgress.mockResolvedValue(mockEnrollment);
 
