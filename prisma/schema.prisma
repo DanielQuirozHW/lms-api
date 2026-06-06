@@ -855,3 +855,22 @@ model EnrollmentCode {
   @@index([code])
   @@map("enrollment_codes")
 }
+
+// ─── SystemError ──────────────────────────────────────────────────────────────
+
+model SystemError {
+  id         String   @id @default(cuid())
+  level      String   @default("ERROR")
+  message    String
+  stack      String?
+  url        String?
+  method     String?
+  statusCode Int?
+  userId     String?
+  body       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([statusCode])
+  @@map("system_errors")
+}

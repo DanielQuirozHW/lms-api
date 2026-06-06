@@ -8,9 +8,12 @@ import {
   HttpStatus,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
+import type { AuthenticatedUser } from '../../modules/auth/auth.entity';
+import type { ErrorLogService } from '../../modules/error-log/error-log.service';
 
 interface ErrorResponse {
   statusCode: number;
@@ -26,9 +29,13 @@ const PRISMA_ERROR_MAP: Partial<Record<string, () => HttpException>> = {
   P2003: () => new BadRequestException('Related record not found'),
 };
 
+const BODY_LOG_MAX_LEN = 500;
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
+
+  constructor(@Optional() private readonly errorLogService?: ErrorLogService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -67,7 +74,32 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       this.logger.error(mapped.message, mapped.stack);
     }
 
-    const body: ErrorResponse = {
+    // Persist 5xx errors to the system_errors table for admin review.
+    // Uses request.path (not request.url) per MISTAKES.md [009] — query strings may carry tokens or PII.
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR && this.errorLogService) {
+      const exc = mapped instanceof Error ? mapped : exception instanceof Error ? exception : null;
+      const rawBody = request.body as unknown;
+      let bodyStr: string | undefined;
+      try {
+        const full = JSON.stringify(rawBody);
+        bodyStr = full.length > BODY_LOG_MAX_LEN ? full.slice(0, BODY_LOG_MAX_LEN) : full;
+      } catch {
+        bodyStr = undefined;
+      }
+      // request.user is typed loosely by Express; double-cast via unknown to satisfy no-unsafe-assignment
+      const authedUser = request.user as unknown as AuthenticatedUser | undefined;
+      void this.errorLogService.log({
+        message: exc?.message ?? String(exception),
+        stack: exc?.stack,
+        url: request.path,
+        method: request.method,
+        statusCode: status,
+        userId: authedUser?.id ?? null,
+        body: bodyStr,
+      });
+    }
+
+    const responseBody: ErrorResponse = {
       statusCode: status,
       message,
       error,
@@ -75,7 +107,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    response.status(status).json(body);
+    response.status(status).json(responseBody);
   }
 
   private mapException(exception: unknown): unknown {

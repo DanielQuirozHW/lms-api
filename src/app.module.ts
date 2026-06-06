@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -14,6 +15,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { AdminModule } from './modules/admin/admin.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
+import { ErrorLogModule } from './modules/error-log/error-log.module';
 import { GlobalAnnouncementsModule } from './modules/global-announcements/global-announcements.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { NotesModule } from './modules/notes/notes.module';
@@ -94,8 +96,10 @@ import type { AppConfig } from './config/configuration';
     NotesModule,
     BookmarksModule,
     CertificatesModule,
+    ErrorLogModule,
   ],
   providers: [
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: MaintenanceGuard }, // before JWT — blocks non-admins during maintenance
     { provide: APP_GUARD, useClass: JwtAuthGuard },

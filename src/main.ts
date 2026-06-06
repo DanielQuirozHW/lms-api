@@ -7,7 +7,6 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { json, urlencoded } from 'express';
 import type { ServerOptions } from 'socket.io';
 import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import type { AppConfig } from './config/configuration';
@@ -76,7 +75,6 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = config.get('apiPrefix', { infer: true }) ?? 'api/v1';
   app.setGlobalPrefix(apiPrefix);
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
 
   app.useGlobalPipes(
