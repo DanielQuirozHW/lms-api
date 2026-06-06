@@ -7,10 +7,10 @@ import { NotesRepository } from './notes.repository';
 export class NotesService {
   constructor(private readonly notesRepository: NotesRepository) {}
 
-  /** Returns the current user's note for the given lesson. Throws 404 if no note exists. */
-  async getNote(userId: string, lessonId: string): Promise<NoteResponseDto> {
+  /** Returns the current user's note for the given lesson, or null if none exists yet. */
+  async getNote(userId: string, lessonId: string): Promise<NoteResponseDto | null> {
     const note = await this.notesRepository.findByUserAndLesson(userId, lessonId);
-    if (!note) throw new NotFoundException('Note not found');
+    if (!note) return null;
     return this.map(note);
   }
 

@@ -42,9 +42,10 @@ describe('NotesService', () => {
       expect(result).not.toHaveProperty('userId');
     });
 
-    it('throws NotFoundException when no note exists', async () => {
+    it('returns null when no note exists yet', async () => {
       repo.findByUserAndLesson.mockResolvedValue(null);
-      await expect(service.getNote('user-456', 'lesson-789')).rejects.toThrow(NotFoundException);
+      const result = await service.getNote('user-456', 'lesson-789');
+      expect(result).toBeNull();
     });
   });
 

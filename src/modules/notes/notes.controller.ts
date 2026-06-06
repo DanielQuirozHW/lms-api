@@ -13,12 +13,15 @@ export class NotesController {
 
   @Get()
   @ApiOperation({ summary: "Get the current user's note for a lesson" })
-  @ApiResponse({ status: 200, type: NoteResponseDto })
-  @ApiResponse({ status: 404, description: 'Note not found' })
+  @ApiResponse({
+    status: 200,
+    type: NoteResponseDto,
+    description: 'Note, or null if none exists yet',
+  })
   getNote(
     @CurrentUser() user: AuthenticatedUser,
     @Param('lessonId') lessonId: string,
-  ): Promise<NoteResponseDto> {
+  ): Promise<NoteResponseDto | null> {
     return this.notesService.getNote(user.id, lessonId);
   }
 
