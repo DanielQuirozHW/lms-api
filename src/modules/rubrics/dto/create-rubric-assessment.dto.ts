@@ -5,19 +5,21 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 
 export class RubricAssessmentAnswerDto {
   @ApiProperty({ description: 'Criterion ID', example: 'crit-uuid' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   criterionId!: string;
 
   @ApiPropertyOptional({ description: 'Selected level ID', example: 'level-uuid' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   levelId?: string;
 
   @ApiProperty({ description: 'Points awarded for this criterion', example: 18 })

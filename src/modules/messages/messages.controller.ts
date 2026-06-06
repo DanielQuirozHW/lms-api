@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -45,7 +44,7 @@ export class MessagesController {
   @ApiResponse({ status: 200, description: 'Paginated conversation' })
   getConversation(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('userId', ParseUUIDPipe) partnerId: string,
+    @Param('userId') partnerId: string,
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<MessageResponseDto>> {
     return this.messagesService.getConversation(user.id, partnerId, pagination);
@@ -57,7 +56,7 @@ export class MessagesController {
   @ApiResponse({ status: 201, type: MessageResponseDto })
   async sendMessage(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('userId', ParseUUIDPipe) receiverId: string,
+    @Param('userId') receiverId: string,
     @Body() dto: SendMessageDto,
   ): Promise<MessageResponseDto> {
     const message = await this.messagesService.send(user.id, receiverId, dto);
@@ -71,7 +70,7 @@ export class MessagesController {
   @ApiResponse({ status: 204 })
   async markConversationRead(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('userId', ParseUUIDPipe) senderId: string,
+    @Param('userId') senderId: string,
   ): Promise<void> {
     await this.messagesService.markConversationRead(user.id, senderId);
     this.messagesGateway.emitToUser(senderId, 'messagesRead', { by: user.id });

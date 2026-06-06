@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -51,7 +50,7 @@ export class GlobalAnnouncementsController {
   @ApiOperation({ summary: 'Update a platform-wide announcement (admin only)' })
   @ApiResponse({ status: 200, type: GlobalAnnouncementResponseDto })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateGlobalAnnouncementDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GlobalAnnouncementResponseDto> {
@@ -64,10 +63,7 @@ export class GlobalAnnouncementsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a platform-wide announcement (admin only)' })
   @ApiResponse({ status: 204 })
-  delete(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<void> {
+  delete(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     return this.service.delete(id, user);
   }
 }

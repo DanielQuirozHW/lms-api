@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateThreadDto {
   @ApiProperty({ example: 'How do I implement authentication?', minLength: 5 })
@@ -9,6 +9,7 @@ export class CreateThreadDto {
 
   @ApiPropertyOptional({ example: 'course-uuid', description: 'Scope thread to a course forum' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   courseId?: string;
 }

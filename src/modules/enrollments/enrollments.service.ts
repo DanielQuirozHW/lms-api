@@ -7,7 +7,12 @@ import {
 } from '@nestjs/common';
 import type { CourseSettings, Enrollment } from '@prisma/client';
 import { CalendarEventType, EnrollmentType, NotificationType, UserRole } from '@prisma/client';
-import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
+import {
+  paginate,
+  type PaginatedResult,
+  type PaginationDto,
+} from '../../common/dto/pagination.dto';
+import type { QueryEnrollmentDto } from './dto/query-enrollment.dto';
 import { RedisService } from '../../redis/redis.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CoursesService } from '../courses/courses.service';
@@ -163,19 +168,20 @@ export class EnrollmentsService {
     return enrollment;
   }
 
-  /** Returns the authenticated user's own enrollments, paginated. */
+  /** Returns the authenticated user's own enrollments, paginated, with optional status filter. */
   async findMyEnrollments(
     userId: string,
-    pagination: PaginationDto,
+    query: QueryEnrollmentDto,
   ): Promise<PaginatedResult<EnrollmentResponseDto>> {
     const [enrollments, total] = await this.enrollmentsRepository.findManyByUserId(
       userId,
-      pagination,
+      query,
+      query.status,
     );
     return paginate(
       enrollments.map((e) => this.map(e)),
       total,
-      pagination,
+      query,
     );
   }
 

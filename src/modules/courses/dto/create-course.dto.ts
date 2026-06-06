@@ -1,13 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsNumber,
-  IsOptional,
-  IsPositive,
-  IsString,
-  IsUrl,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsPositive, IsString, IsUrl, MinLength } from 'class-validator';
 
 export class CreateCourseDto {
   @ApiProperty({ example: 'Introduction to TypeScript', minLength: 3 })
@@ -27,7 +19,8 @@ export class CreateCourseDto {
 
   @ApiPropertyOptional({ example: 'category-uuid' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   categoryId?: string;
 
   @ApiPropertyOptional({ example: 29.99, description: 'Price in USD, omit for free course' })

@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -75,7 +74,7 @@ export class CoursesController {
   @ApiResponse({ status: 200, type: CourseDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<CourseDetailResponseDto> {
     return this.coursesService.findOne(id, user);
@@ -90,7 +89,7 @@ export class CoursesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   duplicate(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<CourseResponseDto> {
     return this.coursesService.duplicate(id, user.id);
@@ -106,10 +105,7 @@ export class CoursesController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCourseDto,
-  ): Promise<CourseResponseDto> {
+  update(@Param('id') id: string, @Body() dto: UpdateCourseDto): Promise<CourseResponseDto> {
     return this.coursesService.update(id, dto);
   }
 
@@ -122,7 +118,7 @@ export class CoursesController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  publish(@Param('id', ParseUUIDPipe) id: string): Promise<CourseResponseDto> {
+  publish(@Param('id') id: string): Promise<CourseResponseDto> {
     return this.coursesService.publish(id);
   }
 
@@ -135,7 +131,7 @@ export class CoursesController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  archive(@Param('id', ParseUUIDPipe) id: string): Promise<CourseResponseDto> {
+  archive(@Param('id') id: string): Promise<CourseResponseDto> {
     return this.coursesService.archive(id);
   }
 
@@ -150,7 +146,7 @@ export class CoursesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   @ApiResponse({ status: 409, description: 'Course has active enrollments' })
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+  remove(@Param('id') id: string): Promise<void> {
     return this.coursesService.remove(id);
   }
 }

@@ -1,6 +1,7 @@
-import { IsUUID } from 'class-validator';
+import { MinLength, IsString } from 'class-validator';
 
 export class MarkReadWsDto {
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   senderId!: string;
 }

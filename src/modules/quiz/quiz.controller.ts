@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -37,7 +36,7 @@ export class QuizController {
   @ApiOperation({ summary: 'Create or update quiz settings for a lesson' })
   @ApiResponse({ status: 200, type: QuizSettingsResponseDto })
   upsertSettings(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @Body() dto: CreateQuizSettingsDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<QuizSettingsResponseDto> {
@@ -48,7 +47,7 @@ export class QuizController {
   @ApiOperation({ summary: 'Get quiz settings for a lesson' })
   @ApiResponse({ status: 200, type: QuizSettingsResponseDto })
   getSettings(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<QuizSettingsResponseDto> {
     return this.quizService.getSettings(lessonId, user);
@@ -59,7 +58,7 @@ export class QuizController {
   @ApiOperation({ summary: 'Add a question to the quiz' })
   @ApiResponse({ status: 201, type: QuestionResponseDto })
   addQuestion(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @Body() dto: CreateQuestionDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<QuestionResponseDto> {
@@ -72,7 +71,7 @@ export class QuizController {
   })
   @ApiResponse({ status: 200, type: [QuestionResponseDto] })
   listQuestions(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<QuestionResponseDto[]> {
     return this.quizService.listQuestions(lessonId, user);
@@ -83,8 +82,8 @@ export class QuizController {
   @ApiOperation({ summary: 'Update a question' })
   @ApiResponse({ status: 200, type: QuestionResponseDto })
   updateQuestion(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('lessonId') lessonId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateQuestionDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<QuestionResponseDto> {
@@ -97,8 +96,8 @@ export class QuizController {
   @ApiOperation({ summary: 'Delete a question' })
   @ApiResponse({ status: 204 })
   deleteQuestion(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('lessonId') lessonId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.quizService.deleteQuestion(lessonId, id, user);
@@ -108,7 +107,7 @@ export class QuizController {
   @ApiOperation({ summary: 'Start a new quiz attempt (enrolled student)' })
   @ApiResponse({ status: 201, type: AttemptSummaryDto })
   startAttempt(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AttemptSummaryDto> {
     return this.quizService.startAttempt(lessonId, user);
@@ -118,7 +117,7 @@ export class QuizController {
   @ApiOperation({ summary: "Get the authenticated student's own attempts" })
   @ApiResponse({ status: 200, type: [AttemptSummaryDto] })
   getMyAttempts(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AttemptSummaryDto[]> {
     return this.quizService.getMyAttempts(lessonId, user);
@@ -130,7 +129,7 @@ export class QuizController {
   @ApiOperation({ summary: "Get all students' attempts (instructor/admin)" })
   @ApiResponse({ status: 200, type: [AttemptSummaryDto] })
   getAllAttempts(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AttemptSummaryDto[]> {
     return this.quizService.getAllAttempts(lessonId, user);
@@ -140,8 +139,8 @@ export class QuizController {
   @ApiOperation({ summary: 'Submit answers for an in-progress attempt and auto-grade' })
   @ApiResponse({ status: 201, type: AttemptResultDto })
   submitAttempt(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @Param('lessonId') lessonId: string,
+    @Param('attemptId') attemptId: string,
     @Body() dto: SubmitAnswersDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AttemptResultDto> {
@@ -152,8 +151,8 @@ export class QuizController {
   @ApiOperation({ summary: 'Get a specific attempt with answers and results' })
   @ApiResponse({ status: 200, type: AttemptResultDto })
   getAttempt(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @Param('lessonId') lessonId: string,
+    @Param('attemptId') attemptId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AttemptResultDto> {
     return this.quizService.getAttempt(lessonId, attemptId, user);

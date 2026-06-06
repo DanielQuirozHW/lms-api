@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -27,6 +26,7 @@ import {
   EnrollmentResponseDto,
   ProgressSummaryDto,
 } from './dto/enrollment-response.dto';
+import { QueryEnrollmentDto } from './dto/query-enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @ApiTags('Enrollments')
@@ -64,14 +64,14 @@ export class EnrollmentsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "Get current user's enrollments (paginated)" })
+  @ApiOperation({ summary: "Get current user's enrollments (paginated, filterable by status)" })
   @ApiResponse({ status: 200, type: EnrollmentResponseDto, isArray: true })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   findMyEnrollments(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() pagination: PaginationDto,
+    @Query() query: QueryEnrollmentDto,
   ): Promise<PaginatedResult<EnrollmentResponseDto>> {
-    return this.enrollmentsService.findMyEnrollments(user.id, pagination);
+    return this.enrollmentsService.findMyEnrollments(user.id, query);
   }
 
   @Get('course/:courseId')
@@ -82,7 +82,7 @@ export class EnrollmentsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   getByCourseId(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<CourseEnrollmentItemDto>> {
@@ -96,7 +96,7 @@ export class EnrollmentsController {
   @ApiResponse({ status: 403, description: 'Forbidden — not your enrollment' })
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   getProgressSummary(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ProgressSummaryDto> {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
@@ -110,7 +110,7 @@ export class EnrollmentsController {
   @ApiResponse({ status: 403, description: 'Forbidden — not your enrollment' })
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<EnrollmentDetailResponseDto> {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
@@ -125,10 +125,7 @@ export class EnrollmentsController {
   @ApiResponse({ status: 403, description: 'Forbidden — not your enrollment' })
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   @ApiResponse({ status: 409, description: 'Cannot cancel a completed enrollment' })
-  cancel(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<void> {
+  cancel(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     const isAdmin = user.roles.includes(UserRole.ADMIN);
     return this.enrollmentsService.cancel(id, user.id, isAdmin);
   }
@@ -141,7 +138,7 @@ export class EnrollmentsController {
   @ApiResponse({ status: 403, description: 'Forbidden — admin only' })
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   @ApiResponse({ status: 409, description: 'Enrollment is not active' })
-  complete(@Param('id', ParseUUIDPipe) id: string): Promise<EnrollmentResponseDto> {
+  complete(@Param('id') id: string): Promise<EnrollmentResponseDto> {
     return this.enrollmentsService.complete(id);
   }
 }

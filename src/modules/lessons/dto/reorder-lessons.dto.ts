@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsUUID, Min, ValidateNested } from 'class-validator';
+import { MinLength, IsString, IsArray, IsInt, Min, ValidateNested } from 'class-validator';
 
 export class ReorderLessonItemDto {
   @ApiProperty({ example: 'lesson-uuid' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   id!: string;
 
   @ApiProperty({ example: 2 })

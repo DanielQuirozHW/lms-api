@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -31,7 +21,7 @@ export class EnrollmentCodesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   create(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateEnrollmentCodeDto,
   ): Promise<EnrollmentCodeResponseDto> {
@@ -45,7 +35,7 @@ export class EnrollmentCodesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findAll(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<EnrollmentCodeResponseDto[]> {
     return this.enrollmentCodesService.findByCourse(courseId, user);
@@ -59,8 +49,8 @@ export class EnrollmentCodesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Code not found' })
   deactivate(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.enrollmentCodesService.deactivate(courseId, id, user);

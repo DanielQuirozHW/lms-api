@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -47,7 +47,7 @@ export class AdminController {
   @ApiResponse({ status: 404, description: 'Target user not found' })
   startImpersonation(
     @CurrentUser() admin: AuthenticatedUser,
-    @Param('userId', ParseUUIDPipe) targetUserId: string,
+    @Param('userId') targetUserId: string,
   ): Promise<AuthResponseDto> {
     return this.adminService.startImpersonation(admin, targetUserId);
   }

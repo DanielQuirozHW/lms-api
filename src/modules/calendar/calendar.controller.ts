@@ -11,7 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ParseUUIDPipe } from '@nestjs/common';
+import {} from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CalendarService } from './calendar.service';
@@ -63,7 +63,7 @@ export class CalendarController {
   })
   @ApiResponse({ status: 404, description: 'Course not found or not accessible' })
   findCourseEvents(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: CalendarQueryDto,
   ): Promise<CalendarEventResponseDto[]> {
@@ -76,7 +76,7 @@ export class CalendarController {
   @ApiResponse({ status: 403, description: 'Forbidden — not the creator or admin' })
   @ApiResponse({ status: 404, description: 'Event not found' })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateCalendarEventDto,
   ): Promise<CalendarEventResponseDto> {
@@ -89,10 +89,7 @@ export class CalendarController {
   @ApiResponse({ status: 204, description: 'Event deleted' })
   @ApiResponse({ status: 403, description: 'Forbidden — not the creator or admin' })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  delete(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<void> {
+  delete(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     return this.calendarService.delete(id, user);
   }
 }

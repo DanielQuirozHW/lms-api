@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsUUID } from 'class-validator';
+import { MinLength, IsString, IsIn } from 'class-validator';
 
 export class UploadLessonVideoDto {
   @ApiProperty({ example: 'lesson-uuid' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   lessonId!: string;
 
   @ApiProperty({ example: 'video/mp4', enum: ['video/mp4', 'video/webm'] })

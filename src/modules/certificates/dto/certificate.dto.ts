@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { MinLength, IsString } from 'class-validator';
 
 export class CreateCertificateDto {
   @ApiProperty({ description: 'Enrollment ID to issue the certificate for' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   enrollmentId!: string;
 }
 

@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -35,7 +34,7 @@ export class AnnouncementsController {
   @ApiResponse({ status: 201, type: AnnouncementResponseDto })
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateAnnouncementDto,
   ): Promise<AnnouncementResponseDto> {
     return this.announcementsService.create(user, courseId, dto);
@@ -47,7 +46,7 @@ export class AnnouncementsController {
   @ApiResponse({ status: 200, description: 'Paginated announcements list' })
   findMany(
     @CurrentUser() user: AuthenticatedUser | undefined,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<AnnouncementResponseDto>> {
     return this.announcementsService.findMany(user, courseId, pagination);
@@ -60,8 +59,8 @@ export class AnnouncementsController {
   @ApiResponse({ status: 200, type: AnnouncementResponseDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateAnnouncementDto,
   ): Promise<AnnouncementResponseDto> {
     return this.announcementsService.update(user, courseId, id, dto);
@@ -75,8 +74,8 @@ export class AnnouncementsController {
   @ApiResponse({ status: 204 })
   delete(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
   ): Promise<void> {
     return this.announcementsService.delete(user, courseId, id);
   }

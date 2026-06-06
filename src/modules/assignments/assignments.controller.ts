@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -33,7 +23,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Create or update assignment settings for a lesson' })
   @ApiResponse({ status: 200, type: AssignmentSettingsResponseDto })
   upsertSettings(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @Body() dto: CreateAssignmentSettingsDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AssignmentSettingsResponseDto> {
@@ -44,7 +34,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Get assignment settings for a lesson' })
   @ApiResponse({ status: 200, type: AssignmentSettingsResponseDto })
   getSettings(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AssignmentSettingsResponseDto> {
     return this.assignmentsService.getSettings(lessonId, user);
@@ -54,7 +44,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Submit an assignment (enrolled student)' })
   @ApiResponse({ status: 201, type: SubmissionResponseDto })
   submit(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @Body() dto: SubmitAssignmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto> {
@@ -66,7 +56,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Get all submissions for a lesson (instructor/admin)' })
   @ApiResponse({ status: 200, type: [SubmissionResponseDto] })
   getSubmissions(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto[]> {
     return this.assignmentsService.getSubmissions(lessonId, user);
@@ -78,7 +68,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Get ungraded submissions (instructor/admin)' })
   @ApiResponse({ status: 200, type: [SubmissionResponseDto] })
   getPendingSubmissions(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto[]> {
     return this.assignmentsService.getPendingSubmissions(lessonId, user);
@@ -89,7 +79,7 @@ export class AssignmentsController {
   @ApiOperation({ summary: "Get the calling student's own submissions" })
   @ApiResponse({ status: 200, type: [SubmissionResponseDto] })
   getMySubmissions(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto[]> {
     return this.assignmentsService.getMySubmissions(lessonId, user);
@@ -99,8 +89,8 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Get a single submission' })
   @ApiResponse({ status: 200, type: SubmissionResponseDto })
   getSubmission(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Param('lessonId') lessonId: string,
+    @Param('submissionId') submissionId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto> {
     return this.assignmentsService.getSubmission(lessonId, submissionId, user);
@@ -112,8 +102,8 @@ export class AssignmentsController {
   @ApiOperation({ summary: 'Grade a submission (instructor/admin)' })
   @ApiResponse({ status: 200, type: SubmissionResponseDto })
   gradeSubmission(
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
-    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Param('lessonId') lessonId: string,
+    @Param('submissionId') submissionId: string,
     @Body() dto: GradeSubmissionDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<SubmissionResponseDto> {

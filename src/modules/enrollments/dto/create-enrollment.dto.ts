@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateEnrollmentDto {
-  @ApiProperty({ example: 'course-uuid', description: 'ID of the course to enroll in' })
-  @IsUUID()
+  @ApiProperty({ example: 'clxyz123...', description: 'ID of the course to enroll in' })
+  @IsString()
+  @MinLength(20)
   courseId!: string;
 
   @ApiPropertyOptional({

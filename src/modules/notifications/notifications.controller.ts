@@ -1,14 +1,4 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Query,
-} from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { PaginatedResult } from '../../common/dto/pagination.dto';
@@ -54,7 +44,7 @@ export class NotificationsController {
   @ApiResponse({ status: 200, type: NotificationResponseDto })
   markRead(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
   ): Promise<NotificationResponseDto> {
     return this.notificationsService.markRead(user.id, id);
   }
@@ -63,10 +53,7 @@ export class NotificationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a notification' })
   @ApiResponse({ status: 204 })
-  delete(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<void> {
+  delete(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<void> {
     return this.notificationsService.delete(user.id, id);
   }
 }

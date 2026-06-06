@@ -6,9 +6,10 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
-  IsUUID,
+  IsString,
   Max,
   Min,
+  MinLength,
 } from 'class-validator';
 
 export class CreateAssignmentSettingsDto {
@@ -45,7 +46,8 @@ export class CreateAssignmentSettingsDto {
 
   @ApiPropertyOptional({ description: 'Group ID for group assignments' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   groupId?: string;
 
   @ApiPropertyOptional({

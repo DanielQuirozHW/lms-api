@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Query,
 } from '@nestjs/common';
@@ -94,7 +93,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get public profile of any user' })
   @ApiResponse({ status: 200, type: UserPublicResponseDto })
   @ApiResponse({ status: 404, description: 'User not found' })
-  getPublicProfile(@Param('id', ParseUUIDPipe) id: string): Promise<UserPublicResponseDto> {
+  getPublicProfile(@Param('id') id: string): Promise<UserPublicResponseDto> {
     return this.usersService.getPublicProfile(id);
   }
 }

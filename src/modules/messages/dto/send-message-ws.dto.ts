@@ -1,7 +1,8 @@
-import { IsString, IsUUID, MaxLength } from 'class-validator';
+import { MinLength, IsString, MaxLength } from 'class-validator';
 
 export class SendMessageWsDto {
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   receiverId!: string;
 
   @IsString()

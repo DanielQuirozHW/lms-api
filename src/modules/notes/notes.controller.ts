@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Put,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -27,7 +17,7 @@ export class NotesController {
   @ApiResponse({ status: 404, description: 'Note not found' })
   getNote(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
   ): Promise<NoteResponseDto> {
     return this.notesService.getNote(user.id, lessonId);
   }
@@ -37,7 +27,7 @@ export class NotesController {
   @ApiResponse({ status: 200, type: NoteResponseDto })
   upsertNote(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
     @Body() dto: UpsertNoteDto,
   ): Promise<NoteResponseDto> {
     return this.notesService.upsertNote(user.id, lessonId, dto);
@@ -50,7 +40,7 @@ export class NotesController {
   @ApiResponse({ status: 404, description: 'Note not found' })
   deleteNote(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
   ): Promise<void> {
     return this.notesService.deleteNote(user.id, lessonId);
   }

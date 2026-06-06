@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreatePostDto {
   @ApiProperty({ example: 'Here is my answer to the question...', minLength: 1 })
@@ -9,6 +9,7 @@ export class CreatePostDto {
 
   @ApiPropertyOptional({ example: 'post-uuid', description: 'Reply to an existing post' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   parentId?: string;
 }

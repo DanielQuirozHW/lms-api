@@ -1,6 +1,7 @@
-import { IsUUID } from 'class-validator';
+import { MinLength, IsString } from 'class-validator';
 
 export class JoinThreadWsDto {
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   threadId!: string;
 }

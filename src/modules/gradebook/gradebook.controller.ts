@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -42,7 +41,7 @@ export class GradebookController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findStructure(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GradebookResponseDto> {
     return this.gradebookService.findStructure(courseId, user);
@@ -57,7 +56,7 @@ export class GradebookController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   createCategory(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateGradebookCategoryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GradebookCategoryResponseDto> {
@@ -73,7 +72,7 @@ export class GradebookController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course or category not found' })
   createItem(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateGradebookItemDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GradebookItemResponseDto> {
@@ -90,8 +89,8 @@ export class GradebookController {
   })
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   getStudentGrade(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('enrollmentId', ParseUUIDPipe) enrollmentId: string,
+    @Param('courseId') courseId: string,
+    @Param('enrollmentId') enrollmentId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<StudentGradeResponseDto> {
     return this.gradebookService.getStudentGrade(courseId, enrollmentId, user);
@@ -106,8 +105,8 @@ export class GradebookController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Category or course not found' })
   updateCategory(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateGradebookCategoryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GradebookCategoryResponseDto> {
@@ -124,8 +123,8 @@ export class GradebookController {
   @ApiResponse({ status: 404, description: 'Category or course not found' })
   @ApiResponse({ status: 409, description: 'Category still has items' })
   deleteCategory(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.gradebookService.deleteCategory(courseId, id, user);
@@ -140,8 +139,8 @@ export class GradebookController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Item or course not found' })
   deleteItem(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.gradebookService.deleteItem(courseId, id, user);

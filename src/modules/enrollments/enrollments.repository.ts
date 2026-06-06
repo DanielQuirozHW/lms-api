@@ -53,15 +53,17 @@ export class EnrollmentsRepository {
   async findManyByUserId(
     userId: string,
     pagination: PaginationDto,
+    status?: EnrollmentStatus,
   ): Promise<[Enrollment[], number]> {
+    const where = { userId, ...(status && { status }) };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.enrollment.findMany({
-        where: { userId },
+        where,
         skip: pagination.skip,
         take: pagination.limit ?? 20,
         orderBy: { enrolledAt: 'desc' },
       }),
-      this.prisma.enrollment.count({ where: { userId } }),
+      this.prisma.enrollment.count({ where }),
     ]);
     return [data, total];
   }

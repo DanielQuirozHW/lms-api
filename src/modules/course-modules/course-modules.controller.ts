@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -41,7 +40,7 @@ export class CourseModulesController {
   @ApiResponse({ status: 404, description: 'Course not found' })
   @ApiResponse({ status: 409, description: 'Order conflict — duplicate position' })
   create(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateModuleDto,
   ): Promise<ModuleResponseDto> {
     return this.courseModulesService.create(courseId, dto);
@@ -52,7 +51,7 @@ export class CourseModulesController {
   @ApiOperation({ summary: 'List modules of a course (students see only published)' })
   @ApiResponse({ status: 200, type: ModuleResponseDto, isArray: true })
   findAll(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<ModuleResponseDto[]> {
     const publishedOnly =
@@ -70,10 +69,7 @@ export class CourseModulesController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
-  reorder(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Body() dto: ReorderModulesDto,
-  ): Promise<void> {
+  reorder(@Param('courseId') courseId: string, @Body() dto: ReorderModulesDto): Promise<void> {
     return this.courseModulesService.reorder(courseId, dto);
   }
 
@@ -83,8 +79,8 @@ export class CourseModulesController {
   @ApiResponse({ status: 200, type: ModuleDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Module not found' })
   findOne(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<ModuleDetailResponseDto> {
     const publishedOnly =
@@ -103,8 +99,8 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Module not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateModuleDto,
   ): Promise<ModuleResponseDto> {
     return this.courseModulesService.update(courseId, id, dto);
@@ -120,8 +116,8 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Module not found' })
   publish(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
   ): Promise<ModuleResponseDto> {
     return this.courseModulesService.publish(courseId, id);
   }
@@ -137,10 +133,7 @@ export class CourseModulesController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Module not found' })
   @ApiResponse({ status: 409, description: 'Module has published lessons' })
-  remove(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<void> {
+  remove(@Param('courseId') courseId: string, @Param('id') id: string): Promise<void> {
     return this.courseModulesService.remove(courseId, id);
   }
 }

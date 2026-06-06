@@ -6,14 +6,18 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 
 export class GradeAnswerItemDto {
-  @ApiProperty({ example: 'crit-uuid' }) @IsUUID() criterionId!: string;
-  @ApiPropertyOptional({ example: 'level-uuid' }) @IsOptional() @IsUUID() levelId?: string;
+  @ApiProperty({ example: 'crit-uuid' }) @IsString() @MinLength(20) criterionId!: string;
+  @ApiPropertyOptional({ example: 'level-uuid' })
+  @IsOptional()
+  @IsString()
+  @MinLength(20)
+  levelId?: string;
   @ApiProperty({ example: 18 }) @IsNumber() @Min(0) pointsAwarded!: number;
   @ApiPropertyOptional() @IsOptional() @IsString() feedback?: string;
 }

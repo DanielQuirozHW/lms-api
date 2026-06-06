@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -37,7 +36,7 @@ export class RubricsController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findAll(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricSummaryResponseDto[]> {
     return this.rubricsService.findAll(courseId, user);
@@ -52,7 +51,7 @@ export class RubricsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   create(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateRubricDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricResponseDto> {
@@ -65,8 +64,8 @@ export class RubricsController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 404, description: 'Rubric not found' })
   findOne(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricResponseDto> {
     return this.rubricsService.findOne(courseId, id, user);
@@ -83,8 +82,8 @@ export class RubricsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Rubric not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateRubricDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricResponseDto> {
@@ -101,8 +100,8 @@ export class RubricsController {
   @ApiResponse({ status: 404, description: 'Rubric not found' })
   @ApiResponse({ status: 409, description: 'Rubric has existing assessments' })
   delete(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.rubricsService.delete(courseId, id, user);
@@ -117,9 +116,9 @@ export class RubricsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Rubric or submission not found' })
   createAssessment(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
+    @Param('submissionId') submissionId: string,
     @Body() dto: CreateRubricAssessmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricAssessmentResponseDto> {
@@ -132,9 +131,9 @@ export class RubricsController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 404, description: 'Assessment not found' })
   getAssessment(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
+    @Param('submissionId') submissionId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RubricAssessmentResponseDto> {
     return this.rubricsService.getAssessment(courseId, id, submissionId, user);

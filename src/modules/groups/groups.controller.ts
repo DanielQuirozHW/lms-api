@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -39,7 +38,7 @@ export class GroupsController {
   @ApiResponse({ status: 403, description: 'Course not visible to caller' })
   @ApiResponse({ status: 404, description: 'Course not found' })
   findAll(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GroupResponseDto[]> {
     return this.groupsService.findAll(courseId, user);
@@ -55,7 +54,7 @@ export class GroupsController {
   @ApiResponse({ status: 404, description: 'Course not found' })
   @ApiResponse({ status: 409, description: 'Group name already exists in this course' })
   create(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: CreateGroupDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GroupResponseDto> {
@@ -71,8 +70,8 @@ export class GroupsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course or group not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateGroupDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GroupResponseDto> {
@@ -89,8 +88,8 @@ export class GroupsController {
   @ApiResponse({ status: 404, description: 'Course or group not found' })
   @ApiResponse({ status: 409, description: 'Cannot delete group with members' })
   delete(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.groupsService.delete(courseId, id, user);
@@ -106,8 +105,8 @@ export class GroupsController {
   @ApiResponse({ status: 404, description: 'Course or group not found' })
   @ApiResponse({ status: 409, description: 'User already in a group or group is full' })
   addMember(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
     @Body() dto: AddMemberDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<GroupMemberResponseDto> {
@@ -123,9 +122,9 @@ export class GroupsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Course, group, or member not found' })
   removeMember(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('userId', ParseUUIDPipe) userId: string,
+    @Param('courseId') courseId: string,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.groupsService.removeMember(courseId, id, userId, user);

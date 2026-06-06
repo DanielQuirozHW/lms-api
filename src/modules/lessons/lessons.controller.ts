@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -48,8 +47,8 @@ export class LessonsController {
   @ApiResponse({ status: 404, description: 'Course or module not found' })
   @ApiResponse({ status: 409, description: 'Order conflict — duplicate position' })
   create(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
     @Body() dto: CreateLessonDto,
   ): Promise<LessonResponseDto> {
     return this.lessonsService.create(courseId, moduleId, dto);
@@ -60,8 +59,8 @@ export class LessonsController {
   @ApiOperation({ summary: 'List lessons in a module (students see only published)' })
   @ApiResponse({ status: 200, type: LessonResponseDto, isArray: true })
   findAll(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<LessonResponseDto[]> {
     const publishedOnly =
@@ -79,8 +78,8 @@ export class LessonsController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   reorder(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('courseId') _courseId: string,
+    @Param('moduleId') moduleId: string,
     @Body() dto: ReorderLessonsDto,
   ): Promise<void> {
     return this.lessonsService.reorder(moduleId, dto);
@@ -93,9 +92,9 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Not enrolled in this course' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   findOne(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<LessonDetailResponseDto> {
     return this.lessonsService.findOne(id, moduleId, courseId, user);
@@ -112,9 +111,9 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   update(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateLessonDto,
   ): Promise<LessonResponseDto> {
     return this.lessonsService.update(courseId, moduleId, id, dto);
@@ -130,9 +129,9 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   publish(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
   ): Promise<LessonResponseDto> {
     return this.lessonsService.publish(courseId, moduleId, id);
   }
@@ -146,9 +145,9 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Not enrolled in this course' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   updateProgress(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
     @Body() dto: UpdateProgressDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<LessonProgressResponseDto> {
@@ -167,9 +166,9 @@ export class LessonsController {
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   @ApiResponse({ status: 409, description: 'Lesson has student progress records' })
   remove(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
   ): Promise<void> {
     return this.lessonsService.remove(courseId, moduleId, id);
   }
@@ -185,9 +184,9 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Lesson not found' })
   addResource(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
-    @Param('moduleId', ParseUUIDPipe) moduleId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('courseId') courseId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('id') id: string,
     @Body() dto: CreateResourceDto,
   ): Promise<LessonResourceDto> {
     return this.lessonsService.addResource(courseId, moduleId, id, dto);
@@ -204,10 +203,10 @@ export class LessonsController {
   @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
   @ApiResponse({ status: 404, description: 'Resource not found' })
   removeResource(
-    @Param('courseId', ParseUUIDPipe) _courseId: string,
-    @Param('moduleId', ParseUUIDPipe) _moduleId: string,
-    @Param('id', ParseUUIDPipe) lessonId: string,
-    @Param('resourceId', ParseUUIDPipe) resourceId: string,
+    @Param('courseId') _courseId: string,
+    @Param('moduleId') _moduleId: string,
+    @Param('id') lessonId: string,
+    @Param('resourceId') resourceId: string,
   ): Promise<void> {
     return this.lessonsService.removeResource(lessonId, resourceId);
   }

@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Query,
-} from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -27,7 +18,7 @@ export class UserEnrollmentsController {
   @ApiResponse({ status: 200, type: UserEnrollmentItemDto, isArray: true })
   @ApiResponse({ status: 403, description: 'Admin only' })
   getAdminUserEnrollments(
-    @Param('userId', ParseUUIDPipe) userId: string,
+    @Param('userId') userId: string,
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<UserEnrollmentItemDto>> {
     return this.enrollmentsService.getAdminUserEnrollments(userId, pagination);
@@ -42,8 +33,8 @@ export class UserEnrollmentsController {
   @ApiResponse({ status: 404, description: 'Enrollment not found' })
   @ApiResponse({ status: 409, description: 'Cannot remove a completed enrollment' })
   removeUserEnrollment(
-    @Param('userId', ParseUUIDPipe) userId: string,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('userId') userId: string,
+    @Param('courseId') courseId: string,
   ): Promise<void> {
     return this.enrollmentsService.removeUserEnrollment(userId, courseId);
   }

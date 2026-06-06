@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { MinLength, IsString } from 'class-validator';
 
 export class UploadCourseCoverDto {
   @ApiProperty({ example: 'course-uuid' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   courseId!: string;
 }

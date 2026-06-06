@@ -1,13 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import {
+  MinLength,
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 
 export class SubmitAnswerItemDto {
-  @ApiProperty({ format: 'uuid' }) @IsUUID() questionId!: string;
+  @ApiProperty({ format: 'uuid' }) @IsString() @MinLength(20) questionId!: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   selectedOptionId?: string;
 
   @ApiPropertyOptional({ maxLength: 10000 })

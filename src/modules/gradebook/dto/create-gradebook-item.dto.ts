@@ -1,13 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import { MinLength, IsString, IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class CreateGradebookItemDto {
   @ApiProperty({ description: 'ID of the lesson to link' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   lessonId!: string;
 
   @ApiProperty({ description: 'Category to put this item in' })
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   categoryId!: string;
 
   @ApiPropertyOptional({ description: 'Weight within category (null = equal weight)' })

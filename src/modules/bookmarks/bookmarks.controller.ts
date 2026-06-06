@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -44,7 +43,7 @@ export class BookmarksController {
   @ApiResponse({ status: 200, type: CheckBookmarkResponseDto })
   check(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
   ): Promise<CheckBookmarkResponseDto> {
     return this.bookmarksService.check(user.id, lessonId);
   }
@@ -67,7 +66,7 @@ export class BookmarksController {
   @ApiResponse({ status: 404, description: 'Bookmark not found' })
   delete(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('lessonId', ParseUUIDPipe) lessonId: string,
+    @Param('lessonId') lessonId: string,
   ): Promise<void> {
     return this.bookmarksService.delete(user.id, lessonId);
   }

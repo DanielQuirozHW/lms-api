@@ -6,7 +6,6 @@ import {
   IsIn,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
   MinLength,
 } from 'class-validator';
@@ -17,7 +16,8 @@ export class CreateCalendarEventDto {
     description: 'Course ID to associate this event with',
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   courseId?: string;
 
   @ApiProperty({ example: 'Project Due' })
@@ -61,7 +61,8 @@ export class CreateCalendarEventDto {
 
   @ApiPropertyOptional({ example: 'lesson-uuid', description: 'UUID of the referenced resource' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
   referenceId?: string;
 
   @ApiPropertyOptional({

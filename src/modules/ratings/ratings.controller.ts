@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -32,7 +32,7 @@ export class RatingsController {
   @ApiResponse({ status: 200, type: RatingResponseDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Body() dto: UpdateRatingDto,
   ): Promise<RatingResponseDto> {
     return this.ratingsService.update(user.id, courseId, dto);
@@ -43,7 +43,7 @@ export class RatingsController {
   @ApiOperation({ summary: 'Get all ratings for a course' })
   @ApiResponse({ status: 200, description: 'Paginated ratings list' })
   getRatings(
-    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('courseId') courseId: string,
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<RatingResponseDto>> {
     return this.ratingsService.getRatings(courseId, pagination);
@@ -53,7 +53,7 @@ export class RatingsController {
   @Public()
   @ApiOperation({ summary: 'Get rating summary (average + count + scale)' })
   @ApiResponse({ status: 200, type: RatingSummaryDto })
-  getSummary(@Param('courseId', ParseUUIDPipe) courseId: string): Promise<RatingSummaryDto> {
+  getSummary(@Param('courseId') courseId: string): Promise<RatingSummaryDto> {
     return this.ratingsService.getSummary(courseId);
   }
 }

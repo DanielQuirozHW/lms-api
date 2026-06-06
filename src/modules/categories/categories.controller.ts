@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -46,10 +45,7 @@ export class CategoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a category (admin only)' })
   @ApiResponse({ status: 200, type: CategoryResponseDto })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCategoryDto,
-  ): Promise<CategoryResponseDto> {
+  update(@Param('id') id: string, @Body() dto: UpdateCategoryDto): Promise<CategoryResponseDto> {
     return this.categoriesService.update(id, dto);
   }
 
@@ -59,7 +55,7 @@ export class CategoriesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a category (admin only, fails if it has courses)' })
   @ApiResponse({ status: 204 })
-  delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+  delete(@Param('id') id: string): Promise<void> {
     return this.categoriesService.delete(id);
   }
 }

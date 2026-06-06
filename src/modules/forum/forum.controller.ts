@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -68,7 +67,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Private forum — not enrolled' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   findThread(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ): Promise<ThreadDetailResponseDto> {
     return this.forumService.findThread(id, user);
@@ -80,7 +79,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not the thread author' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   updateThread(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateThreadDto,
   ): Promise<ThreadResponseDto> {
@@ -94,7 +93,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not course instructor or admin' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   pinThread(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ThreadResponseDto> {
     return this.forumService.pinThread(id, user);
@@ -107,7 +106,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not course instructor or admin' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   closeThread(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ThreadResponseDto> {
     return this.forumService.closeThread(id, user);
@@ -120,10 +119,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not the thread author' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   @ApiResponse({ status: 409, description: 'Thread has replies from other users' })
-  deleteThread(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<void> {
+  deleteThread(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     return this.forumService.deleteThread(id, user);
   }
 
@@ -136,7 +132,7 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Thread is closed or forum access denied' })
   @ApiResponse({ status: 404, description: 'Thread not found' })
   createPost(
-    @Param('threadId', ParseUUIDPipe) threadId: string,
+    @Param('threadId') threadId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePostDto,
   ): Promise<PostResponseDto> {
@@ -149,8 +145,8 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not the post author' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   updatePost(
-    @Param('threadId', ParseUUIDPipe) threadId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('threadId') threadId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdatePostDto,
   ): Promise<PostResponseDto> {
@@ -163,8 +159,8 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Insufficient permission' })
   @ApiResponse({ status: 404, description: 'Post or thread not found' })
   acceptAnswer(
-    @Param('threadId', ParseUUIDPipe) threadId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('threadId') threadId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PostResponseDto> {
     return this.forumService.acceptAnswer(threadId, id, user);
@@ -176,8 +172,8 @@ export class ForumController {
   @ApiResponse({ status: 204, description: 'Vote recorded or removed' })
   @ApiResponse({ status: 404, description: 'Post or thread not found' })
   vote(
-    @Param('threadId', ParseUUIDPipe) threadId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('threadId') threadId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: VoteDto,
   ): Promise<void> {
@@ -191,8 +187,8 @@ export class ForumController {
   @ApiResponse({ status: 403, description: 'Not the post author' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   deletePost(
-    @Param('threadId', ParseUUIDPipe) threadId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('threadId') threadId: string,
+    @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.forumService.deletePost(threadId, id, user);
