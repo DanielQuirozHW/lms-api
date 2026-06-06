@@ -29,10 +29,8 @@ export class MessagesRepository {
 
     const [rows, countResult] = await Promise.all([
       this.prisma.$queryRaw<InboxRawRow[]>`
-        WITH conversations AS (
-          SELECT DISTINCT ON (
-            CASE WHEN sender_id = ${userId} THEN receiver_id ELSE sender_id END
-          )
+        WITH labeled AS (
+          SELECT
             CASE WHEN sender_id = ${userId} THEN receiver_id ELSE sender_id END AS partner_id,
             id AS msg_id,
             sender_id,
@@ -42,9 +40,18 @@ export class MessagesRepository {
             created_at
           FROM messages
           WHERE sender_id = ${userId} OR receiver_id = ${userId}
-          ORDER BY
-            CASE WHEN sender_id = ${userId} THEN receiver_id ELSE sender_id END,
-            created_at DESC
+        ),
+        conversations AS (
+          SELECT DISTINCT ON (partner_id)
+            partner_id,
+            msg_id,
+            sender_id,
+            receiver_id,
+            content,
+            read_at,
+            created_at
+          FROM labeled
+          ORDER BY partner_id, created_at DESC
         ),
         unread_counts AS (
           SELECT sender_id AS partner_id, COUNT(*)::bigint AS unread_count
