@@ -77,8 +77,10 @@ export class LessonsRepository {
   }
 
   isEnrolled(userId: string, courseId: string): Promise<boolean> {
+    // Any enrollment status (ACTIVE, COMPLETED, etc.) grants read access to published lessons.
+    // Only progress writes require ACTIVE status (see findActiveEnrollmentId).
     return this.prisma.enrollment
-      .findFirst({ where: { userId, courseId, status: 'ACTIVE' } })
+      .findFirst({ where: { userId, courseId } })
       .then((e) => e !== null);
   }
 
