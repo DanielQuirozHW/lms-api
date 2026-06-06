@@ -27,6 +27,7 @@ import {
 import { ReorderLessonsDto } from './dto/reorder-lessons.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { UpdateProgressDto } from './dto/update-progress.dto';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { LessonOwnerGuard } from './guards/lesson-owner.guard';
 import { LessonsService } from './lessons.service';
 
@@ -87,6 +88,7 @@ export class LessonsController {
 
   @Get(':id')
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get lesson detail with resources and settings' })
   @ApiResponse({ status: 200, type: LessonDetailResponseDto })
   @ApiResponse({ status: 403, description: 'Not enrolled in this course' })

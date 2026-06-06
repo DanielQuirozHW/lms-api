@@ -21,6 +21,7 @@ import { CreateModuleDto } from './dto/create-module.dto';
 import { ModuleDetailResponseDto, ModuleResponseDto } from './dto/module-response.dto';
 import { ReorderModulesDto } from './dto/reorder-modules.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { CourseModuleOwnerGuard } from './guards/course-module-owner.guard';
 
 @ApiTags('Course Modules')
@@ -48,6 +49,7 @@ export class CourseModulesController {
 
   @Get()
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'List modules of a course (students see only published)' })
   @ApiResponse({ status: 200, type: ModuleDetailResponseDto, isArray: true })
   findAll(
@@ -75,6 +77,7 @@ export class CourseModulesController {
 
   @Get(':id')
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get module detail with lessons (students see only published lessons)' })
   @ApiResponse({ status: 200, type: ModuleDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Module not found' })
