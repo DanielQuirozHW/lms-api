@@ -96,6 +96,33 @@ export class CoursesRepository {
     return this.prisma.course.findUnique({ where: { slug } });
   }
 
+  async findBySlugWithCount(slug: string): Promise<CourseWithCount | null> {
+    const [course, lessonsCount] = await Promise.all([
+      this.prisma.course.findUnique({
+        where: { slug },
+        include: { _count: { select: { enrollments: true } } },
+      }),
+      this.prisma.lesson.count({ where: { module: { course: { slug } } } }),
+    ]);
+    if (!course) return null;
+    return {
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      description: course.description,
+      coverUrl: course.coverUrl,
+      status: course.status,
+      enrollmentType: course.enrollmentType,
+      price: course.price,
+      instructorId: course.instructorId,
+      categoryId: course.categoryId,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt,
+      lessonsCount,
+      enrollmentsCount: course._count.enrollments,
+    };
+  }
+
   countNonCancelledEnrollments(courseId: string): Promise<number> {
     return this.prisma.enrollment.count({
       where: { courseId, status: { not: 'CANCELLED' } },

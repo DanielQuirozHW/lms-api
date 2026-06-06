@@ -48,9 +48,11 @@ export class CoursesService {
     );
   }
 
-  /** Returns course detail including lessons and enrollment counts. Non-PUBLISHED courses return 404 unless the caller is the owner or an admin. */
+  /** Returns course detail including lessons and enrollment counts. Accepts either a CUID id or a slug. Non-PUBLISHED courses return 404 unless the caller is the owner or an admin. */
   async findOne(id: string, user?: AuthenticatedUser): Promise<CourseDetailResponseDto> {
-    const course = await this.coursesRepository.findByIdWithCount(id);
+    const course =
+      (await this.coursesRepository.findByIdWithCount(id)) ??
+      (await this.coursesRepository.findBySlugWithCount(id));
     if (!course) throw new NotFoundException('Course not found');
 
     const canViewNonPublished =

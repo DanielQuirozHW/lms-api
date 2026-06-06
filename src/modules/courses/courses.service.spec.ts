@@ -41,6 +41,7 @@ describe('CoursesService', () => {
       | 'findById'
       | 'findByIdWithCount'
       | 'findBySlug'
+      | 'findBySlugWithCount'
       | 'findByIdForDuplicate'
       | 'duplicateCourse'
       | 'countNonCancelledEnrollments'
@@ -57,6 +58,7 @@ describe('CoursesService', () => {
       findById: jest.fn(),
       findByIdWithCount: jest.fn(),
       findBySlug: jest.fn().mockResolvedValue(null),
+      findBySlugWithCount: jest.fn().mockResolvedValue(null),
       findByIdForDuplicate: jest.fn(),
       duplicateCourse: jest.fn(),
       countNonCancelledEnrollments: jest.fn(),
@@ -169,8 +171,21 @@ describe('CoursesService', () => {
       await expect(service.findOne('course-123')).rejects.toThrow(NotFoundException);
     });
 
-    it('throws NotFoundException when course does not exist', async () => {
+    it('falls back to slug lookup when ID lookup returns null', async () => {
+      const publishedCourse = { ...mockCourseWithCount, status: 'PUBLISHED' as const };
       coursesRepository.findByIdWithCount.mockResolvedValue(null);
+      coursesRepository.findBySlugWithCount.mockResolvedValue(publishedCourse);
+
+      const result = await service.findOne('typescript-basics');
+
+      expect(coursesRepository.findByIdWithCount).toHaveBeenCalledWith('typescript-basics');
+      expect(coursesRepository.findBySlugWithCount).toHaveBeenCalledWith('typescript-basics');
+      expect(result.id).toBe('course-123');
+    });
+
+    it('throws NotFoundException when neither ID nor slug matches', async () => {
+      coursesRepository.findByIdWithCount.mockResolvedValue(null);
+      // findBySlugWithCount defaults to null
 
       await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
     });
