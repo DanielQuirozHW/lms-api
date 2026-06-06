@@ -177,6 +177,7 @@ export class EnrollmentsService {
       userId,
       query,
       query.status,
+      query.courseId,
     );
     return paginate(
       enrollments.map((e) => this.map(e)),

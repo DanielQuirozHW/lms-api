@@ -54,8 +54,9 @@ export class EnrollmentsRepository {
     userId: string,
     pagination: PaginationDto,
     status?: EnrollmentStatus,
+    courseId?: string,
   ): Promise<[Enrollment[], number]> {
-    const where = { userId, ...(status && { status }) };
+    const where = { userId, ...(status && { status }), ...(courseId && { courseId }) };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.enrollment.findMany({
         where,

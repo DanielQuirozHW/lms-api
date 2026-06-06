@@ -118,7 +118,7 @@ describe('CourseModulesService', () => {
 
   describe('findAll', () => {
     it('passes publishedOnly=false to repository for instructors', async () => {
-      repo.findByCourseId.mockResolvedValue([mockModule]);
+      repo.findByCourseId.mockResolvedValue([mockModuleWithLessons]);
 
       await service.findAll('course-123', false);
 

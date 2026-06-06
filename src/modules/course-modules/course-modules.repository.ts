@@ -12,13 +12,14 @@ export class CourseModulesRepository {
     return this.prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
   }
 
-  findByCourseId(courseId: string, publishedOnly?: boolean): Promise<CourseModule[]> {
+  findByCourseId(courseId: string, publishedOnly?: boolean): Promise<CourseModuleWithLessons[]> {
     return this.prisma.courseModule.findMany({
       where: {
         courseId,
         ...(publishedOnly && { isPublished: true }),
       },
       orderBy: { order: 'asc' },
+      include: { lessons: { orderBy: { order: 'asc' } } },
     });
   }
 
