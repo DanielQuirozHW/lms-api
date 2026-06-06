@@ -49,11 +49,11 @@ export class CourseModulesController {
   @Get()
   @Public()
   @ApiOperation({ summary: 'List modules of a course (students see only published)' })
-  @ApiResponse({ status: 200, type: ModuleResponseDto, isArray: true })
+  @ApiResponse({ status: 200, type: ModuleDetailResponseDto, isArray: true })
   findAll(
     @Param('courseId') courseId: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
-  ): Promise<ModuleResponseDto[]> {
+  ): Promise<ModuleDetailResponseDto[]> {
     const publishedOnly =
       !user || !user.roles.some((r) => r === UserRole.INSTRUCTOR || r === UserRole.ADMIN);
     return this.courseModulesService.findAll(courseId, publishedOnly);

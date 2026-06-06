@@ -19,7 +19,12 @@ export class CourseModulesRepository {
         ...(publishedOnly && { isPublished: true }),
       },
       orderBy: { order: 'asc' },
-      include: { lessons: { orderBy: { order: 'asc' } } },
+      include: {
+        lessons: {
+          where: publishedOnly ? { isPublished: true } : undefined,
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 

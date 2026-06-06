@@ -40,13 +40,13 @@ export class CourseModulesService {
    * For public access (publishedOnly=true), the course must be PUBLISHED — returns 404 otherwise
    * to avoid leaking draft course structure (MISTAKES.md [007]).
    */
-  async findAll(courseId: string, publishedOnly: boolean): Promise<ModuleResponseDto[]> {
+  async findAll(courseId: string, publishedOnly: boolean): Promise<ModuleDetailResponseDto[]> {
     if (publishedOnly) {
       const course = await this.courseModulesRepository.findCourseStatus(courseId);
       if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Course not found');
     }
     const modules = await this.courseModulesRepository.findByCourseId(courseId, publishedOnly);
-    return modules.map((m) => this.map(m));
+    return modules.map((m) => this.mapDetail(m));
   }
 
   /** Returns module with its lessons. Verifies module belongs to courseId. Throws 404 if not found or mismatched.
