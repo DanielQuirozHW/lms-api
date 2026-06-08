@@ -24,15 +24,10 @@ export class BookmarksRepository {
       where: { userId },
       include: {
         lesson: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            moduleId: true,
+          include: {
             module: {
-              select: {
-                courseId: true,
-                course: { select: { id: true, title: true } },
+              include: {
+                course: true,
               },
             },
           },
@@ -59,15 +54,10 @@ export class BookmarksRepository {
       data: { userId, lessonId },
       include: {
         lesson: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            moduleId: true,
+          include: {
             module: {
-              select: {
-                courseId: true,
-                course: { select: { id: true, title: true } },
+              include: {
+                course: true,
               },
             },
           },

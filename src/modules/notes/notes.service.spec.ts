@@ -37,8 +37,8 @@ describe('NotesService', () => {
     it('returns the mapped note when it exists', async () => {
       const result = await service.getNote('user-456', 'lesson-789');
       expect(repo.findByUserAndLesson).toHaveBeenCalledWith('user-456', 'lesson-789');
-      expect(result.id).toBe('note-123');
-      expect(result.content).toBe('Great explanation of closures.');
+      expect(result).not.toBeNull();
+      expect(result).toMatchObject({ id: 'note-123', content: 'Great explanation of closures.' });
       expect(result).not.toHaveProperty('userId');
     });
 
