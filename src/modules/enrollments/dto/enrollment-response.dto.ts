@@ -20,6 +20,9 @@ export class ProgressSummaryDto {
 
   @ApiPropertyOptional({ enum: EnrollmentStatus, description: 'Current enrollment status' })
   status?: EnrollmentStatus;
+
+  @ApiProperty({ type: [String], example: ['lesson-id-1'] })
+  completedLessonIds!: string[];
 }
 
 export class EnrollmentResponseDto {

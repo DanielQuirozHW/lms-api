@@ -336,6 +336,9 @@ export class EnrollmentsService {
       progressPercentage,
       finalGrade: enrollment.finalGrade ?? null,
       status: enrollment.status,
+      completedLessonIds: enrollment.progress
+        .filter((p) => p.completedAt !== null)
+        .map((p) => p.lessonId),
     };
   }
 
@@ -493,6 +496,13 @@ export class EnrollmentsService {
     const total = enrollment.progress.length;
     const completed = enrollment.progress.filter((p) => p.completedAt !== null).length;
     const progressPercentage = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0;
-    return { totalLessons: total, completedLessons: completed, progressPercentage };
+    return {
+      totalLessons: total,
+      completedLessons: completed,
+      progressPercentage,
+      completedLessonIds: enrollment.progress
+        .filter((p) => p.completedAt !== null)
+        .map((p) => p.lessonId),
+    };
   }
 }

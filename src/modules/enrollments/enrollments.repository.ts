@@ -14,7 +14,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { type PaginationDto } from '../../common/dto/pagination.dto';
 
 export type CourseWithSettings = Course & { settings: CourseSettings | null };
-export type EnrollmentWithProgress = Enrollment & { progress: LessonProgress[] };
+export type EnrollmentWithProgress = Enrollment & {
+  progress: Pick<LessonProgress, 'completedAt' | 'lessonId'>[];
+};
 export type GradebookCategoryRow = {
   weight: number;
   items: {
@@ -96,7 +98,7 @@ export class EnrollmentsRepository {
   findByIdWithProgress(id: string): Promise<EnrollmentWithProgress | null> {
     return this.prisma.enrollment.findUnique({
       where: { id },
-      include: { progress: true },
+      include: { progress: { select: { completedAt: true, lessonId: true } } },
     });
   }
 
