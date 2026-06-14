@@ -11,8 +11,8 @@ export class LessonResourceDto {
 
 export class QuizSettingsDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
-  @ApiPropertyOptional({ example: 3, nullable: true }) maxAttempts!: number | null;
-  @ApiPropertyOptional({ example: 70, nullable: true }) passingScore!: number | null;
+  @ApiPropertyOptional({ type: Number, example: 3, nullable: true }) maxAttempts!: number | null;
+  @ApiPropertyOptional({ type: Number, example: 70, nullable: true }) passingScore!: number | null;
   @ApiProperty({ example: false }) blocksProgress!: boolean;
   @ApiProperty({ example: false }) shuffleQuestions!: boolean;
 }
@@ -21,8 +21,8 @@ export class AssignmentSettingsDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
   @ApiProperty({ enum: GradingType, example: GradingType.MANUAL }) gradingType!: GradingType;
   @ApiProperty({ example: 100 }) maxScore!: number;
-  @ApiPropertyOptional({ example: 60, nullable: true }) passingScore!: number | null;
-  @ApiPropertyOptional({ example: null, nullable: true }) dueDate!: Date | null;
+  @ApiPropertyOptional({ type: Number, example: 60, nullable: true }) passingScore!: number | null;
+  @ApiPropertyOptional({ type: Date, example: null, nullable: true }) dueDate!: Date | null;
   @ApiProperty({ example: false }) allowLateSubmission!: boolean;
 }
 
@@ -32,11 +32,21 @@ export class LessonResponseDto {
   @ApiProperty({ example: 'Introduction to Variables' }) title!: string;
   @ApiProperty({ example: 1 }) order!: number;
   @ApiProperty({ enum: LessonType, example: LessonType.VIDEO }) type!: LessonType;
-  @ApiPropertyOptional({ example: 'In this lesson...', nullable: true }) content!: string | null;
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/video.mp4', nullable: true }) videoUrl!:
+  @ApiPropertyOptional({ type: String, example: 'In this lesson...', nullable: true }) content!:
     | string
     | null;
-  @ApiPropertyOptional({ example: 480, nullable: true, description: 'Duration in seconds' })
+  @ApiPropertyOptional({
+    type: String,
+    example: 'https://cdn.example.com/video.mp4',
+    nullable: true,
+  })
+  videoUrl!: string | null;
+  @ApiPropertyOptional({
+    type: Number,
+    example: 480,
+    nullable: true,
+    description: 'Duration in seconds',
+  })
   duration!: number | null;
   @ApiProperty({ example: false }) isPreview!: boolean;
   @ApiProperty({ example: false }) isPublished!: boolean;
@@ -49,10 +59,10 @@ export class LessonProgressResponseDto {
   @ApiProperty() enrollmentId!: string;
   @ApiProperty() lessonId!: string;
   @ApiProperty() isLocked!: boolean;
-  @ApiPropertyOptional({ nullable: true }) startedAt!: Date | null;
-  @ApiPropertyOptional({ nullable: true }) completedAt!: Date | null;
-  @ApiPropertyOptional({ nullable: true }) lastWatchedAt!: Date | null;
-  @ApiPropertyOptional({ nullable: true }) watchedSeconds!: number | null;
+  @ApiPropertyOptional({ type: Date, nullable: true }) startedAt!: Date | null;
+  @ApiPropertyOptional({ type: Date, nullable: true }) completedAt!: Date | null;
+  @ApiPropertyOptional({ type: Date, nullable: true }) lastWatchedAt!: Date | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) watchedSeconds!: number | null;
 }
 
 export class LessonDetailResponseDto extends LessonResponseDto {

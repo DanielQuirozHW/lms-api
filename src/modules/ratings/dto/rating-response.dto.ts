@@ -5,7 +5,7 @@ export class RatingResponseDto {
   @ApiProperty() userId!: string;
   @ApiProperty() courseId!: string;
   @ApiProperty() score!: number;
-  @ApiPropertyOptional({ nullable: true }) review!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) review!: string | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

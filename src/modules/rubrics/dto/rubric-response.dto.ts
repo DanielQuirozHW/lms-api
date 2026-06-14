@@ -10,7 +10,7 @@ export class RubricLevelResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -30,7 +30,7 @@ export class RubricCriterionResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -53,7 +53,7 @@ export class RubricResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -79,7 +79,7 @@ export class RubricSummaryResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()

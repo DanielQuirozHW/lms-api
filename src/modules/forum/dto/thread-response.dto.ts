@@ -5,7 +5,7 @@ export class ThreadResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() title!: string;
   @ApiProperty() authorId!: string;
-  @ApiPropertyOptional({ nullable: true }) courseId!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) courseId!: string | null;
   @ApiProperty() isPinned!: boolean;
   @ApiProperty() isClosed!: boolean;
   @ApiProperty() postCount!: number;

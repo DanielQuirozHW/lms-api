@@ -5,6 +5,6 @@ export class MessageResponseDto {
   @ApiProperty() senderId!: string;
   @ApiProperty() receiverId!: string;
   @ApiProperty() content!: string;
-  @ApiPropertyOptional({ nullable: true }) readAt!: Date | null;
+  @ApiPropertyOptional({ type: Date, nullable: true }) readAt!: Date | null;
   @ApiProperty() createdAt!: Date;
 }

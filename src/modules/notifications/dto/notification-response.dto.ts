@@ -8,7 +8,7 @@ export class NotificationResponseDto {
   @ApiProperty() title!: string;
   @ApiProperty() body!: string;
   @ApiProperty() isRead!: boolean;
-  @ApiPropertyOptional({ nullable: true }) referenceId!: string | null;
-  @ApiPropertyOptional({ nullable: true }) referenceType!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) referenceId!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) referenceType!: string | null;
   @ApiProperty() createdAt!: Date;
 }

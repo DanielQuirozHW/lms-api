@@ -11,7 +11,7 @@ export class UserEnrollmentItemDto {
   @ApiProperty()
   courseTitle!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   coverUrl!: string | null;
 
   @ApiProperty({ enum: EnrollmentType })

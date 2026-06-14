@@ -21,11 +21,16 @@ export class ModuleResponseDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
   @ApiProperty({ example: 'course-uuid' }) courseId!: string;
   @ApiProperty({ example: 'Getting Started' }) title!: string;
-  @ApiPropertyOptional({ example: 'An introduction to the fundamentals', nullable: true })
+  @ApiPropertyOptional({
+    type: String,
+    example: 'An introduction to the fundamentals',
+    nullable: true,
+  })
   description!: string | null;
   @ApiProperty({ example: 1 }) order!: number;
   @ApiProperty({ example: false }) isPublished!: boolean;
   @ApiPropertyOptional({
+    type: Number,
     example: 3,
     nullable: true,
     description: 'Days after enrollment before this module unlocks',

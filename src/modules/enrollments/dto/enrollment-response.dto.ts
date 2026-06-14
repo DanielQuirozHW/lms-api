@@ -12,6 +12,7 @@ export class ProgressSummaryDto {
   progressPercentage!: number;
 
   @ApiPropertyOptional({
+    type: Number,
     example: 87.5,
     nullable: true,
     description: 'Weighted final grade (0–100)',
@@ -31,7 +32,7 @@ export class EnrollmentResponseDto {
   @ApiProperty({ example: 'course-uuid' }) courseId!: string;
   @ApiProperty({ enum: EnrollmentStatus, example: EnrollmentStatus.ACTIVE })
   status!: EnrollmentStatus;
-  @ApiPropertyOptional({ nullable: true }) completedAt!: Date | null;
+  @ApiPropertyOptional({ type: Date, nullable: true }) completedAt!: Date | null;
   @ApiProperty() enrolledAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
@@ -57,7 +58,7 @@ export class CourseEnrollmentItemDto {
   @ApiProperty()
   email!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   avatarUrl!: string | null;
 
   @ApiProperty({ enum: EnrollmentStatus })
