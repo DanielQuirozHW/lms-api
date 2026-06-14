@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { LessonType } from '@prisma/client';
-import { MinLength, IsString } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 export class CreateBookmarkDto {
   @ApiProperty({ description: 'ID of the lesson to bookmark' })

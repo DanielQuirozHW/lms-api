@@ -9,6 +9,7 @@ import {
   QuestionType,
   EnrollmentStatus,
   GlobalAnnouncementType,
+  CalendarEventType,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -310,7 +311,12 @@ async function main(): Promise<void> {
   const c1Lessons: string[] = [];
   const c2Lessons: string[] = [];
   const c3Lessons: string[] = [];
+  const c6Lessons: string[] = [];
+  const c7Lessons: string[] = [];
+  const c8Lessons: string[] = [];
   let quizLessonId = '';
+  let c6QuizLessonId = '';
+  let c7QuizLessonId = '';
 
   try {
     // Helper to upsert a module and its lessons, returning lesson IDs
@@ -339,7 +345,7 @@ async function main(): Promise<void> {
         for (const les of mod.lessons) {
           const l = await prisma.lesson.upsert({
             where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: {},
+            update: { type: les.type, title: les.title },
             create: {
               moduleId: m.id,
               title: les.title,
@@ -407,7 +413,12 @@ async function main(): Promise<void> {
           lessons: [
             { title: 'NumPy arrays', order: 1, type: LessonType.TEXT },
             { title: 'DataFrames con Pandas', order: 2, type: LessonType.VIDEO },
-            { title: 'Visualización con Matplotlib', order: 3, type: LessonType.TEXT },
+            // index [5]: ASSIGNMENT lesson for Fix 3
+            {
+              title: 'Proyecto: Análisis de datos con Pandas',
+              order: 3,
+              type: LessonType.ASSIGNMENT,
+            },
           ],
         },
       ]);
@@ -486,7 +497,7 @@ async function main(): Promise<void> {
     // ── New courses ──────────────────────────────────────────────────────────
 
     if (c6Id) {
-      await upsertModules(c6Id, [
+      const ids = await upsertModules(c6Id, [
         {
           title: 'Fundamentos de React',
           order: 1,
@@ -504,14 +515,17 @@ async function main(): Promise<void> {
             { title: 'App Router y Server Components', order: 1, type: LessonType.TEXT },
             { title: 'Data fetching en Next.js', order: 2, type: LessonType.VIDEO },
             { title: 'Optimización y despliegue', order: 3, type: LessonType.TEXT },
-            { title: 'Proyecto: Blog con Next.js', order: 4, type: LessonType.VIDEO },
+            // index [7]: QUIZ lesson for Fix 2
+            { title: 'Evaluación: React y Next.js', order: 4, type: LessonType.QUIZ },
           ],
         },
       ]);
+      c6Lessons.push(...ids);
+      c6QuizLessonId = ids[ids.length - 1];
     }
 
     if (c7Id) {
-      await upsertModules(c7Id, [
+      const ids = await upsertModules(c7Id, [
         {
           title: 'SQL Básico',
           order: 1,
@@ -532,14 +546,17 @@ async function main(): Promise<void> {
           lessons: [
             { title: 'Subconsultas y CTEs', order: 1, type: LessonType.TEXT },
             { title: 'Índices y optimización', order: 2, type: LessonType.VIDEO },
-            { title: 'Stored procedures y triggers', order: 3, type: LessonType.TEXT },
+            // index [5]: QUIZ lesson for Fix 2
+            { title: 'Evaluación final: SQL', order: 3, type: LessonType.QUIZ },
           ],
         },
       ]);
+      c7Lessons.push(...ids);
+      c7QuizLessonId = ids[ids.length - 1];
     }
 
     if (c8Id) {
-      await upsertModules(c8Id, [
+      const ids = await upsertModules(c8Id, [
         {
           title: 'Docker Esencial',
           order: 1,
@@ -555,10 +572,12 @@ async function main(): Promise<void> {
           lessons: [
             { title: 'Pipelines de CI/CD', order: 1, type: LessonType.TEXT },
             { title: 'Kubernetes básico', order: 2, type: LessonType.VIDEO },
-            { title: 'Monitoreo y logs', order: 3, type: LessonType.TEXT },
+            // index [5]: ASSIGNMENT lesson for Fix 3
+            { title: 'Proyecto práctico DevOps', order: 3, type: LessonType.ASSIGNMENT },
           ],
         },
       ]);
+      c8Lessons.push(...ids);
     }
 
     if (c9Id) {
@@ -644,22 +663,52 @@ async function main(): Promise<void> {
     console.error('❌ Modules/Lessons failed', e);
   }
 
-  // ── 5. Quiz (Course 1 Module 3 — Evaluación final) ─────────────────────────
+  // ── 5. Quizzes (c1, c6, c7) ───────────────────────────────────────────────
   try {
-    if (quizLessonId) {
+    // Quiz helper — creates settings + questions for a quiz lesson
+    type OptionDef = { text: string; isCorrect: boolean; order: number };
+    type QuestionDef = { text: string; type: QuestionType; order: number; options: OptionDef[] };
+
+    async function upsertQuiz(
+      lessonId: string,
+      settings: { passingScore: number; maxAttempts: number; shuffleQuestions: boolean },
+      questions: QuestionDef[],
+    ): Promise<void> {
       await prisma.quizSettings.upsert({
-        where: { lessonId: quizLessonId },
+        where: { lessonId },
         update: {},
         create: {
-          lessonId: quizLessonId,
-          passingScore: 70,
-          maxAttempts: 3,
+          lessonId,
+          passingScore: settings.passingScore,
+          maxAttempts: settings.maxAttempts,
           blocksProgress: false,
-          shuffleQuestions: true,
+          shuffleQuestions: settings.shuffleQuestions,
         },
       });
+      for (const qDef of questions) {
+        const q = await prisma.question.upsert({
+          where: { lessonId_order: { lessonId, order: qDef.order } },
+          update: {},
+          create: { lessonId, text: qDef.text, type: qDef.type, order: qDef.order, points: 1 },
+        });
+        for (const opt of qDef.options) {
+          await prisma.questionOption.upsert({
+            where: { questionId_order: { questionId: q.id, order: opt.order } },
+            update: {},
+            create: {
+              questionId: q.id,
+              text: opt.text,
+              isCorrect: opt.isCorrect,
+              order: opt.order,
+            },
+          });
+        }
+      }
+    }
 
-      const questionDefs = [
+    // Course 1 quiz — TypeScript (original)
+    if (quizLessonId) {
+      await upsertQuiz(quizLessonId, { passingScore: 70, maxAttempts: 3, shuffleQuestions: true }, [
         {
           text: '¿Cuál es la diferencia principal entre `type` e `interface` en TypeScript?',
           type: QuestionType.SINGLE_CHOICE,
@@ -719,37 +768,125 @@ async function main(): Promise<void> {
             { text: 'Falso', isCorrect: false, order: 2 },
           ],
         },
-      ];
+      ]);
+      console.log('✅ Quiz c1 created');
+    }
 
-      for (const qDef of questionDefs) {
-        const q = await prisma.question.upsert({
-          where: { lessonId_order: { lessonId: quizLessonId, order: qDef.order } },
-          update: {},
-          create: {
-            lessonId: quizLessonId,
-            text: qDef.text,
-            type: qDef.type,
-            order: qDef.order,
-            points: 1,
+    // Course 6 quiz — React y Next.js (Fix 2)
+    if (c6QuizLessonId) {
+      await upsertQuiz(
+        c6QuizLessonId,
+        { passingScore: 70, maxAttempts: 3, shuffleQuestions: true },
+        [
+          {
+            text: '¿Qué hook de React se usa para manejar efectos secundarios?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 1,
+            options: [
+              { text: 'useEffect', isCorrect: true, order: 1 },
+              { text: 'useState', isCorrect: false, order: 2 },
+              { text: 'useContext', isCorrect: false, order: 3 },
+              { text: 'useReducer', isCorrect: false, order: 4 },
+            ],
           },
-        });
-        for (const opt of qDef.options) {
-          await prisma.questionOption.upsert({
-            where: { questionId_order: { questionId: q.id, order: opt.order } },
-            update: {},
-            create: {
-              questionId: q.id,
-              text: opt.text,
-              isCorrect: opt.isCorrect,
-              order: opt.order,
-            },
-          });
-        }
-      }
-      console.log('✅ Quiz created');
+          {
+            text: '¿Cuál es la diferencia entre Server Components y Client Components en Next.js?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 2,
+            options: [
+              {
+                text: 'Server Components se ejecutan en el servidor y no pueden usar hooks de estado',
+                isCorrect: true,
+                order: 1,
+              },
+              { text: 'Client Components no pueden acceder al DOM', isCorrect: false, order: 2 },
+              { text: 'Server Components solo existen en Next.js 12', isCorrect: false, order: 3 },
+              { text: 'No hay diferencia funcional', isCorrect: false, order: 4 },
+            ],
+          },
+          {
+            text: 'En React, las props son inmutables desde la perspectiva del componente hijo.',
+            type: QuestionType.TRUE_FALSE,
+            order: 3,
+            options: [
+              { text: 'Verdadero', isCorrect: true, order: 1 },
+              { text: 'Falso', isCorrect: false, order: 2 },
+            ],
+          },
+          {
+            text: '¿Cuál directiva se usa en Next.js App Router para marcar un componente como cliente?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 4,
+            options: [
+              { text: '"use client"', isCorrect: true, order: 1 },
+              { text: '"use server"', isCorrect: false, order: 2 },
+              { text: '"client-only"', isCorrect: false, order: 3 },
+              { text: '"browser-only"', isCorrect: false, order: 4 },
+            ],
+          },
+        ],
+      );
+      console.log('✅ Quiz c6 created');
+    }
+
+    // Course 7 quiz — SQL (Fix 2)
+    if (c7QuizLessonId) {
+      await upsertQuiz(
+        c7QuizLessonId,
+        { passingScore: 70, maxAttempts: 3, shuffleQuestions: true },
+        [
+          {
+            text: '¿Qué cláusula SQL se usa para filtrar grupos después de un GROUP BY?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 1,
+            options: [
+              { text: 'HAVING', isCorrect: true, order: 1 },
+              { text: 'WHERE', isCorrect: false, order: 2 },
+              { text: 'FILTER', isCorrect: false, order: 3 },
+              { text: 'ON', isCorrect: false, order: 4 },
+            ],
+          },
+          {
+            text: '¿Qué tipo de JOIN devuelve solo las filas que tienen coincidencia en ambas tablas?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 2,
+            options: [
+              { text: 'INNER JOIN', isCorrect: true, order: 1 },
+              { text: 'LEFT JOIN', isCorrect: false, order: 2 },
+              { text: 'FULL OUTER JOIN', isCorrect: false, order: 3 },
+              { text: 'CROSS JOIN', isCorrect: false, order: 4 },
+            ],
+          },
+          {
+            text: 'Un índice en una columna siempre mejora el rendimiento de las consultas.',
+            type: QuestionType.TRUE_FALSE,
+            order: 3,
+            options: [
+              { text: 'Verdadero', isCorrect: false, order: 1 },
+              { text: 'Falso', isCorrect: true, order: 2 },
+            ],
+          },
+          {
+            text: '¿Qué es un CTE (Common Table Expression) en SQL?',
+            type: QuestionType.SINGLE_CHOICE,
+            order: 4,
+            options: [
+              {
+                text: 'Una consulta temporal con nombre definida con WITH',
+                isCorrect: true,
+                order: 1,
+              },
+              { text: 'Un tipo de índice compuesto', isCorrect: false, order: 2 },
+              { text: 'Una clave foránea virtual', isCorrect: false, order: 3 },
+              { text: 'Un procedimiento almacenado', isCorrect: false, order: 4 },
+            ],
+          },
+        ],
+      );
+      console.log('✅ Quiz c7 created');
     }
   } catch (e) {
-    console.error('❌ Quiz failed', e);
+    console.error('❌ Quizzes failed', e);
   }
 
   // ── 6. Enrollment Codes ────────────────────────────────────────────────────
@@ -777,6 +914,9 @@ async function main(): Promise<void> {
   let enrollC1: { id: string } | null = null;
   let enrollC2: { id: string } | null = null;
   let enrollC3: { id: string } | null = null;
+  let enrollAdminC5: { id: string } | null = null;
+  let enrollAdminC6: { id: string } | null = null;
+  let enrollAdminC7: { id: string } | null = null;
 
   // FREE courses: c2 (Python), c5 (SEO), c6 (React), c7 (SQL)
   try {
@@ -811,12 +951,26 @@ async function main(): Promise<void> {
       });
     }
 
-    // ldquiroz in all FREE courses (c5, c6, c7)
-    for (const courseId of [c5Id, c6Id, c7Id].filter(Boolean)) {
-      await prisma.enrollment.upsert({
-        where: { userId_courseId: { userId: adminUser.id, courseId } },
+    // ldquiroz in all FREE courses (c5, c6, c7) — track IDs for lesson progress
+    if (c5Id) {
+      enrollAdminC5 = await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: adminUser.id, courseId: c5Id } },
         update: {},
-        create: { userId: adminUser.id, courseId, status: EnrollmentStatus.ACTIVE },
+        create: { userId: adminUser.id, courseId: c5Id, status: EnrollmentStatus.ACTIVE },
+      });
+    }
+    if (c6Id) {
+      enrollAdminC6 = await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: adminUser.id, courseId: c6Id } },
+        update: {},
+        create: { userId: adminUser.id, courseId: c6Id, status: EnrollmentStatus.ACTIVE },
+      });
+    }
+    if (c7Id) {
+      enrollAdminC7 = await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: adminUser.id, courseId: c7Id } },
+        update: {},
+        create: { userId: adminUser.id, courseId: c7Id, status: EnrollmentStatus.ACTIVE },
       });
     }
 
@@ -852,7 +1006,104 @@ async function main(): Promise<void> {
     console.error('❌ Enrollments failed', e);
   }
 
-  // ── 8. Lesson Progress (ldquiroz only) ─────────────────────────────────────
+  // ── 8. Lesson Progress — All enrollments (Fix 1) ──────────────────────────
+  try {
+    const now = new Date();
+
+    // Build lesson ID map for every course
+    // Use tracked arrays where available; query DB for the rest
+    const courseLessons: Record<string, string[]> = {};
+    if (c1Id && c1Lessons.length) courseLessons[c1Id] = c1Lessons;
+    if (c2Id && c2Lessons.length) courseLessons[c2Id] = c2Lessons;
+    if (c3Id && c3Lessons.length) courseLessons[c3Id] = c3Lessons;
+    if (c6Id && c6Lessons.length) courseLessons[c6Id] = c6Lessons;
+    if (c7Id && c7Lessons.length) courseLessons[c7Id] = c7Lessons;
+    if (c8Id && c8Lessons.length) courseLessons[c8Id] = c8Lessons;
+
+    for (const courseId of [c4Id, c5Id, c9Id, c10Id, c11Id].filter(Boolean)) {
+      const lessons = await prisma.lesson.findMany({
+        where: { module: { courseId }, isPublished: true },
+        orderBy: [{ module: { order: 'asc' } }, { order: 'asc' }],
+        select: { id: true },
+      });
+      courseLessons[courseId] = lessons.map((l) => l.id);
+    }
+
+    // Admin enrollments for c5, c6, c7 — ~50% progress
+    for (const [courseId, enrollment] of [
+      [c5Id, enrollAdminC5],
+      [c6Id, enrollAdminC6],
+      [c7Id, enrollAdminC7],
+    ] as [string, { id: string } | null][]) {
+      if (!courseId || !enrollment) continue;
+      const lessonIds = courseLessons[courseId] ?? [];
+      const count = Math.ceil(lessonIds.length * 0.5);
+      if (count === 0) continue;
+      await prisma.lessonProgress.createMany({
+        data: lessonIds.slice(0, count).map((lessonId) => ({
+          enrollmentId: enrollment.id,
+          lessonId,
+          startedAt: now,
+          completedAt: now,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Student enrollments with varied progress tiers
+    // tier 0 (i % 3 === 0): 0% — no records
+    // tier 1 (i % 3 === 1): ~40% — first lessons completed
+    // tier 2 (i % 3 === 2): ~85% — most lessons completed
+    const studentEnrollmentDefs: { courseId: string; studentIndices: number[] }[] = [
+      { courseId: c1Id, studentIndices: [0, 1, 2, 3, 4] },
+      { courseId: c2Id, studentIndices: [5, 6, 7] },
+      { courseId: c3Id, studentIndices: [0, 1, 2] },
+      { courseId: c4Id, studentIndices: [0, 1, 2, 3, 4, 5, 6, 7] },
+      { courseId: c5Id, studentIndices: [3, 4, 5] },
+      { courseId: c6Id, studentIndices: [1, 2, 3, 4] },
+      { courseId: c7Id, studentIndices: [6, 7, 8] },
+      { courseId: c8Id, studentIndices: [0, 1, 2] },
+      { courseId: c9Id, studentIndices: [3, 4, 5] },
+      { courseId: c10Id, studentIndices: [2, 4, 6] },
+      { courseId: c11Id, studentIndices: [1, 3, 5, 7] },
+    ];
+
+    for (const { courseId, studentIndices } of studentEnrollmentDefs) {
+      if (!courseId) continue;
+      const lessonIds = courseLessons[courseId] ?? [];
+      if (lessonIds.length === 0) continue;
+
+      for (let i = 0; i < studentIndices.length; i++) {
+        const student = studentUsers[studentIndices[i]];
+        const enrollment = await prisma.enrollment.findUnique({
+          where: { userId_courseId: { userId: student.id, courseId } },
+        });
+        if (!enrollment) continue;
+
+        const tier = i % 3;
+        if (tier === 0) continue; // 0% progress
+
+        const count =
+          tier === 1 ? Math.ceil(lessonIds.length * 0.4) : Math.ceil(lessonIds.length * 0.85);
+
+        await prisma.lessonProgress.createMany({
+          data: lessonIds.slice(0, count).map((lessonId) => ({
+            enrollmentId: enrollment.id,
+            lessonId,
+            startedAt: now,
+            completedAt: now,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    console.log('✅ All-enrollments lesson progress created');
+  } catch (e) {
+    console.error('❌ All-enrollments lesson progress failed', e);
+  }
+
+  // ── 9. Lesson Progress (ldquiroz c1/c2/c3) ────────────────────────────────
   try {
     const now = new Date();
 
@@ -904,8 +1155,48 @@ async function main(): Promise<void> {
     console.error('❌ Lesson progress failed', e);
   }
 
-  // ── 9. Announcements ───────────────────────────────────────────────────────
+  // ── 10. Assignment Settings (Fix 3) ───────────────────────────────────────
   try {
+    // c2Lessons[5] = "Proyecto: Análisis de datos con Pandas" (ASSIGNMENT)
+    const c2AssignmentLessonId = c2Lessons[5];
+    if (c2AssignmentLessonId) {
+      await prisma.assignmentSettings.upsert({
+        where: { lessonId: c2AssignmentLessonId },
+        update: {},
+        create: {
+          lessonId: c2AssignmentLessonId,
+          maxScore: 100,
+          passingScore: 60,
+          allowLateSubmission: true,
+          maxAttempts: 2,
+        },
+      });
+    }
+
+    // c8Lessons[5] = "Proyecto práctico DevOps" (ASSIGNMENT)
+    const c8AssignmentLessonId = c8Lessons[5];
+    if (c8AssignmentLessonId) {
+      await prisma.assignmentSettings.upsert({
+        where: { lessonId: c8AssignmentLessonId },
+        update: {},
+        create: {
+          lessonId: c8AssignmentLessonId,
+          maxScore: 100,
+          passingScore: 70,
+          allowLateSubmission: false,
+          maxAttempts: 1,
+        },
+      });
+    }
+
+    console.log('✅ Assignment settings created');
+  } catch (e) {
+    console.error('❌ Assignment settings failed', e);
+  }
+
+  // ── 11. Announcements ─────────────────────────────────────────────────────
+  try {
+    // Course 1 — original announcements
     if (c1Id) {
       for (const ann of [
         {
@@ -927,13 +1218,49 @@ async function main(): Promise<void> {
         }
       }
     }
+
+    // Course 6 — React (Fix 6)
+    if (c6Id) {
+      const existing = await prisma.announcement.findFirst({
+        where: { courseId: c6Id, title: 'Bienvenidos a React con Next.js' },
+      });
+      if (!existing) {
+        await prisma.announcement.create({
+          data: {
+            courseId: c6Id,
+            instructorId: adminUser.id,
+            title: 'Bienvenidos a React con Next.js',
+            body: '¡Bienvenidos al curso de React con Next.js! Aprenderán a construir aplicaciones web modernas con las últimas características del framework.',
+          },
+        });
+      }
+    }
+
+    // Course 7 — SQL (Fix 6)
+    if (c7Id) {
+      const existing = await prisma.announcement.findFirst({
+        where: { courseId: c7Id, title: 'Bienvenidos a SQL y Bases de Datos' },
+      });
+      if (!existing) {
+        await prisma.announcement.create({
+          data: {
+            courseId: c7Id,
+            instructorId: adminUser.id,
+            title: 'Bienvenidos a SQL y Bases de Datos',
+            body: '¡Bienvenidos! En este curso dominarán SQL desde consultas básicas hasta técnicas avanzadas de optimización. ¡Prepárense para escribir consultas eficientes!',
+          },
+        });
+      }
+    }
+
     console.log('✅ Announcements created');
   } catch (e) {
     console.error('❌ Announcements failed', e);
   }
 
-  // ── 10. Ratings ────────────────────────────────────────────────────────────
+  // ── 12. Ratings ────────────────────────────────────────────────────────────
   try {
+    // Original: c3 (admin) + c1 (students 0-2)
     if (c3Id) {
       await prisma.courseRating.upsert({
         where: { userId_courseId: { userId: adminUser.id, courseId: c3Id } },
@@ -942,23 +1269,116 @@ async function main(): Promise<void> {
       });
     }
 
-    const scores = [85, 90, 75];
+    const c1Scores = [85, 90, 75];
     for (let i = 0; i < 3 && i < studentUsers.length; i++) {
       if (c1Id) {
         await prisma.courseRating.upsert({
           where: { userId_courseId: { userId: studentUsers[i].id, courseId: c1Id } },
           update: {},
-          create: { userId: studentUsers[i].id, courseId: c1Id, score: scores[i] },
+          create: { userId: studentUsers[i].id, courseId: c1Id, score: c1Scores[i] },
         });
       }
     }
+
+    // c2 ratings from enrolled students [5, 6, 7] (Fix 4)
+    const c2RatingDefs = [
+      { idx: 5, score: 80, review: 'Muy buen curso de Python para ciencia de datos' },
+      { idx: 6, score: 88, review: 'Pandas y NumPy muy bien explicados' },
+      { idx: 7, score: 75 },
+    ];
+    for (const { idx, score, review } of c2RatingDefs) {
+      if (c2Id) {
+        await prisma.courseRating.upsert({
+          where: { userId_courseId: { userId: studentUsers[idx].id, courseId: c2Id } },
+          update: {},
+          create: {
+            userId: studentUsers[idx].id,
+            courseId: c2Id,
+            score,
+            ...(review ? { review } : {}),
+          },
+        });
+      }
+    }
+
+    // c6 ratings from enrolled students [1, 2, 3, 4] (Fix 4)
+    const c6RatingDefs = [
+      { idx: 1, score: 92, review: 'El App Router de Next.js está muy bien explicado' },
+      { idx: 2, score: 78 },
+      { idx: 3, score: 95, review: 'Excelente contenido de React y Next.js' },
+      { idx: 4, score: 83 },
+    ];
+    for (const { idx, score, review } of c6RatingDefs) {
+      if (c6Id) {
+        await prisma.courseRating.upsert({
+          where: { userId_courseId: { userId: studentUsers[idx].id, courseId: c6Id } },
+          update: {},
+          create: {
+            userId: studentUsers[idx].id,
+            courseId: c6Id,
+            score,
+            ...(review ? { review } : {}),
+          },
+        });
+      }
+    }
+
+    // c7 ratings from enrolled students [6, 7, 8] (Fix 4)
+    const c7RatingDefs = [
+      { idx: 6, score: 77 },
+      { idx: 7, score: 91, review: 'Los JOINs y CTEs quedaron muy claros' },
+      { idx: 8, score: 85, review: 'Buen curso de SQL con ejemplos prácticos' },
+    ];
+    for (const { idx, score, review } of c7RatingDefs) {
+      if (c7Id) {
+        await prisma.courseRating.upsert({
+          where: { userId_courseId: { userId: studentUsers[idx].id, courseId: c7Id } },
+          update: {},
+          create: {
+            userId: studentUsers[idx].id,
+            courseId: c7Id,
+            score,
+            ...(review ? { review } : {}),
+          },
+        });
+      }
+    }
+
     console.log('✅ Ratings created');
   } catch (e) {
     console.error('❌ Ratings failed', e);
   }
 
-  // ── 11. Forum Thread ───────────────────────────────────────────────────────
+  // ── 13. Forum Threads ─────────────────────────────────────────────────────
   try {
+    // Helper to upsert a thread + posts
+    async function upsertForumThread(
+      courseId: string,
+      authorId: string,
+      threadTitle: string,
+      postDefs: { authorId: string; content: string }[],
+    ): Promise<void> {
+      let thread = await prisma.forumThread.findFirst({
+        where: { courseId, title: threadTitle },
+      });
+      if (!thread) {
+        thread = await prisma.forumThread.create({
+          data: { courseId, authorId, title: threadTitle },
+        });
+      }
+      for (const pd of postDefs) {
+        const existing = await prisma.forumPost.findFirst({
+          where: { threadId: thread.id, authorId: pd.authorId },
+        });
+        if (!existing) {
+          await prisma.forumPost.create({
+            data: { threadId: thread.id, authorId: pd.authorId, content: pd.content },
+          });
+        }
+      }
+    }
+
+    // Course 1 — original thread
     if (c1Id && studentUsers.length >= 2) {
       let thread = await prisma.forumThread.findFirst({
         where: { courseId: c1Id, title: '¿Cómo instalar TypeScript?' },
@@ -1011,12 +1431,111 @@ async function main(): Promise<void> {
         }
       }
     }
-    console.log('✅ Forum thread created');
+
+    // Course 6 — React (Fix 5)
+    if (c6Id && studentUsers.length >= 3) {
+      await upsertForumThread(
+        c6Id,
+        adminUser.id,
+        '¿Cuándo usar Server Components vs Client Components?',
+        [
+          {
+            authorId: adminUser.id,
+            content:
+              'Usen Server Components por defecto. Solo cambien a Client Components cuando necesiten interactividad, hooks de estado (useState, useEffect) o acceso a APIs del browser.',
+          },
+          {
+            authorId: studentUsers[1].id,
+            content:
+              '¿Y qué pasa con los formularios? ¿Se pueden manejar en Server Components con Server Actions?',
+          },
+          {
+            authorId: studentUsers[2].id,
+            content:
+              'Sí, con Server Actions de Next.js 14+ pueden manejar formularios sin JavaScript en el cliente. Es una de las mejoras más importantes del App Router.',
+          },
+        ],
+      );
+    }
+
+    // Course 7 — SQL (Fix 5)
+    if (c7Id && studentUsers.length >= 8) {
+      await upsertForumThread(c7Id, adminUser.id, '¿Cuándo conviene usar un índice en SQL?', [
+        {
+          authorId: adminUser.id,
+          content:
+            'Los índices mejoran las consultas SELECT con WHERE o JOIN, pero ralentizan INSERT, UPDATE y DELETE porque el índice también se actualiza. Úsenlos en columnas de búsqueda frecuente.',
+        },
+        {
+          authorId: studentUsers[6].id,
+          content:
+            'Entendido. ¿Hay alguna regla sobre cuántos índices son demasiados en una tabla?',
+        },
+        {
+          authorId: studentUsers[7].id,
+          content:
+            'Depende del patrón de uso. En tablas con muchos writes eviten índices innecesarios. En tablas de solo lectura pueden ser muy agresivos con los índices.',
+        },
+      ]);
+    }
+
+    console.log('✅ Forum threads created');
   } catch (e) {
-    console.error('❌ Forum thread failed', e);
+    console.error('❌ Forum threads failed', e);
   }
 
-  // ── 12. Global Announcement ────────────────────────────────────────────────
+  // ── 14. Certificate (Fix 7) ───────────────────────────────────────────────
+  try {
+    if (enrollC3 && c3Id) {
+      await prisma.certificate.upsert({
+        where: { enrollmentId: enrollC3.id },
+        update: {},
+        create: {
+          userId: adminUser.id,
+          courseId: c3Id,
+          enrollmentId: enrollC3.id,
+          certificateCode: 'CERT-FIGMA-2026-LDQUIROZ',
+          finalGrade: 92,
+        },
+      });
+      console.log('✅ Certificate created');
+    }
+  } catch (e) {
+    console.error('❌ Certificate failed', e);
+  }
+
+  // ── 15. Calendar Events (Fix 8) ───────────────────────────────────────────
+  try {
+    const now = new Date();
+    const calendarDefs = [
+      { courseId: c1Id, title: 'Inicio: TypeScript de Cero a Experto' },
+      { courseId: c6Id, title: 'Inicio: React con Next.js' },
+      { courseId: c7Id, title: 'Inicio: SQL y Bases de Datos' },
+    ];
+    for (const { courseId, title } of calendarDefs) {
+      if (!courseId) continue;
+      const existing = await prisma.calendarEvent.findFirst({
+        where: { userId: adminUser.id, courseId, type: CalendarEventType.COURSE_START },
+      });
+      if (!existing) {
+        await prisma.calendarEvent.create({
+          data: {
+            userId: adminUser.id,
+            courseId,
+            title,
+            type: CalendarEventType.COURSE_START,
+            startDate: now,
+            allDay: true,
+          },
+        });
+      }
+    }
+    console.log('✅ Calendar events created');
+  } catch (e) {
+    console.error('❌ Calendar events failed', e);
+  }
+
+  // ── 16. Global Announcement ────────────────────────────────────────────────
   try {
     const existing = await prisma.globalAnnouncement.findFirst({
       where: { title: '¡Bienvenidos a NexusLMS!' },
