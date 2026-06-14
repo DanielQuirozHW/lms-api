@@ -5,28 +5,38 @@ import type { MaintenanceResponseDto, SetMaintenanceDto } from './dto/maintenanc
 const REDIS_KEY = 'platform:maintenance';
 
 export interface MaintenanceState {
-  enabled: boolean;
-  message: string;
-  estimatedEnd?: string;
+  isEnabled: boolean;
+  message: string | null;
+  estimatedEnd?: string | null;
 }
 
 @Injectable()
 export class MaintenanceService {
   constructor(private readonly redisService: RedisService) {}
 
-  async getState(): Promise<MaintenanceState> {
+  async getState(): Promise<MaintenanceResponseDto> {
     const raw = await this.redisService.get(REDIS_KEY);
-    if (!raw) return { enabled: false, message: '' };
-    return JSON.parse(raw) as MaintenanceState;
+    if (!raw) return { isEnabled: false, message: null, estimatedEnd: null };
+    // Support both old format ({ enabled }) and new format ({ isEnabled })
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      isEnabled: (parsed['isEnabled'] ?? parsed['enabled'] ?? false) as boolean,
+      message: (parsed['message'] as string | null) ?? null,
+      estimatedEnd: (parsed['estimatedEnd'] as string | null | undefined) ?? null,
+    };
   }
 
   async setState(dto: SetMaintenanceDto): Promise<MaintenanceResponseDto> {
     const state: MaintenanceState = {
-      enabled: dto.enabled,
+      isEnabled: dto.enabled,
       message: dto.message,
-      estimatedEnd: dto.estimatedEnd,
+      estimatedEnd: dto.estimatedEnd ?? null,
     };
     await this.redisService.set(REDIS_KEY, JSON.stringify(state));
-    return state;
+    return {
+      isEnabled: state.isEnabled,
+      message: state.message,
+      estimatedEnd: state.estimatedEnd ?? null,
+    };
   }
 }

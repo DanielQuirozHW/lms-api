@@ -27,6 +27,7 @@ const mockCourse: CourseDetailResponseDto = {
   description: null,
   coverUrl: null,
   status: 'PUBLISHED',
+  enrollmentType: 'FREE',
   price: null,
   instructorId: 'instructor-123',
   categoryId: null,
@@ -387,7 +388,7 @@ describe('RubricsService', () => {
       expect(rubricsRepository.createAssessment).toHaveBeenCalledWith(
         expect.objectContaining({ totalScore: 18 }),
       );
-      expect(result.totalScore).toBe(18);
+      expect(result.score).toBe(18);
     });
 
     it('throws ForbiddenException when non-owner instructor tries to create assessment', async () => {
@@ -541,7 +542,7 @@ describe('RubricsService', () => {
       );
 
       expect(result.id).toBe('assessment-123');
-      expect(result.totalScore).toBe(18);
+      expect(result.score).toBe(18);
       expect(result.answers).toHaveLength(1);
     });
 

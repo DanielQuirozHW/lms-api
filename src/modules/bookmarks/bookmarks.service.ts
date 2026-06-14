@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { LessonType } from '@prisma/client';
 import type { PaginatedResult } from '../../common/dto/pagination.dto';
 import { paginate, type PaginationDto } from '../../common/dto/pagination.dto';
 import type { BookmarkWithLesson } from './bookmarks.repository';
@@ -37,7 +38,7 @@ export class BookmarksService {
   /** Returns whether the current user has bookmarked a specific lesson. */
   async check(userId: string, lessonId: string): Promise<CheckBookmarkResponseDto> {
     const bookmark = await this.bookmarksRepository.findByUserAndLesson(userId, lessonId);
-    return { bookmarked: bookmark !== null };
+    return { isBookmarked: bookmark !== null };
   }
 
   /** Deletes a bookmark by lessonId. Throws 404 if the bookmark does not exist. */
@@ -50,12 +51,15 @@ export class BookmarksService {
   private map(b: BookmarkWithLesson): BookmarkResponseDto {
     return {
       id: b.id,
-      lessonId: b.lesson.id,
-      lessonTitle: b.lesson.title,
-      lessonType: b.lesson.type as never,
-      moduleId: b.lesson.moduleId,
-      courseId: b.lesson.module.courseId,
-      courseTitle: b.lesson.module.course.title,
+      lessonId: b.lessonId,
+      userId: b.userId,
+      lesson: {
+        id: b.lesson.id,
+        title: b.lesson.title,
+        type: b.lesson.type as LessonType,
+        courseId: b.lesson.module.courseId,
+        course: { id: b.lesson.module.course.id, title: b.lesson.module.course.title },
+      },
       createdAt: b.createdAt,
     };
   }

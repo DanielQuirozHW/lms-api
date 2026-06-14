@@ -31,6 +31,7 @@ export class NotesService {
     return {
       id: note.id,
       lessonId: note.lessonId,
+      userId: note.userId,
       content: note.content,
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,

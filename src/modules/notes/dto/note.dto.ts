@@ -17,6 +17,9 @@ export class NoteResponseDto {
   lessonId!: string;
 
   @ApiProperty()
+  userId!: string;
+
+  @ApiProperty()
   content!: string;
 
   @ApiProperty()

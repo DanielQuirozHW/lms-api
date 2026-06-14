@@ -18,12 +18,12 @@ export class SetMaintenanceDto {
 }
 
 export class MaintenanceResponseDto {
-  @ApiProperty()
-  enabled!: boolean;
+  @ApiProperty({ example: false })
+  isEnabled!: boolean;
 
-  @ApiProperty()
-  message!: string;
+  @ApiProperty({ type: String, nullable: true, example: null })
+  message!: string | null;
 
-  @ApiProperty({ required: false })
-  estimatedEnd?: string;
+  @ApiProperty({ type: String, nullable: true, example: null })
+  estimatedEnd!: string | null;
 }

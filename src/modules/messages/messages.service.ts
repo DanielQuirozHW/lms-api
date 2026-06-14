@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { Message } from '@prisma/client';
 import { paginate, type PaginatedResult } from '../../common/dto/pagination.dto';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
-import type { InboxItemDto } from './dto/inbox-item.dto';
+import type { ConversationResponseDto } from './dto/inbox-item.dto';
 import type { MessageResponseDto } from './dto/message-response.dto';
 import type { SendMessageDto } from './dto/send-message.dto';
 import { MessagesRepository } from './messages.repository';
@@ -32,9 +32,9 @@ export class MessagesService {
   async getInbox(
     userId: string,
     pagination: PaginationDto,
-  ): Promise<PaginatedResult<InboxItemDto>> {
+  ): Promise<PaginatedResult<ConversationResponseDto>> {
     const [rows, total] = await this.messagesRepository.findInbox(userId, pagination);
-    const data: InboxItemDto[] = rows.map((row) => ({
+    const data: ConversationResponseDto[] = rows.map((row) => ({
       partnerId: row.partner_id,
       lastMessage: {
         id: row.msg_id,

@@ -58,8 +58,8 @@ describe('BookmarksService', () => {
       const result = await service.findAll('user-456', { page: 1, limit: 20, skip: 0 });
       expect(repo.findByUser).toHaveBeenCalledWith('user-456', 0, 20);
       expect(result.data).toHaveLength(1);
-      expect(result.data[0].lessonTitle).toBe('Intro to TypeScript');
-      expect(result.data[0].courseTitle).toBe('TypeScript Basics');
+      expect(result.data[0].lesson.title).toBe('Intro to TypeScript');
+      expect(result.data[0].lesson.course?.title).toBe('TypeScript Basics');
       expect(result.meta.total).toBe(1);
     });
   });
@@ -69,22 +69,22 @@ describe('BookmarksService', () => {
       const result = await service.create('user-456', 'lesson-789');
       expect(repo.createWithDetails).toHaveBeenCalledWith('user-456', 'lesson-789');
       expect(result.id).toBe('bm-123');
-      expect(result.lessonTitle).toBe('Intro to TypeScript');
-      expect(result.courseTitle).toBe('TypeScript Basics');
-      expect(result).not.toHaveProperty('userId');
+      expect(result.lesson.title).toBe('Intro to TypeScript');
+      expect(result.lesson.course?.title).toBe('TypeScript Basics');
+      expect(result.userId).toBe('user-456');
     });
   });
 
   describe('check', () => {
     it('returns bookmarked: true when bookmark exists', async () => {
       const result = await service.check('user-456', 'lesson-789');
-      expect(result).toEqual({ bookmarked: true });
+      expect(result).toEqual({ isBookmarked: true });
     });
 
     it('returns bookmarked: false when no bookmark exists', async () => {
       repo.findByUserAndLesson.mockResolvedValue(null);
       const result = await service.check('user-456', 'lesson-789');
-      expect(result).toEqual({ bookmarked: false });
+      expect(result).toEqual({ isBookmarked: false });
     });
   });
 

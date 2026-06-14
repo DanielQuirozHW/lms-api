@@ -102,14 +102,18 @@ export class RubricAssessmentAnswerResponseDto {
   @ApiProperty()
   criterionId!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   levelId!: string | null;
 
-  @ApiProperty()
-  pointsAwarded!: number;
+  @ApiProperty({ description: 'Points awarded for this criterion' })
+  score!: number;
 
-  @ApiPropertyOptional({ nullable: true })
-  feedback!: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Assessor comment for this criterion',
+  })
+  comment!: string | null;
 }
 
 export class RubricAssessmentResponseDto {
@@ -125,10 +129,10 @@ export class RubricAssessmentResponseDto {
   @ApiProperty()
   assessorId!: string;
 
-  @ApiProperty()
-  totalScore!: number;
+  @ApiProperty({ description: 'Sum of all answer scores' })
+  score!: number;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'Overall assessor feedback' })
   feedback!: string | null;
 
   @ApiProperty()

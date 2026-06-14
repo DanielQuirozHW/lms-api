@@ -8,8 +8,8 @@ import type { JwtPayload } from '../../modules/auth/auth.entity';
 import { RedisService } from '../../redis/redis.service';
 
 interface MaintenanceState {
-  enabled: boolean;
-  message: string;
+  isEnabled: boolean;
+  message: string | null;
   estimatedEnd?: string;
 }
 
@@ -44,7 +44,7 @@ export class MaintenanceGuard implements CanActivate {
     if (this.isExempt(request.path)) return true;
 
     const state = await this.getCachedState();
-    if (!state.enabled) return true;
+    if (!state.isEnabled) return true;
 
     if (this.isAdminToken(request)) return true;
 
@@ -69,9 +69,18 @@ export class MaintenanceGuard implements CanActivate {
       return this.cachedState;
     }
     const raw = await this.redisService.get(REDIS_KEY);
-    const state: MaintenanceState = raw
-      ? (JSON.parse(raw) as MaintenanceState)
-      : { enabled: false, message: '' };
+    // Support both old format ({ enabled }) and new format ({ isEnabled })
+    let state: MaintenanceState;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      state = {
+        isEnabled: (parsed['isEnabled'] ?? parsed['enabled'] ?? false) as boolean,
+        message: (parsed['message'] as string | null) ?? null,
+        estimatedEnd: parsed['estimatedEnd'] as string | undefined,
+      };
+    } else {
+      state = { isEnabled: false, message: null };
+    }
     this.cachedState = { ...state, cachedAt: now };
     return state;
   }

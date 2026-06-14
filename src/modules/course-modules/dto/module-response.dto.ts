@@ -6,9 +6,13 @@ export class LessonSummaryDto {
   @ApiProperty({ example: 'Introduction to Variables' }) title!: string;
   @ApiProperty({ example: 1 }) order!: number;
   @ApiProperty({ enum: LessonType, example: LessonType.VIDEO }) type!: LessonType;
-  @ApiPropertyOptional({ example: 300, description: 'Duration in seconds' }) duration!:
-    | number
-    | null;
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    example: 300,
+    description: 'Duration in seconds',
+  })
+  duration!: number | null;
   @ApiProperty({ example: false }) isPreview!: boolean;
   @ApiProperty({ example: true }) isPublished!: boolean;
 }

@@ -39,7 +39,7 @@ describe('NotesService', () => {
       expect(repo.findByUserAndLesson).toHaveBeenCalledWith('user-456', 'lesson-789');
       expect(result).not.toBeNull();
       expect(result).toMatchObject({ id: 'note-123', content: 'Great explanation of closures.' });
-      expect(result).not.toHaveProperty('userId');
+      expect(result).toHaveProperty('userId');
     });
 
     it('returns null when no note exists yet', async () => {

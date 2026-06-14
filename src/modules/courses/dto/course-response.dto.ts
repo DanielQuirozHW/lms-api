@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CourseStatus } from '@prisma/client';
+import { CourseStatus, EnrollmentType } from '@prisma/client';
 
 export class CourseResponseDto {
   @ApiProperty({ example: 'clxyz123' })
@@ -11,23 +11,47 @@ export class CourseResponseDto {
   @ApiProperty({ example: 'introduction-to-typescript' })
   slug!: string;
 
-  @ApiPropertyOptional({ example: 'Learn TypeScript from scratch' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Learn TypeScript from scratch' })
   description!: string | null;
 
-  @ApiPropertyOptional({ example: 'https://example.com/cover.jpg' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'https://example.com/cover.jpg' })
   coverUrl!: string | null;
 
   @ApiProperty({ enum: CourseStatus, example: CourseStatus.DRAFT })
   status!: CourseStatus;
 
-  @ApiPropertyOptional({ example: 29.99, description: 'Price in USD, null means free' })
+  @ApiProperty({ enum: EnrollmentType, example: EnrollmentType.FREE })
+  enrollmentType!: EnrollmentType;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    example: 29.99,
+    description: 'Price in USD, null means free',
+  })
   price!: number | null;
 
   @ApiProperty({ example: 'instructor-uuid' })
   instructorId!: string;
 
-  @ApiPropertyOptional({ example: 'category-uuid' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'category-uuid' })
   categoryId!: string | null;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    example: null,
+    description: 'Enrollment open date (from CourseSettings)',
+  })
+  enrollmentPeriodStart?: Date | null;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    example: null,
+    description: 'Enrollment close date (from CourseSettings)',
+  })
+  enrollmentPeriodEnd?: Date | null;
 
   @ApiProperty()
   createdAt!: Date;

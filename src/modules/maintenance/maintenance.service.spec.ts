@@ -25,21 +25,30 @@ describe('MaintenanceService', () => {
     it('returns disabled state when Redis key is not set', async () => {
       redisService.get.mockResolvedValue(null);
       const result = await service.getState();
-      expect(result).toEqual({ enabled: false, message: '' });
+      expect(result).toEqual({ isEnabled: false, message: null, estimatedEnd: null });
     });
 
     it('returns persisted state from Redis', async () => {
       redisService.get.mockResolvedValue(
         JSON.stringify({
-          enabled: true,
+          isEnabled: true,
           message: 'Down for maintenance',
           estimatedEnd: '2026-06-01T04:00:00Z',
         }),
       );
       const result = await service.getState();
-      expect(result.enabled).toBe(true);
+      expect(result.isEnabled).toBe(true);
       expect(result.message).toBe('Down for maintenance');
       expect(result.estimatedEnd).toBe('2026-06-01T04:00:00Z');
+    });
+
+    it('handles legacy Redis format with enabled field', async () => {
+      redisService.get.mockResolvedValue(
+        JSON.stringify({ enabled: true, message: 'Legacy format', estimatedEnd: null }),
+      );
+      const result = await service.getState();
+      expect(result.isEnabled).toBe(true);
+      expect(result.message).toBe('Legacy format');
     });
   });
 
@@ -54,17 +63,17 @@ describe('MaintenanceService', () => {
       expect(redisService.set).toHaveBeenCalledWith(
         'platform:maintenance',
         JSON.stringify({
-          enabled: true,
+          isEnabled: true,
           message: 'Maintenance in progress',
           estimatedEnd: '2026-06-01T04:00:00Z',
         }),
       );
-      expect(result.enabled).toBe(true);
+      expect(result.isEnabled).toBe(true);
     });
 
     it('disables maintenance mode', async () => {
       const result = await service.setState({ enabled: false, message: '' });
-      expect(result.enabled).toBe(false);
+      expect(result.isEnabled).toBe(false);
     });
   });
 });

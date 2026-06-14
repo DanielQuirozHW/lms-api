@@ -14,7 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PaginationDto, type PaginatedResult } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
-import { InboxItemDto } from './dto/inbox-item.dto';
+import { ConversationResponseDto } from './dto/inbox-item.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MessagesGateway } from './messages.gateway';
@@ -35,7 +35,7 @@ export class MessagesController {
   getInbox(
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PaginationDto,
-  ): Promise<PaginatedResult<InboxItemDto>> {
+  ): Promise<PaginatedResult<ConversationResponseDto>> {
     return this.messagesService.getInbox(user.id, pagination);
   }
 

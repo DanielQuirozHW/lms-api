@@ -272,7 +272,7 @@ export class RubricsService {
       rubricId: assessment.rubricId,
       submissionId: assessment.submissionId,
       assessorId: assessment.assessorId,
-      totalScore: assessment.totalScore,
+      score: assessment.totalScore,
       feedback: assessment.feedback,
       assessedAt: assessment.assessedAt,
       answers: assessment.answers.map((a) => ({
@@ -280,8 +280,8 @@ export class RubricsService {
         assessmentId: a.assessmentId,
         criterionId: a.criterionId,
         levelId: a.levelId,
-        pointsAwarded: a.pointsAwarded,
-        feedback: a.feedback,
+        score: a.pointsAwarded,
+        comment: a.feedback,
       })),
     };
   }

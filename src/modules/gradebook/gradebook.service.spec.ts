@@ -50,6 +50,7 @@ const mockCourseDetail: CourseDetailResponseDto = {
   description: null,
   coverUrl: null,
   status: 'PUBLISHED',
+  enrollmentType: 'FREE',
   price: null,
   instructorId: INSTRUCTOR_ID,
   categoryId: null,

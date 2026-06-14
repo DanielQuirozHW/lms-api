@@ -21,6 +21,7 @@ const mockCourseDetail: CourseDetailResponseDto = {
   description: null,
   coverUrl: null,
   status: 'PUBLISHED',
+  enrollmentType: 'FREE',
   price: null,
   instructorId: 'instructor-123',
   categoryId: null,

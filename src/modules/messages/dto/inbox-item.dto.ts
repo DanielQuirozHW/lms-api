@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MessageResponseDto } from './message-response.dto';
 
-export class InboxItemDto {
+export class ConversationResponseDto {
   @ApiProperty({ example: 'user-uuid', description: 'ID of the conversation partner' })
   partnerId!: string;
 
