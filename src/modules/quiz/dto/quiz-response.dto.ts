@@ -32,18 +32,18 @@ export class AttemptSummaryDto {
   @ApiProperty() lessonId!: string;
   @ApiProperty() enrollmentId!: string;
   @ApiProperty() attemptNumber!: number;
-  @ApiPropertyOptional({ type: Number, nullable: true }) score!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) score!: number | null;
   @ApiProperty() startedAt!: Date;
-  @ApiPropertyOptional({ type: Date, nullable: true }) completedAt!: Date | null;
-  @ApiPropertyOptional({ type: Boolean, nullable: true }) passed!: boolean | null;
+  @ApiProperty({ type: Date, nullable: true }) completedAt!: Date | null;
+  @ApiProperty({ type: Boolean, nullable: true }) passed!: boolean | null;
 }
 
 export class AttemptAnswerDto {
   @ApiProperty() id!: string;
   @ApiProperty() questionId!: string;
-  @ApiPropertyOptional({ type: String, nullable: true }) selectedOptionId!: string | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) textAnswer!: string | null;
-  @ApiPropertyOptional({ type: Boolean, nullable: true }) isCorrect!: boolean | null;
+  @ApiProperty({ type: String, nullable: true }) selectedOptionId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) textAnswer!: string | null;
+  @ApiProperty({ type: Boolean, nullable: true }) isCorrect!: boolean | null;
 }
 
 export class AttemptResultDto extends AttemptSummaryDto {

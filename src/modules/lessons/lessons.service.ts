@@ -19,12 +19,12 @@ import { EnrollmentsService } from '../enrollments/enrollments.service';
 import type { CreateLessonDto } from './dto/create-lesson.dto';
 import type { CreateResourceDto } from './dto/create-resource.dto';
 import type {
-  AssignmentSettingsDto,
+  LessonAssignmentSettingsDto,
   LessonDetailResponseDto,
   LessonProgressResponseDto,
+  LessonQuizSettingsDto,
   LessonResourceDto,
   LessonResponseDto,
-  QuizSettingsDto,
 } from './dto/lesson-response.dto';
 import type { ReorderLessonsDto } from './dto/reorder-lessons.dto';
 import type { UpdateLessonDto } from './dto/update-lesson.dto';
@@ -309,9 +309,10 @@ export class LessonsService {
     };
   }
 
-  private mapQuizSettings(qs: QuizSettings): QuizSettingsDto {
+  private mapQuizSettings(qs: QuizSettings): LessonQuizSettingsDto {
     return {
       id: qs.id,
+      lessonId: qs.lessonId,
       maxAttempts: qs.maxAttempts,
       passingScore: qs.passingScore,
       blocksProgress: qs.blocksProgress,
@@ -319,14 +320,18 @@ export class LessonsService {
     };
   }
 
-  private mapAssignmentSettings(as: AssignmentSettings): AssignmentSettingsDto {
+  private mapAssignmentSettings(as: AssignmentSettings): LessonAssignmentSettingsDto {
     return {
       id: as.id,
+      lessonId: as.lessonId,
       gradingType: as.gradingType,
       maxScore: as.maxScore,
       passingScore: as.passingScore,
       dueDate: as.dueDate,
       allowLateSubmission: as.allowLateSubmission,
+      isGroupAssignment: as.isGroupAssignment,
+      groupId: as.groupId,
+      maxAttempts: as.maxAttempts,
     };
   }
 

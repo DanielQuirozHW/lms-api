@@ -9,21 +9,26 @@ export class LessonResourceDto {
   @ApiProperty() createdAt!: Date;
 }
 
-export class QuizSettingsDto {
+export class LessonQuizSettingsDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
+  @ApiProperty({ example: 'lesson-uuid' }) lessonId!: string;
   @ApiProperty({ type: Number, example: 3, nullable: true }) maxAttempts!: number | null;
   @ApiProperty({ type: Number, example: 70, nullable: true }) passingScore!: number | null;
   @ApiProperty({ example: false }) blocksProgress!: boolean;
   @ApiProperty({ example: false }) shuffleQuestions!: boolean;
 }
 
-export class AssignmentSettingsDto {
+export class LessonAssignmentSettingsDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
+  @ApiProperty({ example: 'lesson-uuid' }) lessonId!: string;
   @ApiProperty({ enum: GradingType, example: GradingType.MANUAL }) gradingType!: GradingType;
   @ApiProperty({ example: 100 }) maxScore!: number;
   @ApiProperty({ type: Number, example: 60, nullable: true }) passingScore!: number | null;
   @ApiProperty({ type: Date, example: null, nullable: true }) dueDate!: Date | null;
   @ApiProperty({ example: false }) allowLateSubmission!: boolean;
+  @ApiProperty({ example: false }) isGroupAssignment!: boolean;
+  @ApiProperty({ type: String, nullable: true }) groupId!: string | null;
+  @ApiProperty({ type: Number, nullable: true }) maxAttempts!: number | null;
 }
 
 export class LessonResponseDto {
@@ -60,9 +65,9 @@ export class LessonDetailResponseDto extends LessonResponseDto {
   @ApiProperty({ type: [LessonResourceDto] })
   resources!: LessonResourceDto[];
 
-  @ApiProperty({ type: QuizSettingsDto, nullable: true })
-  quizSettings!: QuizSettingsDto | null;
+  @ApiProperty({ type: LessonQuizSettingsDto, nullable: true })
+  quizSettings!: LessonQuizSettingsDto | null;
 
-  @ApiProperty({ type: AssignmentSettingsDto, nullable: true })
-  assignmentSettings!: AssignmentSettingsDto | null;
+  @ApiProperty({ type: LessonAssignmentSettingsDto, nullable: true })
+  assignmentSettings!: LessonAssignmentSettingsDto | null;
 }
