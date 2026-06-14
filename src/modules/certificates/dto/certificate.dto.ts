@@ -43,7 +43,7 @@ export class CertificateResponseDto {
   @ApiProperty()
   issuedAt!: Date;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
   finalGrade!: number | null;
 
   @ApiProperty({ type: CertificateCourseDto })

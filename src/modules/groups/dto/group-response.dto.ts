@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class GroupResponseDto {
   @ApiProperty({ example: 'clxyz123', description: 'Group ID' })
@@ -10,14 +10,18 @@ export class GroupResponseDto {
   @ApiProperty({ example: 'Team Alpha', description: 'Group name' })
   name!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: String,
     example: 'First project group',
+    nullable: true,
     description: 'Optional group description',
   })
   description!: string | null;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: Number,
     example: 5,
+    nullable: true,
     description: 'Maximum number of members; null means unlimited',
   })
   maxMembers!: number | null;

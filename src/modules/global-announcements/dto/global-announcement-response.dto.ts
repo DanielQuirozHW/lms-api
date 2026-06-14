@@ -17,10 +17,10 @@ export class GlobalAnnouncementResponseDto {
   @ApiProperty()
   isActive!: boolean;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
   startsAt!: Date | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
   endsAt!: Date | null;
 
   @ApiProperty()

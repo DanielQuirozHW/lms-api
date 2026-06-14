@@ -17,7 +17,7 @@ export class UserResponseDto {
   @ApiProperty({ enum: UserRole, isArray: true, example: ['STUDENT'] })
   roles!: UserRole[];
 
-  @ApiProperty({ example: 'https://cdn.example.com/avatar.jpg', nullable: true })
+  @ApiProperty({ type: String, example: 'https://cdn.example.com/avatar.jpg', nullable: true })
   avatarUrl!: string | null;
 
   @ApiProperty({ example: false })

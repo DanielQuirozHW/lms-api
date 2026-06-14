@@ -32,7 +32,7 @@ export class EnrollmentResponseDto {
   @ApiProperty({ example: 'course-uuid' }) courseId!: string;
   @ApiProperty({ enum: EnrollmentStatus, example: EnrollmentStatus.ACTIVE })
   status!: EnrollmentStatus;
-  @ApiPropertyOptional({ type: Date, nullable: true }) completedAt!: Date | null;
+  @ApiProperty({ type: Date, nullable: true }) completedAt!: Date | null;
   @ApiProperty() enrolledAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

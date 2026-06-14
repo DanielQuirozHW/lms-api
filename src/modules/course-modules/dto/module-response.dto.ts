@@ -21,7 +21,7 @@ export class ModuleResponseDto {
   @ApiProperty({ example: 'clxyz123' }) id!: string;
   @ApiProperty({ example: 'course-uuid' }) courseId!: string;
   @ApiProperty({ example: 'Getting Started' }) title!: string;
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: String,
     example: 'An introduction to the fundamentals',
     nullable: true,
@@ -29,7 +29,7 @@ export class ModuleResponseDto {
   description!: string | null;
   @ApiProperty({ example: 1 }) order!: number;
   @ApiProperty({ example: false }) isPublished!: boolean;
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: Number,
     example: 3,
     nullable: true,

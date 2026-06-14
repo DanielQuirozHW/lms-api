@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class GradebookItemResponseDto {
   @ApiProperty()
@@ -10,7 +10,7 @@ export class GradebookItemResponseDto {
   @ApiProperty()
   lessonId!: string;
 
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   weight!: number | null;
 
   @ApiProperty()
@@ -58,13 +58,13 @@ export class ItemGradeDto {
   @ApiProperty()
   lessonId!: string;
 
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Number, nullable: true })
   rawScore!: number | null;
 
   @ApiProperty()
   maxScore!: number;
 
-  @ApiPropertyOptional({ description: 'Score as percentage 0-100' })
+  @ApiProperty({ type: Number, nullable: true, description: 'Score as percentage 0-100' })
   percentageScore!: number | null;
 
   @ApiProperty()
@@ -81,7 +81,11 @@ export class CategoryGradeDto {
   @ApiProperty()
   categoryWeight!: number;
 
-  @ApiPropertyOptional({ description: 'Weighted score for this category 0-100' })
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Weighted score for this category 0-100',
+  })
   categoryScore!: number | null;
 
   @ApiProperty({ type: [ItemGradeDto] })
@@ -95,7 +99,7 @@ export class StudentGradeResponseDto {
   @ApiProperty()
   courseId!: string;
 
-  @ApiPropertyOptional({ description: 'Calculated final grade 0-100' })
+  @ApiProperty({ type: Number, nullable: true, description: 'Calculated final grade 0-100' })
   finalGrade!: number | null;
 
   @ApiProperty({ type: [CategoryGradeDto] })

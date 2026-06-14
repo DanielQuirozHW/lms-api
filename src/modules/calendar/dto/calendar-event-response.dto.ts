@@ -1,12 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { CalendarEventType } from '@prisma/client';
 
 export class CalendarEventResponseDto {
   @ApiProperty({ example: 'clxyz123' })
   id!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: String,
     example: 'clcourse123',
+    nullable: true,
     description: 'Associated course ID, null for personal events',
   })
   courseId!: string | null;
@@ -17,7 +19,7 @@ export class CalendarEventResponseDto {
   @ApiProperty({ example: 'Project Due' })
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Final project submission deadline' })
+  @ApiProperty({ type: String, example: 'Final project submission deadline', nullable: true })
   description!: string | null;
 
   @ApiProperty({ enum: CalendarEventType, example: CalendarEventType.CUSTOM })
@@ -26,19 +28,19 @@ export class CalendarEventResponseDto {
   @ApiProperty({ example: '2026-06-01T09:00:00.000Z' })
   startDate!: Date;
 
-  @ApiPropertyOptional({ example: '2026-06-01T17:00:00.000Z' })
+  @ApiProperty({ type: Date, example: '2026-06-01T17:00:00.000Z', nullable: true })
   endDate!: Date | null;
 
   @ApiProperty({ example: false })
   allDay!: boolean;
 
-  @ApiPropertyOptional({ example: '#FF5733' })
+  @ApiProperty({ type: String, example: '#FF5733', nullable: true })
   color!: string | null;
 
-  @ApiPropertyOptional({ example: 'lesson-uuid' })
+  @ApiProperty({ type: String, example: 'lesson-uuid', nullable: true })
   referenceId!: string | null;
 
-  @ApiPropertyOptional({ example: 'lesson' })
+  @ApiProperty({ type: String, example: 'lesson', nullable: true })
   referenceType!: string | null;
 
   @ApiProperty()
