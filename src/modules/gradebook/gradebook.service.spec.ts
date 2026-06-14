@@ -54,6 +54,8 @@ const mockCourseDetail: CourseDetailResponseDto = {
   price: null,
   instructorId: INSTRUCTOR_ID,
   categoryId: null,
+  enrollmentPeriodStart: null,
+  enrollmentPeriodEnd: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
   lessonsCount: 3,

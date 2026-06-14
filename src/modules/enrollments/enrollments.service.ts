@@ -500,6 +500,8 @@ export class EnrollmentsService {
       totalLessons: total,
       completedLessons: completed,
       progressPercentage,
+      finalGrade: null,
+      status: enrollment.status,
       completedLessonIds: enrollment.progress
         .filter((p) => p.completedAt !== null)
         .map((p) => p.lessonId),

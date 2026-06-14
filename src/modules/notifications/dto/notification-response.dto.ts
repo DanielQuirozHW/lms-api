@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { NotificationType } from '@prisma/client';
 
 export class NotificationResponseDto {
@@ -8,7 +8,7 @@ export class NotificationResponseDto {
   @ApiProperty() title!: string;
   @ApiProperty() body!: string;
   @ApiProperty() isRead!: boolean;
-  @ApiPropertyOptional({ type: String, nullable: true }) referenceId!: string | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) referenceType!: string | null;
+  @ApiProperty({ type: String, nullable: true }) referenceId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) referenceType!: string | null;
   @ApiProperty() createdAt!: Date;
 }

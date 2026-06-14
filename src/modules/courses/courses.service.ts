@@ -163,6 +163,8 @@ export class CoursesService {
       price: course.price !== null ? Number(course.price) : null,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      enrollmentPeriodStart: null,
+      enrollmentPeriodEnd: null,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
     };
@@ -180,6 +182,8 @@ export class CoursesService {
       price: course.price !== null ? Number(course.price) : null,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      enrollmentPeriodStart: null,
+      enrollmentPeriodEnd: null,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount: course.lessonsCount,

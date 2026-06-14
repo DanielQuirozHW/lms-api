@@ -11,16 +11,16 @@ export class ProgressSummaryDto {
   @ApiProperty({ example: 41.7, description: 'Completed / total * 100, rounded to 1 decimal' })
   progressPercentage!: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: Number,
     example: 87.5,
     nullable: true,
     description: 'Weighted final grade (0–100)',
   })
-  finalGrade?: number | null;
+  finalGrade!: number | null;
 
-  @ApiPropertyOptional({ enum: EnrollmentStatus, description: 'Current enrollment status' })
-  status?: EnrollmentStatus;
+  @ApiProperty({ enum: EnrollmentStatus, description: 'Current enrollment status' })
+  status!: EnrollmentStatus;
 
   @ApiProperty({ type: [String], example: ['lesson-id-1'] })
   completedLessonIds!: string[];

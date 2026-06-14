@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { LessonType } from '@prisma/client';
 
 export class LessonSummaryDto {
@@ -6,7 +6,7 @@ export class LessonSummaryDto {
   @ApiProperty({ example: 'Introduction to Variables' }) title!: string;
   @ApiProperty({ example: 1 }) order!: number;
   @ApiProperty({ enum: LessonType, example: LessonType.VIDEO }) type!: LessonType;
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: Number,
     nullable: true,
     example: 300,

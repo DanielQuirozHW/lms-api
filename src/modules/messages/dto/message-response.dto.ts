@@ -1,10 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class MessageResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() senderId!: string;
   @ApiProperty() receiverId!: string;
   @ApiProperty() content!: string;
-  @ApiPropertyOptional({ type: Date, nullable: true }) readAt!: Date | null;
+  @ApiProperty({ type: Date, nullable: true }) readAt!: Date | null;
   @ApiProperty() createdAt!: Date;
 }

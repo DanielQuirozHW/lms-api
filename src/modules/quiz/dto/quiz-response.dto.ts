@@ -4,8 +4,8 @@ import { QuestionType } from '@prisma/client';
 export class QuizSettingsResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() lessonId!: string;
-  @ApiPropertyOptional({ type: Number, nullable: true }) maxAttempts!: number | null;
-  @ApiPropertyOptional({ type: Number, nullable: true }) passingScore!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) maxAttempts!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) passingScore!: number | null;
   @ApiProperty() blocksProgress!: boolean;
   @ApiProperty() shuffleQuestions!: boolean;
 }

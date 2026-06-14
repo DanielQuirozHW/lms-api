@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { GradingType, LessonType } from '@prisma/client';
 
 export class LessonResourceDto {
@@ -60,9 +60,9 @@ export class LessonDetailResponseDto extends LessonResponseDto {
   @ApiProperty({ type: [LessonResourceDto] })
   resources!: LessonResourceDto[];
 
-  @ApiPropertyOptional({ type: QuizSettingsDto, nullable: true })
+  @ApiProperty({ type: QuizSettingsDto, nullable: true })
   quizSettings!: QuizSettingsDto | null;
 
-  @ApiPropertyOptional({ type: AssignmentSettingsDto, nullable: true })
+  @ApiProperty({ type: AssignmentSettingsDto, nullable: true })
   assignmentSettings!: AssignmentSettingsDto | null;
 }

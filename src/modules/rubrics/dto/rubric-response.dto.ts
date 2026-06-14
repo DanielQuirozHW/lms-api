@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class RubricLevelResponseDto {
   @ApiProperty()
@@ -10,7 +10,7 @@ export class RubricLevelResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -30,7 +30,7 @@ export class RubricCriterionResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -53,7 +53,7 @@ export class RubricResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -79,7 +79,7 @@ export class RubricSummaryResponseDto {
   @ApiProperty()
   title!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty()
@@ -102,13 +102,13 @@ export class RubricAssessmentAnswerResponseDto {
   @ApiProperty()
   criterionId!: string;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   levelId!: string | null;
 
   @ApiProperty({ description: 'Points awarded for this criterion' })
   score!: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: String,
     nullable: true,
     description: 'Assessor comment for this criterion',
@@ -132,7 +132,7 @@ export class RubricAssessmentResponseDto {
   @ApiProperty({ description: 'Sum of all answer scores' })
   score!: number;
 
-  @ApiPropertyOptional({ type: String, nullable: true, description: 'Overall assessor feedback' })
+  @ApiProperty({ type: String, nullable: true, description: 'Overall assessor feedback' })
   feedback!: string | null;
 
   @ApiProperty()
