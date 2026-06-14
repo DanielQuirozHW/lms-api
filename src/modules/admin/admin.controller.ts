@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -6,6 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { AuthResponseDto } from '../auth/dto/auth-response.dto';
 import { AdminService } from './admin.service';
+import { AdminStatsDto } from './dto/admin-stats.dto';
 import { StopImpersonationDto } from './dto/stop-impersonation.dto';
 
 @ApiTags('Admin')
@@ -13,6 +14,15 @@ import { StopImpersonationDto } from './dto/stop-impersonation.dto';
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Get('stats')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Platform-wide aggregate statistics (admin only)' })
+  @ApiResponse({ status: 200, type: AdminStatsDto })
+  @ApiResponse({ status: 403, description: 'Forbidden — admin role required' })
+  getStats(): Promise<AdminStatsDto> {
+    return this.adminService.getStats();
+  }
 
   // NOTE: 'impersonate/stop' must be declared before 'impersonate/:userId' so NestJS
   // does not match the literal segment 'stop' as the :userId parameter.

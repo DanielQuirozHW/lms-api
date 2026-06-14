@@ -1,6 +1,7 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { User } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
@@ -224,6 +225,37 @@ describe('UsersService', () => {
       usersRepository.findById.mockResolvedValue(null);
 
       await expect(service.getPublicProfile('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateRole', () => {
+    it('throws BadRequestException when trying to set ADMIN role', async () => {
+      await expect(service.updateRole('user-123', UserRole.ADMIN)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(usersRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when user does not exist', async () => {
+      usersRepository.findById.mockResolvedValue(null);
+
+      await expect(service.updateRole('user-123', UserRole.INSTRUCTOR)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('updates user roles and returns private response without passwordHash', async () => {
+      const updatedUser = { ...mockUser, roles: [UserRole.INSTRUCTOR] };
+      usersRepository.findById.mockResolvedValue(mockUser);
+      usersRepository.update.mockResolvedValue(updatedUser);
+
+      const result = await service.updateRole('user-123', UserRole.INSTRUCTOR);
+
+      expect(usersRepository.update).toHaveBeenCalledWith('user-123', {
+        roles: [UserRole.INSTRUCTOR],
+      });
+      expect(result.roles).toEqual([UserRole.INSTRUCTOR]);
+      expect(result).not.toHaveProperty('passwordHash');
     });
   });
 

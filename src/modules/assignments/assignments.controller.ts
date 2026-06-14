@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -41,6 +42,7 @@ export class AssignmentsController {
   }
 
   @Post('submit')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Submit an assignment (enrolled student)' })
   @ApiResponse({ status: 201, type: SubmissionResponseDto })
   submit(

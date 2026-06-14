@@ -19,6 +19,7 @@ import type { AuthenticatedUser } from '../auth/auth.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
 import { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-response.dto';
 import { UsersService } from './users.service';
 
@@ -86,6 +87,18 @@ export class UsersController {
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResult<UserPrivateResponseDto>> {
     return this.usersService.getAllUsers(pagination);
+  }
+
+  @Patch(':id/role')
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user role (admin only)' })
+  @ApiResponse({ status: 200, type: UserPrivateResponseDto })
+  @ApiResponse({ status: 400, description: 'Cannot assign ADMIN role via this endpoint' })
+  @ApiResponse({ status: 403, description: 'Forbidden — admin role required' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto): Promise<UserPrivateResponseDto> {
+    return this.usersService.updateRole(id, dto.role);
   }
 
   @Get(':id')

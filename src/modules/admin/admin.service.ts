@@ -1,8 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { EnrollmentStatus, UserRole } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { AuthService } from '../auth/auth.service';
 import type { AuthResponseDto } from '../auth/dto/auth-response.dto';
+import type { AdminStatsDto } from './dto/admin-stats.dto';
 import type { StopImpersonationDto } from './dto/stop-impersonation.dto';
 import { ImpersonationLogService } from './impersonation.log.service';
 
@@ -11,7 +13,21 @@ export class AdminService {
   constructor(
     private readonly authService: AuthService,
     private readonly logService: ImpersonationLogService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  /** Returns platform-wide aggregate counts for the admin dashboard. */
+  async getStats(): Promise<AdminStatsDto> {
+    const [totalUsers, totalCourses, totalEnrollments, activeEnrollments, completedEnrollments] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.course.count(),
+        this.prisma.enrollment.count(),
+        this.prisma.enrollment.count({ where: { status: EnrollmentStatus.ACTIVE } }),
+        this.prisma.enrollment.count({ where: { status: EnrollmentStatus.COMPLETED } }),
+      ]);
+    return { totalUsers, totalCourses, totalEnrollments, activeEnrollments, completedEnrollments };
+  }
 
   /**
    * Issues a 60-minute impersonation token pair for the target user.

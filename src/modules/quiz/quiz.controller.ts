@@ -10,6 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -104,6 +105,7 @@ export class QuizController {
   }
 
   @Post('attempts')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Start a new quiz attempt (enrolled student)' })
   @ApiResponse({ status: 201, type: AttemptSummaryDto })
   startAttempt(

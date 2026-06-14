@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { User } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { AuthService } from '../auth/auth.service';
 import { AdminService } from './admin.service';
@@ -80,6 +81,11 @@ describe('AdminService', () => {
   let logService: jest.Mocked<
     Pick<ImpersonationLogService, 'logImpersonationStart' | 'logImpersonationStop'>
   >;
+  let prismaService: {
+    user: { count: jest.Mock };
+    course: { count: jest.Mock };
+    enrollment: { count: jest.Mock };
+  };
 
   beforeEach(async () => {
     authService = {
@@ -94,11 +100,18 @@ describe('AdminService', () => {
       logImpersonationStop: jest.fn(),
     };
 
+    prismaService = {
+      user: { count: jest.fn() },
+      course: { count: jest.fn() },
+      enrollment: { count: jest.fn() },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
         { provide: AuthService, useValue: authService },
         { provide: ImpersonationLogService, useValue: logService },
+        { provide: PrismaService, useValue: prismaService },
       ],
     }).compile();
 
@@ -106,6 +119,25 @@ describe('AdminService', () => {
   });
 
   afterEach(() => jest.clearAllMocks());
+
+  describe('getStats', () => {
+    it('returns aggregate counts across users, courses, and enrollments', async () => {
+      prismaService.user.count.mockResolvedValue(100);
+      prismaService.course.count.mockResolvedValue(10);
+      prismaService.enrollment.count
+        .mockResolvedValueOnce(200)
+        .mockResolvedValueOnce(150)
+        .mockResolvedValueOnce(40);
+
+      const result = await service.getStats();
+
+      expect(result.totalUsers).toBe(100);
+      expect(result.totalCourses).toBe(10);
+      expect(result.totalEnrollments).toBe(200);
+      expect(result.activeEnrollments).toBe(150);
+      expect(result.completedEnrollments).toBe(40);
+    });
+  });
 
   describe('startImpersonation', () => {
     it('issues impersonation tokens for a valid STUDENT target', async () => {

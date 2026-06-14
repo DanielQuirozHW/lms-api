@@ -1,5 +1,12 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { User } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
@@ -83,6 +90,17 @@ export class UsersService {
     const user = await this.usersRepository.findById(id);
     if (!user) throw new NotFoundException('User not found');
     return this.toPublic(user);
+  }
+
+  /** Updates the role of a target user. Cannot set ADMIN role via this endpoint — admins are provisioned directly. */
+  async updateRole(userId: string, role: UserRole): Promise<UserPrivateResponseDto> {
+    if (role === UserRole.ADMIN) {
+      throw new BadRequestException('Cannot assign ADMIN role via this endpoint');
+    }
+    const user = await this.usersRepository.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    const updated = await this.usersRepository.update(userId, { roles: [role] });
+    return this.toPrivate(updated);
   }
 
   /** Returns a paginated list of all users. Admin only. */
