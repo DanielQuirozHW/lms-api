@@ -39,6 +39,7 @@ const mockGroup: CourseGroup = {
   name: 'Team Alpha',
   description: null,
   maxMembers: 5,
+  isActive: true,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

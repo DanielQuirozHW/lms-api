@@ -35,6 +35,8 @@ const rawCert: Certificate = {
   enrollmentId: 'enrollment-222',
   issuedAt: new Date('2024-06-01'),
   finalGrade: 92.5,
+  isActive: true,
+  createdAt: new Date('2024-06-01'),
 };
 
 const mockCert: CertificateWithDetails = {

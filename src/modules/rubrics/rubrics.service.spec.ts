@@ -45,6 +45,7 @@ const mockRubric: Rubric = {
   title: 'Final Project Rubric',
   description: null,
   totalPoints: 100,
+  isActive: true,
   createdAt: mockDate,
   updatedAt: mockDate,
 };

@@ -15,24 +15,26 @@ export type BookmarkWithLesson = LessonBookmark & {
   };
 };
 
+const lessonInclude = {
+  lesson: {
+    include: {
+      module: {
+        include: {
+          course: true,
+        },
+      },
+    },
+  },
+} as const;
+
 @Injectable()
 export class BookmarksRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findByUser(userId: string, skip: number, take: number): Promise<BookmarkWithLesson[]> {
     return this.prisma.lessonBookmark.findMany({
-      where: { userId },
-      include: {
-        lesson: {
-          include: {
-            module: {
-              include: {
-                course: true,
-              },
-            },
-          },
-        },
-      },
+      where: { userId, isActive: true },
+      include: lessonInclude,
       skip,
       take,
       orderBy: { createdAt: 'desc' },
@@ -40,35 +42,28 @@ export class BookmarksRepository {
   }
 
   countByUser(userId: string): Promise<number> {
-    return this.prisma.lessonBookmark.count({ where: { userId } });
+    return this.prisma.lessonBookmark.count({ where: { userId, isActive: true } });
   }
 
   findByUserAndLesson(userId: string, lessonId: string): Promise<LessonBookmark | null> {
-    return this.prisma.lessonBookmark.findUnique({
-      where: { userId_lessonId: { userId, lessonId } },
-    });
+    return this.prisma.lessonBookmark.findFirst({ where: { userId, lessonId, isActive: true } });
   }
 
+  /** Creates a bookmark, or restores it if previously soft-deleted. */
   createWithDetails(userId: string, lessonId: string): Promise<BookmarkWithLesson> {
-    return this.prisma.lessonBookmark.create({
-      data: { userId, lessonId },
-      include: {
-        lesson: {
-          include: {
-            module: {
-              include: {
-                course: true,
-              },
-            },
-          },
-        },
-      },
+    return this.prisma.lessonBookmark.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: { userId, lessonId },
+      update: { isActive: true },
+      include: lessonInclude,
     });
   }
 
+  /** Soft-deletes the bookmark by setting isActive = false. */
   delete(userId: string, lessonId: string): Promise<LessonBookmark> {
-    return this.prisma.lessonBookmark.delete({
+    return this.prisma.lessonBookmark.update({
       where: { userId_lessonId: { userId, lessonId } },
+      data: { isActive: false },
     });
   }
 }

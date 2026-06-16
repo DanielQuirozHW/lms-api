@@ -23,7 +23,7 @@ export class AnnouncementsRepository {
   }
 
   async findMany(courseId: string, pagination: PaginationDto): Promise<[Announcement[], number]> {
-    const where = { courseId };
+    const where = { courseId, isActive: true };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.announcement.findMany({
         where,
@@ -37,7 +37,7 @@ export class AnnouncementsRepository {
   }
 
   findById(id: string): Promise<Announcement | null> {
-    return this.prisma.announcement.findUnique({ where: { id } });
+    return this.prisma.announcement.findFirst({ where: { id, isActive: true } });
   }
 
   create(data: {

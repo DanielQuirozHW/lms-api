@@ -21,6 +21,7 @@ export class CalendarRepository {
 
     return this.prisma.calendarEvent.findMany({
       where: {
+        isActive: true,
         AND: [
           {
             OR: [{ courseId: null, userId }, { courseId: { in: enrolledCourseIds } }],
@@ -43,6 +44,7 @@ export class CalendarRepository {
     return this.prisma.calendarEvent.findMany({
       where: {
         courseId,
+        isActive: true,
         ...(hasDateFilter ? { startDate: dateFilter } : {}),
         ...(query.type ? { type: query.type } : {}),
       },
@@ -51,7 +53,7 @@ export class CalendarRepository {
   }
 
   findById(id: string): Promise<CalendarEvent | null> {
-    return this.prisma.calendarEvent.findUnique({ where: { id } });
+    return this.prisma.calendarEvent.findFirst({ where: { id, isActive: true } });
   }
 
   /** Returns all active enrolled course IDs for a given user. */

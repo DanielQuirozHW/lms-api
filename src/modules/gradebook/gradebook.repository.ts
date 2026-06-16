@@ -10,8 +10,8 @@ export class GradebookRepository {
 
   findCategoriesWithItems(courseId: string): Promise<CategoryWithItems[]> {
     return this.prisma.gradebookCategory.findMany({
-      where: { courseId },
-      include: { items: true },
+      where: { courseId, isActive: true },
+      include: { items: { where: { isActive: true } } },
       orderBy: { order: 'asc' },
     });
   }
@@ -19,8 +19,8 @@ export class GradebookRepository {
   findCategoryById(
     id: string,
   ): Promise<(GradebookCategory & { _count: { items: number } }) | null> {
-    return this.prisma.gradebookCategory.findUnique({
-      where: { id },
+    return this.prisma.gradebookCategory.findFirst({
+      where: { id, isActive: true },
       include: { _count: { select: { items: true } } },
     });
   }
@@ -30,18 +30,18 @@ export class GradebookRepository {
     courseId: string,
   ): Promise<(GradebookCategory & { _count: { items: number } }) | null> {
     return this.prisma.gradebookCategory.findFirst({
-      where: { id, courseId },
+      where: { id, courseId, isActive: true },
       include: { _count: { select: { items: true } } },
     });
   }
 
   findItemById(id: string): Promise<GradebookItem | null> {
-    return this.prisma.gradebookItem.findUnique({ where: { id } });
+    return this.prisma.gradebookItem.findFirst({ where: { id, isActive: true } });
   }
 
   findItemByCategoryAndCourse(id: string, courseId: string): Promise<GradebookItem | null> {
     return this.prisma.gradebookItem.findFirst({
-      where: { id, category: { courseId } },
+      where: { id, isActive: true, category: { courseId } },
     });
   }
 

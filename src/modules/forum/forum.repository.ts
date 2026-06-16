@@ -44,8 +44,13 @@ export class ForumRepository {
       this.prisma.forumThread.findMany({
         where,
         include: {
-          _count: { select: { posts: true } },
-          posts: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+          _count: { select: { posts: { where: { isActive: true } } } },
+          posts: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { createdAt: true },
+          },
         },
         orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
         skip: pagination.skip,
@@ -63,7 +68,13 @@ export class ForumRepository {
   findThreadByIdWithPosts(id: string): Promise<ForumThreadWithPosts | null> {
     return this.prisma.forumThread.findUnique({
       where: { id },
-      include: { posts: { include: { votes: true }, orderBy: { createdAt: 'asc' } } },
+      include: {
+        posts: {
+          where: { isActive: true },
+          include: { votes: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
   }
 
@@ -83,13 +94,13 @@ export class ForumRepository {
   }
 
   countPosts(threadId: string): Promise<number> {
-    return this.prisma.forumPost.count({ where: { threadId } });
+    return this.prisma.forumPost.count({ where: { threadId, isActive: true } });
   }
 
   // ── Posts ────────────────────────────────────────────────────────────────
 
   findPostById(id: string): Promise<ForumPost | null> {
-    return this.prisma.forumPost.findUnique({ where: { id } });
+    return this.prisma.forumPost.findFirst({ where: { id, isActive: true } });
   }
 
   createPost(data: {
@@ -112,8 +123,9 @@ export class ForumRepository {
     });
   }
 
+  /** Soft-deletes the post by setting isActive = false. */
   async deletePost(id: string): Promise<void> {
-    await this.prisma.forumPost.delete({ where: { id } });
+    await this.prisma.forumPost.update({ where: { id }, data: { isActive: false } });
   }
 
   async clearAcceptedAnswer(threadId: string): Promise<void> {

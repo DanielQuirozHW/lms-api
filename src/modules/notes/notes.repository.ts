@@ -7,8 +7,8 @@ export class NotesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findByUserAndLesson(userId: string, lessonId: string): Promise<LessonNote | null> {
-    return this.prisma.lessonNote.findUnique({
-      where: { userId_lessonId: { userId, lessonId } },
+    return this.prisma.lessonNote.findFirst({
+      where: { userId, lessonId, isActive: true },
     });
   }
 
@@ -16,13 +16,15 @@ export class NotesRepository {
     return this.prisma.lessonNote.upsert({
       where: { userId_lessonId: { userId, lessonId } },
       create: { userId, lessonId, content },
-      update: { content },
+      update: { content, isActive: true },
     });
   }
 
+  /** Soft-deletes the note by setting isActive = false. */
   delete(userId: string, lessonId: string): Promise<LessonNote> {
-    return this.prisma.lessonNote.delete({
+    return this.prisma.lessonNote.update({
       where: { userId_lessonId: { userId, lessonId } },
+      data: { isActive: false },
     });
   }
 }

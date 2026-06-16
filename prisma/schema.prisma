@@ -105,6 +105,7 @@ model User {
   roles             UserRole[] @default([STUDENT])
   isVerified        Boolean    @default(false) @map("is_verified")
   passwordChangedAt DateTime?  @map("password_changed_at")
+  isActive          Boolean    @default(true) @map("is_active")
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
@@ -165,10 +166,11 @@ model NotificationSettings {
 // ─── Course ───────────────────────────────────────────────────────────────────
 
 model Category {
-  id      String   @id @default(cuid())
-  name    String   @unique
-  slug    String   @unique
-  courses Course[]
+  id       String   @id @default(cuid())
+  name     String   @unique
+  slug     String   @unique
+  isActive Boolean  @default(true) @map("is_active")
+  courses  Course[]
 
   @@map("categories")
 }
@@ -502,6 +504,7 @@ model ForumPost {
   content          String
   parentId         String?  @map("parent_id")
   isAcceptedAnswer Boolean  @default(false) @map("is_accepted_answer")
+  isActive         Boolean  @default(true) @map("is_active")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -541,6 +544,7 @@ model Announcement {
   instructorId String   @map("instructor_id")
   title        String
   body         String
+  isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -615,11 +619,12 @@ model Message {
 // ─── Gradebook ────────────────────────────────────────────────────────────────
 
 model GradebookCategory {
-  id       String @id @default(cuid())
-  courseId String @map("course_id")
+  id       String  @id @default(cuid())
+  courseId String  @map("course_id")
   name     String
   weight   Float
   order    Int
+  isActive Boolean @default(true) @map("is_active")
 
   course Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   items  GradebookItem[]
@@ -636,6 +641,7 @@ model GradebookItem {
   weight       Float?
   maxScore     Float   @map("max_score")
   isExtraCredit Boolean @default(false) @map("is_extra_credit")
+  isActive      Boolean @default(true) @map("is_active")
 
   category GradebookCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -652,6 +658,7 @@ model Rubric {
   title       String
   description String?
   totalPoints Int      @map("total_points")
+  isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -738,6 +745,7 @@ model CourseGroup {
   name        String
   description String?
   maxMembers  Int?     @map("max_members")
+  isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -781,6 +789,7 @@ model CalendarEvent {
   color         String?
   referenceId   String?           @map("reference_id")
   referenceType String?           @map("reference_type")
+  isActive      Boolean           @default(true) @map("is_active")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
@@ -821,6 +830,7 @@ model LessonNote {
   userId    String   @map("user_id")
   lessonId  String   @map("lesson_id")
   content   String
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -839,6 +849,7 @@ model LessonBookmark {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   lessonId  String   @map("lesson_id")
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -860,6 +871,7 @@ model Certificate {
   certificateCode String   @unique @default(cuid()) @map("certificate_code")
   issuedAt        DateTime @default(now()) @map("issued_at")
   finalGrade      Float?   @map("final_grade")
+  isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)

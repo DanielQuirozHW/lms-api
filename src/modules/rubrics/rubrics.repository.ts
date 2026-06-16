@@ -23,14 +23,14 @@ export class RubricsRepository {
 
   findByCourseId(courseId: string): Promise<Rubric[]> {
     return this.prisma.rubric.findMany({
-      where: { courseId },
+      where: { courseId, isActive: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   findByIdWithCriteria(id: string): Promise<RubricWithCriteria | null> {
-    return this.prisma.rubric.findUnique({
-      where: { id },
+    return this.prisma.rubric.findFirst({
+      where: { id, isActive: true },
       include: {
         criteria: {
           orderBy: { order: 'asc' },
@@ -41,7 +41,7 @@ export class RubricsRepository {
   }
 
   findById(id: string): Promise<Rubric | null> {
-    return this.prisma.rubric.findUnique({ where: { id } });
+    return this.prisma.rubric.findFirst({ where: { id, isActive: true } });
   }
 
   hasAssessments(rubricId: string): Promise<boolean> {
@@ -102,8 +102,9 @@ export class RubricsRepository {
     return this.prisma.rubric.update({ where: { id }, data });
   }
 
+  /** Soft-deletes the rubric by setting isActive = false. */
   delete(id: string): Promise<Rubric> {
-    return this.prisma.rubric.delete({ where: { id } });
+    return this.prisma.rubric.update({ where: { id }, data: { isActive: false } });
   }
 
   findAssessmentBySubmissionId(submissionId: string): Promise<RubricAssessmentWithAnswers | null> {

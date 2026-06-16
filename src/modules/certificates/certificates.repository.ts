@@ -49,7 +49,7 @@ export class CertificatesRepository {
     };
   }
 
-  /** Creates a certificate or returns the existing one (idempotent by enrollmentId). */
+  /** Creates a certificate or returns the existing one (idempotent by enrollmentId). Restores isActive if previously revoked. */
   upsertByEnrollment(data: {
     userId: string;
     courseId: string;
@@ -58,7 +58,7 @@ export class CertificatesRepository {
   }): Promise<CertificateWithDetails> {
     return this.prisma.certificate.upsert({
       where: { enrollmentId: data.enrollmentId },
-      update: {},
+      update: { isActive: true },
       create: {
         userId: data.userId,
         courseId: data.courseId,
@@ -80,7 +80,7 @@ export class CertificatesRepository {
 
   findByUserId(userId: string): Promise<CertificateWithDetails[]> {
     return this.prisma.certificate.findMany({
-      where: { userId },
+      where: { userId, isActive: true },
       include: {
         course: {
           select: {
@@ -96,8 +96,8 @@ export class CertificatesRepository {
   }
 
   findByCode(certificateCode: string): Promise<CertificateWithDetails | null> {
-    return this.prisma.certificate.findUnique({
-      where: { certificateCode },
+    return this.prisma.certificate.findFirst({
+      where: { certificateCode, isActive: true },
       include: {
         course: {
           select: {
@@ -109,5 +109,10 @@ export class CertificatesRepository {
         user: { select: { firstName: true, lastName: true } },
       },
     });
+  }
+
+  /** Soft-deletes the certificate by setting isActive = false. */
+  softDelete(id: string): Promise<Certificate> {
+    return this.prisma.certificate.update({ where: { id }, data: { isActive: false } });
   }
 }

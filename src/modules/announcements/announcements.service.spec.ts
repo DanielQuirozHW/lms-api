@@ -16,6 +16,7 @@ const mockAnnouncement: Announcement = {
   instructorId: 'instructor-1',
   title: 'New module live',
   body: 'Module 3 is now available!',
+  isActive: true,
   createdAt: now,
   updatedAt: now,
 };

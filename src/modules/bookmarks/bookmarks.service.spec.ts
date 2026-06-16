@@ -9,6 +9,7 @@ const rawBookmark: LessonBookmark = {
   id: 'bm-123',
   userId: 'user-456',
   lessonId: 'lesson-789',
+  isActive: true,
   createdAt: new Date('2024-01-01'),
 };
 

@@ -24,6 +24,7 @@ const mockEvent: CalendarEvent = {
   color: null,
   referenceId: null,
   referenceType: null,
+  isActive: true,
   createdAt: now,
   updatedAt: now,
 };

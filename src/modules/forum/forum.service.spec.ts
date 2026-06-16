@@ -33,6 +33,7 @@ const mockPost: ForumPost = {
   content: 'Post content',
   parentId: null,
   isAcceptedAnswer: false,
+  isActive: true,
   createdAt: now,
   updatedAt: now,
 };

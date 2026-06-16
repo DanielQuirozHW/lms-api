@@ -7,11 +7,15 @@ export class CategoriesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll(): Promise<Category[]> {
-    return this.prisma.category.findMany({ orderBy: { name: 'asc' }, take: 200 });
+    return this.prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      take: 200,
+    });
   }
 
   findById(id: string): Promise<Category | null> {
-    return this.prisma.category.findUnique({ where: { id } });
+    return this.prisma.category.findFirst({ where: { id, isActive: true } });
   }
 
   create(data: { name: string; slug: string }): Promise<Category> {
@@ -22,8 +26,9 @@ export class CategoriesRepository {
     return this.prisma.category.update({ where: { id }, data });
   }
 
+  /** Soft-deletes the category by setting isActive = false. */
   async delete(id: string): Promise<void> {
-    await this.prisma.category.delete({ where: { id } });
+    await this.prisma.category.update({ where: { id }, data: { isActive: false } });
   }
 
   countCourses(categoryId: string): Promise<number> {

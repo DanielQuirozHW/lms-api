@@ -4,7 +4,12 @@ import type { Category } from '@prisma/client';
 import { CategoriesRepository } from './categories.repository';
 import { CategoriesService } from './categories.service';
 
-const mockCategory: Category = { id: 'cat-1', name: 'Web Development', slug: 'web-development' };
+const mockCategory: Category = {
+  id: 'cat-1',
+  name: 'Web Development',
+  slug: 'web-development',
+  isActive: true,
+};
 
 describe('CategoriesService', () => {
   let service: CategoriesService;
@@ -58,7 +63,12 @@ describe('CategoriesService', () => {
     });
 
     it('should generate slug with hyphens for multi-word names', async () => {
-      const category: Category = { id: 'cat-2', name: 'Data Science', slug: 'data-science' };
+      const category: Category = {
+        id: 'cat-2',
+        name: 'Data Science',
+        slug: 'data-science',
+        isActive: true,
+      };
       repo.create.mockResolvedValue(category);
 
       const result = await service.create({ name: 'Data Science' });
@@ -70,7 +80,12 @@ describe('CategoriesService', () => {
 
   describe('update', () => {
     it('should update name and regenerate slug', async () => {
-      const updated: Category = { id: 'cat-1', name: 'Frontend Dev', slug: 'frontend-dev' };
+      const updated: Category = {
+        id: 'cat-1',
+        name: 'Frontend Dev',
+        slug: 'frontend-dev',
+        isActive: true,
+      };
       repo.findById.mockResolvedValue(mockCategory);
       repo.update.mockResolvedValue(updated);
 

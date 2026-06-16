@@ -10,7 +10,7 @@ export class GroupsRepository {
 
   findByCourseId(courseId: string): Promise<CourseGroupWithCount[]> {
     return this.prisma.courseGroup.findMany({
-      where: { courseId },
+      where: { courseId, isActive: true },
       include: { _count: { select: { members: true } } },
       orderBy: { createdAt: 'asc' },
     });
@@ -18,14 +18,14 @@ export class GroupsRepository {
 
   findByIdAndCourseId(id: string, courseId: string): Promise<CourseGroupWithCount | null> {
     return this.prisma.courseGroup.findFirst({
-      where: { id, courseId },
+      where: { id, courseId, isActive: true },
       include: { _count: { select: { members: true } } },
     });
   }
 
   findUserGroupInCourse(userId: string, courseId: string): Promise<CourseGroupMember | null> {
     return this.prisma.courseGroupMember.findFirst({
-      where: { userId, group: { courseId } },
+      where: { userId, group: { courseId, isActive: true } },
     });
   }
 
@@ -37,8 +37,9 @@ export class GroupsRepository {
     return this.prisma.courseGroup.update({ where: { id }, data });
   }
 
+  /** Soft-deletes the group by setting isActive = false. */
   delete(id: string): Promise<CourseGroup> {
-    return this.prisma.courseGroup.delete({ where: { id } });
+    return this.prisma.courseGroup.update({ where: { id }, data: { isActive: false } });
   }
 
   addMember(groupId: string, userId: string): Promise<CourseGroupMember> {

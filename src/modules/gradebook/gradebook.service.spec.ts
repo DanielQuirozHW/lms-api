@@ -68,6 +68,7 @@ const mockCategory: GradebookCategory = {
   name: 'Quizzes',
   weight: 40,
   order: 1,
+  isActive: true,
 };
 
 const mockItem: GradebookItem = {
@@ -77,6 +78,7 @@ const mockItem: GradebookItem = {
   weight: null,
   maxScore: 100,
   isExtraCredit: false,
+  isActive: true,
 };
 
 const mockCategoryWithItems: CategoryWithItems = {
@@ -384,6 +386,7 @@ describe('GradebookService', () => {
         weight: null,
         maxScore: 100,
         isExtraCredit: false,
+        isActive: true,
       };
       const assignmentItem: GradebookItem = {
         id: 'item-assign',
@@ -392,6 +395,7 @@ describe('GradebookService', () => {
         weight: null,
         maxScore: 50,
         isExtraCredit: false,
+        isActive: true,
       };
       const categoryWithTwoItems: CategoryWithItems = {
         ...mockCategory,

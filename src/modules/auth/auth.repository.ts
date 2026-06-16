@@ -22,11 +22,11 @@ export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findFirst({ where: { email, isActive: true } });
   }
 
   findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findFirst({ where: { id, isActive: true } });
   }
 
   createUser(data: CreateUserInput): Promise<User> {
