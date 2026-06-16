@@ -49,6 +49,10 @@ export class EnrollmentCodesRepository {
     });
   }
 
+  async recordUsage(codeId: string, userId: string): Promise<void> {
+    await this.prisma.enrollmentCodeUsage.create({ data: { codeId, userId } });
+  }
+
   deactivate(id: string): Promise<EnrollmentCode> {
     return this.prisma.enrollmentCode.update({
       where: { id },

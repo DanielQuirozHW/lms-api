@@ -6,7 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GradingType, LessonType, NotificationType, UserRole } from '@prisma/client';
+import {
+  GradingType,
+  LessonType,
+  NotificationType,
+  SubmissionStatus,
+  UserRole,
+} from '@prisma/client';
 import type { AssignmentSettings, Submission } from '@prisma/client';
 import type { AppConfig } from '../../config/configuration';
 import type { AuthenticatedUser } from '../auth/auth.entity';
@@ -120,6 +126,7 @@ export class AssignmentsService {
       grade: autoGrade,
       gradedAt,
       groupId,
+      status: SubmissionStatus.SUBMITTED,
     });
 
     if (settings.gradingType === GradingType.AUTOMATIC) {
@@ -259,6 +266,7 @@ export class AssignmentsService {
       feedback: dto.feedback ?? null,
       gradedById: user.id,
       gradedAt,
+      status: SubmissionStatus.GRADED,
     };
 
     // Atomic: rubric assessment + grade primary submission + group member submissions + lesson progress.
@@ -300,6 +308,25 @@ export class AssignmentsService {
       'submission',
     );
 
+    return this.mapSubmission(updated);
+  }
+
+  /** Updates the status of a submission. Used to set RETURNED when an instructor sends back for revision. */
+  async updateStatus(
+    lessonId: string,
+    submissionId: string,
+    status: SubmissionStatus,
+    user: AuthenticatedUser,
+  ): Promise<SubmissionResponseDto> {
+    const lesson = await this.getLessonOrFail(lessonId);
+    this.assertInstructorAccess(lesson, user);
+
+    const submission = await this.assignmentsRepository.findSubmissionById(submissionId);
+    if (!submission || submission.lessonId !== lessonId) {
+      throw new NotFoundException('Submission not found');
+    }
+
+    const updated = await this.assignmentsRepository.updateSubmissionStatus(submissionId, status);
     return this.mapSubmission(updated);
   }
 
@@ -372,6 +399,7 @@ export class AssignmentsService {
       fileUrl: submission.fileUrl,
       submittedAt: submission.submittedAt,
       attemptNumber: submission.attemptNumber,
+      status: submission.status,
       grade: submission.grade,
       feedback: submission.feedback,
       gradedById: submission.gradedById,

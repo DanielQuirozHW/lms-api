@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -146,13 +148,28 @@ export class AuthService {
     return { code };
   }
 
-  /** Checks the 6-digit code from Redis. On match sets isVerified=true and deletes the key. Throws 400 on mismatch or expiry. */
+  /** Checks the 6-digit code from Redis. On match sets isVerified=true and deletes the key. Throws 400 on mismatch or expiry. Throws 429 after 5 failed attempts within 15 minutes. */
   async verifyEmail(userId: string, code: string): Promise<void> {
+    const attemptsKey = `verify:attempts:${userId}`;
+    const attempts = await this.redisService.get(attemptsKey);
+    if (Number(attempts) >= 5) {
+      throw new HttpException(
+        'Too many failed attempts. Please request a new verification code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const stored = await this.redisService.get(`verify:${userId}`);
     if (!stored) throw new BadRequestException('Verification code expired');
-    if (stored !== code) throw new BadRequestException('Invalid verification code');
+
+    if (stored !== code) {
+      await this.redisService.incr(attemptsKey);
+      await this.redisService.expire(attemptsKey, VERIFY_CODE_TTL);
+      throw new BadRequestException('Invalid verification code');
+    }
+
     await this.authRepository.setVerified(userId);
-    await this.redisService.del(`verify:${userId}`);
+    await this.redisService.del(`verify:${userId}`, attemptsKey);
   }
 
   /** Returns the profile of the currently authenticated user. Throws 401 if the user record no longer exists. */

@@ -19,6 +19,7 @@ const mockUser: User = {
   roles: ['STUDENT'],
   avatarUrl: null,
   isVerified: false,
+  passwordChangedAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -26,7 +27,10 @@ const mockUser: User = {
 describe('UsersService', () => {
   let service: UsersService;
   let usersRepository: jest.Mocked<
-    Pick<UsersRepository, 'findById' | 'findByEmail' | 'update' | 'delete' | 'findAll'>
+    Pick<
+      UsersRepository,
+      'findById' | 'findByEmail' | 'update' | 'delete' | 'findAll' | 'countAdmins'
+    >
   >;
   let redisService: jest.Mocked<Pick<RedisService, 'smembers' | 'del' | 'set'>>;
 
@@ -37,6 +41,7 @@ describe('UsersService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      countAdmins: jest.fn(),
     };
 
     redisService = {
@@ -124,6 +129,7 @@ describe('UsersService', () => {
       expect(bcrypt.hash).toHaveBeenCalledWith('newpassword123', 12);
       expect(usersRepository.update).toHaveBeenCalledWith('user-123', {
         passwordHash: '$2b$12$newhash',
+        passwordChangedAt: expect.any(Date) as Date,
       });
       expect(redisService.smembers).toHaveBeenCalledWith('rt-set:user-123');
       expect(redisService.del).toHaveBeenCalledWith(
@@ -230,32 +236,64 @@ describe('UsersService', () => {
 
   describe('updateRole', () => {
     it('throws BadRequestException when trying to set ADMIN role', async () => {
-      await expect(service.updateRole('user-123', UserRole.ADMIN)).rejects.toThrow(
+      await expect(service.updateRole('user-123', UserRole.ADMIN, 'admin-456')).rejects.toThrow(
         BadRequestException,
       );
+      expect(usersRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when admin tries to change their own role', async () => {
+      await expect(
+        service.updateRole('admin-123', UserRole.INSTRUCTOR, 'admin-123'),
+      ).rejects.toThrow(BadRequestException);
       expect(usersRepository.findById).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when user does not exist', async () => {
       usersRepository.findById.mockResolvedValue(null);
 
-      await expect(service.updateRole('user-123', UserRole.INSTRUCTOR)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateRole('user-123', UserRole.INSTRUCTOR, 'admin-456'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException when trying to demote the last admin', async () => {
+      const adminUser = { ...mockUser, roles: [UserRole.ADMIN] };
+      usersRepository.findById.mockResolvedValue(adminUser);
+      usersRepository.countAdmins.mockResolvedValue(1);
+
+      await expect(
+        service.updateRole('user-123', UserRole.INSTRUCTOR, 'admin-456'),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersRepository.update).not.toHaveBeenCalled();
     });
 
     it('updates user roles and returns private response without passwordHash', async () => {
       const updatedUser = { ...mockUser, roles: [UserRole.INSTRUCTOR] };
-      usersRepository.findById.mockResolvedValue(mockUser);
+      usersRepository.findById.mockResolvedValue(mockUser); // mockUser has STUDENT role — no admin count check
       usersRepository.update.mockResolvedValue(updatedUser);
 
-      const result = await service.updateRole('user-123', UserRole.INSTRUCTOR);
+      const result = await service.updateRole('user-123', UserRole.INSTRUCTOR, 'admin-456');
 
       expect(usersRepository.update).toHaveBeenCalledWith('user-123', {
         roles: [UserRole.INSTRUCTOR],
       });
+      expect(usersRepository.countAdmins).not.toHaveBeenCalled();
       expect(result.roles).toEqual([UserRole.INSTRUCTOR]);
       expect(result).not.toHaveProperty('passwordHash');
+    });
+
+    it('allows demoting an admin when there is more than one admin', async () => {
+      const adminUser = { ...mockUser, roles: [UserRole.ADMIN] };
+      const updatedUser = { ...mockUser, roles: [UserRole.INSTRUCTOR] };
+      usersRepository.findById.mockResolvedValue(adminUser);
+      usersRepository.countAdmins.mockResolvedValue(2);
+      usersRepository.update.mockResolvedValue(updatedUser);
+
+      const result = await service.updateRole('user-123', UserRole.INSTRUCTOR, 'admin-456');
+
+      expect(usersRepository.countAdmins).toHaveBeenCalled();
+      expect(result.roles).toEqual([UserRole.INSTRUCTOR]);
     });
   });
 

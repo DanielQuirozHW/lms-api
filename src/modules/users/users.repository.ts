@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, User } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -28,5 +29,9 @@ export class UsersRepository {
 
   delete(id: string): Promise<User> {
     return this.prisma.user.delete({ where: { id } });
+  }
+
+  countAdmins(): Promise<number> {
+    return this.prisma.user.count({ where: { roles: { has: UserRole.ADMIN } } });
   }
 }

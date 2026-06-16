@@ -31,6 +31,28 @@ const PRISMA_ERROR_MAP: Partial<Record<string, () => HttpException>> = {
 
 const BODY_LOG_MAX_LEN = 500;
 
+const SENSITIVE_FIELDS = new Set([
+  'password',
+  'token',
+  'secret',
+  'authorization',
+  'refreshtoken',
+  'newpassword',
+  'currentpassword',
+]);
+
+function sanitizeBody(body: unknown): string | undefined {
+  try {
+    const json = JSON.stringify(body, (key: string, value: unknown): unknown => {
+      if (key !== '' && SENSITIVE_FIELDS.has(key.toLowerCase())) return '[REDACTED]';
+      return value;
+    });
+    return json.length > BODY_LOG_MAX_LEN ? json.slice(0, BODY_LOG_MAX_LEN) : json;
+  } catch {
+    return undefined;
+  }
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -79,13 +101,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR && this.errorLogService) {
       const exc = mapped instanceof Error ? mapped : exception instanceof Error ? exception : null;
       const rawBody = request.body as unknown;
-      let bodyStr: string | undefined;
-      try {
-        const full = JSON.stringify(rawBody);
-        bodyStr = full.length > BODY_LOG_MAX_LEN ? full.slice(0, BODY_LOG_MAX_LEN) : full;
-      } catch {
-        bodyStr = undefined;
-      }
+      const bodyStr = sanitizeBody(rawBody);
       // request.user is typed loosely by Express; double-cast via unknown to satisfy no-unsafe-assignment
       const authedUser = request.user as unknown as AuthenticatedUser | undefined;
       void this.errorLogService.log({

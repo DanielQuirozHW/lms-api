@@ -104,7 +104,9 @@ describe('EnrollmentsService', () => {
       | 'deleteByUserAndCourse'
     >
   >;
-  let codesRepo: jest.Mocked<Pick<EnrollmentCodesRepository, 'findValidCode' | 'incrementUsage'>>;
+  let codesRepo: jest.Mocked<
+    Pick<EnrollmentCodesRepository, 'findValidCode' | 'incrementUsage' | 'recordUsage'>
+  >;
   let coursesService: jest.Mocked<Pick<CoursesService, 'findOne'>>;
   let redisService: jest.Mocked<Pick<RedisService, 'set' | 'del'>>;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
@@ -137,6 +139,7 @@ describe('EnrollmentsService', () => {
     codesRepo = {
       findValidCode: jest.fn().mockResolvedValue(null),
       incrementUsage: jest.fn().mockResolvedValue(undefined),
+      recordUsage: jest.fn().mockResolvedValue(undefined),
     };
     coursesService = { findOne: jest.fn() };
     redisService = {
@@ -748,6 +751,7 @@ describe('EnrollmentsService', () => {
 
       expect(result.id).toBe('enrollment-1');
       expect(codesRepo.incrementUsage).toHaveBeenCalledWith('code-1');
+      expect(codesRepo.recordUsage).toHaveBeenCalledWith('code-1', 'user-1');
     });
 
     it('should allow self-enrollment in PAID course', async () => {

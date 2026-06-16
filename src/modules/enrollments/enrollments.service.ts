@@ -163,6 +163,7 @@ export class EnrollmentsService {
 
     if (validatedCodeId) {
       await this.enrollmentCodesRepository.incrementUsage(validatedCodeId);
+      await this.enrollmentCodesRepository.recordUsage(validatedCodeId, userId);
     }
 
     return enrollment;

@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { AssignmentSettings, Submission } from '@prisma/client';
-import { GradingType, NotificationType } from '@prisma/client';
+import { GradingType, NotificationType, SubmissionStatus } from '@prisma/client';
 import {
   type LessonWithAssignmentContext,
   type SubmissionWithContext,
@@ -60,6 +60,7 @@ const mockSubmission: Submission = {
   fileUrl: null,
   submittedAt: new Date('2024-01-01'),
   attemptNumber: 1,
+  status: SubmissionStatus.SUBMITTED,
   grade: null,
   feedback: null,
   gradedById: null,
@@ -104,6 +105,7 @@ describe('AssignmentsService', () => {
       | 'findSubmissionsByGroupAndLesson'
       | 'completeLessonProgress'
       | 'transaction'
+      | 'updateSubmissionStatus'
     >
   >;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
@@ -127,6 +129,7 @@ describe('AssignmentsService', () => {
       findSubmissionsByGroupAndLesson: jest.fn(),
       completeLessonProgress: jest.fn(),
       transaction: jest.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn({})),
+      updateSubmissionStatus: jest.fn(),
     };
     notificationsSvc = { notify: jest.fn() };
     rubricsSvc = { prepareAssessmentValidation: jest.fn(), createAssessmentInTx: jest.fn() };
@@ -524,6 +527,58 @@ describe('AssignmentsService', () => {
 
       await expect(
         service.gradeSubmission('lesson-123', 'sub-123', { grade: 85 }, instructor),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('updates submission status to RETURNED for the course instructor', async () => {
+      repo.findLessonWithContext.mockResolvedValue(mockLessonWithContext);
+      repo.findSubmissionById.mockResolvedValue(mockSubmissionWithContext);
+      repo.updateSubmissionStatus.mockResolvedValue({
+        ...mockSubmission,
+        status: SubmissionStatus.RETURNED,
+      });
+
+      const result = await service.updateStatus(
+        'lesson-123',
+        'sub-123',
+        SubmissionStatus.RETURNED,
+        instructor,
+      );
+
+      expect(repo.updateSubmissionStatus).toHaveBeenCalledWith(
+        'sub-123',
+        SubmissionStatus.RETURNED,
+      );
+      expect(result.status).toBe(SubmissionStatus.RETURNED);
+    });
+
+    it('throws NotFoundException when submission does not belong to the lesson (BOLA guard)', async () => {
+      repo.findLessonWithContext.mockResolvedValue(mockLessonWithContext);
+      repo.findSubmissionById.mockResolvedValue({
+        ...mockSubmissionWithContext,
+        lessonId: 'other-lesson',
+      });
+
+      await expect(
+        service.updateStatus('lesson-123', 'sub-123', SubmissionStatus.RETURNED, instructor),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.updateSubmissionStatus).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when instructor does not own the course', async () => {
+      repo.findLessonWithContext.mockResolvedValue({
+        ...mockLessonWithContext,
+        module: {
+          id: 'module-123',
+          courseId: 'course-123',
+          course: { instructorId: 'other-instructor' },
+        },
+      });
+
+      await expect(
+        service.updateStatus('lesson-123', 'sub-123', SubmissionStatus.RETURNED, instructor),
       ).rejects.toThrow(ForbiddenException);
     });
   });

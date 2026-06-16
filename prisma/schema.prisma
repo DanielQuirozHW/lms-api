@@ -86,6 +86,13 @@ enum EnrollmentType {
   PAID
 }
 
+enum SubmissionStatus {
+  SUBMITTED
+  GRADING
+  GRADED
+  RETURNED
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
@@ -95,10 +102,11 @@ model User {
   firstName    String     @map("first_name")
   lastName     String     @map("last_name")
   avatarUrl    String?    @map("avatar_url")
-  roles        UserRole[] @default([STUDENT])
-  isVerified   Boolean    @default(false) @map("is_verified")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  roles             UserRole[] @default([STUDENT])
+  isVerified        Boolean    @default(false) @map("is_verified")
+  passwordChangedAt DateTime?  @map("password_changed_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
 
   notificationSettings  NotificationSettings?
   taughtCourses         Course[]              @relation("CourseInstructor")
@@ -120,6 +128,9 @@ model User {
   lessonBookmarks       LessonBookmark[]
   certificates          Certificate[]
   resetTokens           PasswordResetToken[]
+  adminImpersonations   ImpersonationLog[]   @relation("AdminImpersonations")
+  targetImpersonations  ImpersonationLog[]   @relation("TargetImpersonations")
+  codeUsages            EnrollmentCodeUsage[]
 
   @@map("users")
 }
@@ -389,18 +400,19 @@ model AssignmentSettings {
 }
 
 model Submission {
-  id            String    @id @default(cuid())
-  enrollmentId  String    @map("enrollment_id")
-  lessonId      String    @map("lesson_id")
+  id            String           @id @default(cuid())
+  enrollmentId  String           @map("enrollment_id")
+  lessonId      String           @map("lesson_id")
   content       String
-  fileUrl       String?   @map("file_url")
-  submittedAt   DateTime  @default(now()) @map("submitted_at")
-  attemptNumber Int       @map("attempt_number")
+  fileUrl       String?          @map("file_url")
+  submittedAt   DateTime         @default(now()) @map("submitted_at")
+  attemptNumber Int              @map("attempt_number")
+  status        SubmissionStatus @default(SUBMITTED) @map("status")
   grade         Int?
   feedback      String?
-  gradedById    String?   @map("graded_by_id")
-  gradedAt      DateTime? @map("graded_at")
-  groupId       String?   @map("group_id")
+  gradedById    String?          @map("graded_by_id")
+  gradedAt      DateTime?        @map("graded_at")
+  groupId       String?          @map("group_id")
 
   enrollment       Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   lesson           Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -871,11 +883,44 @@ model EnrollmentCode {
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
 
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course  Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  usages  EnrollmentCodeUsage[]
 
   @@index([courseId])
   @@index([code])
   @@map("enrollment_codes")
+}
+
+model EnrollmentCodeUsage {
+  id        String         @id @default(cuid())
+  codeId    String         @map("code_id")
+  userId    String         @map("user_id")
+  usedAt    DateTime       @default(now()) @map("used_at")
+
+  code  EnrollmentCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([codeId, userId])
+  @@index([codeId])
+  @@index([userId])
+  @@map("enrollment_code_usages")
+}
+
+// ─── ImpersonationLog ─────────────────────────────────────────────────────────
+
+model ImpersonationLog {
+  id           String    @id @default(cuid())
+  adminId      String    @map("admin_id")
+  targetUserId String    @map("target_user_id")
+  startedAt    DateTime  @default(now()) @map("started_at")
+  endedAt      DateTime? @map("ended_at")
+
+  admin      User @relation("AdminImpersonations", fields: [adminId], references: [id])
+  targetUser User @relation("TargetImpersonations", fields: [targetUserId], references: [id])
+
+  @@index([adminId])
+  @@index([targetUserId])
+  @@map("impersonation_logs")
 }
 
 // ─── SystemError ──────────────────────────────────────────────────────────────

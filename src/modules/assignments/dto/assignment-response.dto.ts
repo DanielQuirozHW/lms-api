@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { GradingType } from '@prisma/client';
+import { GradingType, SubmissionStatus } from '@prisma/client';
 
 export class AssignmentSettingsResponseDto {
   @ApiProperty() id!: string;
@@ -22,6 +22,7 @@ export class SubmissionResponseDto {
   @ApiProperty({ type: String, nullable: true }) fileUrl!: string | null;
   @ApiProperty() submittedAt!: Date;
   @ApiProperty() attemptNumber!: number;
+  @ApiProperty({ enum: SubmissionStatus }) status!: SubmissionStatus;
   @ApiProperty({ type: Number, nullable: true }) grade!: number | null;
   @ApiProperty({ type: String, nullable: true }) feedback!: string | null;
   @ApiProperty({ type: String, nullable: true }) gradedById!: string | null;

@@ -23,6 +23,7 @@ const mockStudent: User = {
   roles: ['STUDENT'],
   avatarUrl: null,
   isVerified: true,
+  passwordChangedAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

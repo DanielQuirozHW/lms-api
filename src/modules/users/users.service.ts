@@ -54,7 +54,7 @@ export class UsersService {
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
-    await this.usersRepository.update(userId, { passwordHash });
+    await this.usersRepository.update(userId, { passwordHash, passwordChangedAt: new Date() });
 
     const jtis = await this.redisService.smembers(`rt-set:${userId}`);
     if (jtis.length > 0) {
@@ -92,13 +92,28 @@ export class UsersService {
     return this.toPublic(user);
   }
 
-  /** Updates the role of a target user. Cannot set ADMIN role via this endpoint — admins are provisioned directly. */
-  async updateRole(userId: string, role: UserRole): Promise<UserPrivateResponseDto> {
+  /** Updates the role of a target user. Cannot set ADMIN role via this endpoint — admins are provisioned directly. Cannot demote yourself or the last admin account. */
+  async updateRole(
+    userId: string,
+    role: UserRole,
+    requestingUserId: string,
+  ): Promise<UserPrivateResponseDto> {
     if (role === UserRole.ADMIN) {
       throw new BadRequestException('Cannot assign ADMIN role via this endpoint');
     }
+    if (userId === requestingUserId) {
+      throw new BadRequestException('You cannot change your own role');
+    }
     const user = await this.usersRepository.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+
+    if (user.roles.includes(UserRole.ADMIN)) {
+      const adminCount = await this.usersRepository.countAdmins();
+      if (adminCount <= 1) {
+        throw new BadRequestException('Cannot change the role of the last admin account');
+      }
+    }
+
     const updated = await this.usersRepository.update(userId, { roles: [role] });
     return this.toPrivate(updated);
   }

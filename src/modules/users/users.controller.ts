@@ -94,11 +94,18 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update user role (admin only)' })
   @ApiResponse({ status: 200, type: UserPrivateResponseDto })
-  @ApiResponse({ status: 400, description: 'Cannot assign ADMIN role via this endpoint' })
+  @ApiResponse({
+    status: 400,
+    description: 'Cannot assign ADMIN role, demote yourself, or demote the last admin',
+  })
   @ApiResponse({ status: 403, description: 'Forbidden — admin role required' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto): Promise<UserPrivateResponseDto> {
-    return this.usersService.updateRole(id, dto.role);
+  updateRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<UserPrivateResponseDto> {
+    return this.usersService.updateRole(id, dto.role, user.id);
   }
 
   @Get(':id')

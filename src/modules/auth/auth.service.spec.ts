@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -20,6 +25,7 @@ const mockUser: User = {
   roles: ['STUDENT'],
   avatarUrl: null,
   isVerified: false,
+  passwordChangedAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -38,7 +44,7 @@ describe('AuthService', () => {
   >;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
   let redisService: jest.Mocked<
-    Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem' | 'expire'>
+    Pick<RedisService, 'get' | 'set' | 'del' | 'sadd' | 'srem' | 'expire' | 'incr'>
   >;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
@@ -63,6 +69,7 @@ describe('AuthService', () => {
       sadd: jest.fn().mockResolvedValue(1),
       srem: jest.fn().mockResolvedValue(1),
       expire: jest.fn().mockResolvedValue(1),
+      incr: jest.fn().mockResolvedValue(1),
     };
 
     configService = {
@@ -292,27 +299,42 @@ describe('AuthService', () => {
 
   describe('verifyEmail', () => {
     it('throws BadRequestException when code has expired (no Redis key)', async () => {
+      // attempts key → null (no throttle), verify key → null (expired)
       redisService.get.mockResolvedValue(null);
 
       await expect(service.verifyEmail('user-123', '123456')).rejects.toThrow(BadRequestException);
       expect(authRepository.setVerified).not.toHaveBeenCalled();
     });
 
-    it('throws BadRequestException when code does not match', async () => {
-      redisService.get.mockResolvedValue('654321');
+    it('throws 429 HttpException after 5 failed attempts', async () => {
+      redisService.get.mockResolvedValue('5'); // attempts key returns '5'
+
+      const err = await service.verifyEmail('user-123', '123456').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(HttpException);
+      expect((err as HttpException).getStatus()).toBe(429);
+      expect(authRepository.setVerified).not.toHaveBeenCalled();
+      expect(redisService.incr).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when code does not match and increments attempt counter', async () => {
+      // attempts key → null (0 attempts), verify key → wrong code
+      redisService.get.mockResolvedValueOnce(null).mockResolvedValueOnce('654321');
 
       await expect(service.verifyEmail('user-123', '123456')).rejects.toThrow(BadRequestException);
       expect(authRepository.setVerified).not.toHaveBeenCalled();
+      expect(redisService.incr).toHaveBeenCalledWith('verify:attempts:user-123');
+      expect(redisService.expire).toHaveBeenCalledWith('verify:attempts:user-123', 900);
     });
 
-    it('sets user as verified and deletes Redis key on correct code', async () => {
-      redisService.get.mockResolvedValue('123456');
+    it('sets user as verified and deletes both Redis keys on correct code', async () => {
+      // attempts key → null (0 attempts), verify key → correct code
+      redisService.get.mockResolvedValueOnce(null).mockResolvedValueOnce('123456');
       authRepository.setVerified.mockResolvedValue({ ...mockUser, isVerified: true });
 
       await service.verifyEmail('user-123', '123456');
 
       expect(authRepository.setVerified).toHaveBeenCalledWith('user-123');
-      expect(redisService.del).toHaveBeenCalledWith('verify:user-123');
+      expect(redisService.del).toHaveBeenCalledWith('verify:user-123', 'verify:attempts:user-123');
     });
   });
 

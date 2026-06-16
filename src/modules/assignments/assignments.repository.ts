@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { AssignmentSettings, Enrollment, Lesson, Submission } from '@prisma/client';
-import { Prisma } from '@prisma/client';
+import { Prisma, SubmissionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type LessonWithAssignmentContext = Lesson & {
@@ -90,6 +90,7 @@ export class AssignmentsRepository {
     grade?: number | null;
     gradedAt?: Date | null;
     groupId?: string | null;
+    status?: SubmissionStatus;
   }): Promise<Submission> {
     return this.prisma.submission.create({
       data: {
@@ -101,6 +102,7 @@ export class AssignmentsRepository {
         grade: data.grade ?? null,
         gradedAt: data.gradedAt ?? null,
         groupId: data.groupId ?? null,
+        status: data.status ?? SubmissionStatus.SUBMITTED,
       },
     });
   }
@@ -134,6 +136,7 @@ export class AssignmentsRepository {
       feedback?: string | null;
       gradedById: string;
       gradedAt: Date;
+      status?: SubmissionStatus;
     },
     tx?: Prisma.TransactionClient,
   ): Promise<Submission> {
@@ -145,8 +148,18 @@ export class AssignmentsRepository {
         feedback: data.feedback ?? null,
         gradedById: data.gradedById,
         gradedAt: data.gradedAt,
+        ...(data.status !== undefined && { status: data.status }),
       },
     });
+  }
+
+  updateSubmissionStatus(
+    id: string,
+    status: SubmissionStatus,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Submission> {
+    const client = tx ?? this.prisma;
+    return client.submission.update({ where: { id }, data: { status } });
   }
 
   findPendingSubmissions(lessonId: string): Promise<SubmissionWithContext[]> {
