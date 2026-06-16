@@ -205,6 +205,8 @@ describe('ForumService', () => {
         postId: 'post-1',
         userId: 'user-1',
         value: 1,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
       repo.findThreadById.mockResolvedValue(mockThread);
       repo.findPostById.mockResolvedValue(mockPost);
@@ -222,6 +224,8 @@ describe('ForumService', () => {
         postId: 'post-1',
         userId: 'user-1',
         value: 1,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
       repo.findThreadById.mockResolvedValue(mockThread);
       repo.findPostById.mockResolvedValue(mockPost);

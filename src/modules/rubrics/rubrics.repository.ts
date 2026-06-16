@@ -113,20 +113,24 @@ export class RubricsRepository {
     });
   }
 
-  createAssessment(data: {
-    rubricId: string;
-    submissionId: string;
-    assessorId: string;
-    totalScore: number;
-    feedback?: string;
-    answers: Array<{
-      criterionId: string;
-      levelId?: string;
-      pointsAwarded: number;
+  createAssessment(
+    data: {
+      rubricId: string;
+      submissionId: string;
+      assessorId: string;
+      totalScore: number;
       feedback?: string;
-    }>;
-  }): Promise<RubricAssessmentWithAnswers> {
-    return this.prisma.rubricAssessment.create({
+      answers: Array<{
+        criterionId: string;
+        levelId?: string;
+        pointsAwarded: number;
+        feedback?: string;
+      }>;
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<RubricAssessmentWithAnswers> {
+    const client = tx ?? this.prisma;
+    return client.rubricAssessment.create({
       data: {
         rubricId: data.rubricId,
         submissionId: data.submissionId,

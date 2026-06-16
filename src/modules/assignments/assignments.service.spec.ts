@@ -107,7 +107,9 @@ describe('AssignmentsService', () => {
     >
   >;
   let notificationsSvc: jest.Mocked<Pick<NotificationsService, 'notify'>>;
-  let rubricsSvc: jest.Mocked<Pick<RubricsService, 'createAssessment'>>;
+  let rubricsSvc: jest.Mocked<
+    Pick<RubricsService, 'prepareAssessmentValidation' | 'createAssessmentInTx'>
+  >;
 
   beforeEach(async () => {
     repo = {
@@ -127,7 +129,7 @@ describe('AssignmentsService', () => {
       transaction: jest.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn({})),
     };
     notificationsSvc = { notify: jest.fn() };
-    rubricsSvc = { createAssessment: jest.fn() };
+    rubricsSvc = { prepareAssessmentValidation: jest.fn(), createAssessmentInTx: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -403,7 +405,15 @@ describe('AssignmentsService', () => {
       repo.findSubmissionById.mockResolvedValue(mockSubmissionWithContext);
       repo.updateSubmission.mockResolvedValue({ ...mockSubmission, grade: 85 });
       repo.completeLessonProgress.mockResolvedValue(undefined);
-      rubricsSvc.createAssessment.mockResolvedValue({} as never);
+      const mockPayload = {
+        rubricId: 'rubric-123',
+        submissionId: 'sub-123',
+        assessorId: instructor.id,
+        totalScore: 18,
+        answers: [{ criterionId: 'crit-123', pointsAwarded: 18 }],
+      };
+      rubricsSvc.prepareAssessmentValidation.mockResolvedValue(mockPayload);
+      rubricsSvc.createAssessmentInTx.mockResolvedValue(undefined);
       notificationsSvc.notify.mockResolvedValue(undefined);
 
       await service.gradeSubmission(
@@ -417,7 +427,7 @@ describe('AssignmentsService', () => {
         instructor,
       );
 
-      expect(rubricsSvc.createAssessment).toHaveBeenCalledWith(
+      expect(rubricsSvc.prepareAssessmentValidation).toHaveBeenCalledWith(
         'course-123',
         'rubric-123',
         'sub-123',
@@ -428,6 +438,7 @@ describe('AssignmentsService', () => {
         }),
         instructor,
       );
+      expect(rubricsSvc.createAssessmentInTx).toHaveBeenCalledWith(mockPayload, expect.anything());
     });
 
     it('propagates grade to all group members when submission has groupId', async () => {

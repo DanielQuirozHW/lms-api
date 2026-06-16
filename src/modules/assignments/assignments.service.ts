@@ -11,6 +11,7 @@ import type { AssignmentSettings, Submission } from '@prisma/client';
 import type { AppConfig } from '../../config/configuration';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { RubricAssessmentPayload } from '../rubrics/rubrics.service';
 import { RubricsService } from '../rubrics/rubrics.service';
 import type { CreateAssignmentSettingsDto } from './dto/create-assignment-settings.dto';
 import type { GradeSubmissionDto } from './dto/grade-submission.dto';
@@ -202,9 +203,9 @@ export class AssignmentsService {
    * Notifies the student via ASSIGNMENT_GRADED.
    * Propagates the grade to all other group members' submissions when groupId is set.
    *
-   * Write ordering: rubric assessment is created first (outside transaction), then all grade writes
-   * (primary submission + group propagation + lesson progress) are committed atomically so a partial
-   * failure cannot leave some group members graded while others are not.
+   * Write ordering: rubric inputs are validated (reads only) before the transaction, then the rubric
+   * assessment write + all grade writes (primary submission + group propagation + lesson progress) are
+   * committed in a single atomic transaction — no orphaned assessment on failure.
    */
   async gradeSubmission(
     lessonId: string,
@@ -223,9 +224,10 @@ export class AssignmentsService {
     const settings = lesson.assignmentSettings;
     const passed = settings?.passingScore != null ? dto.grade >= settings.passingScore : null;
 
-    // Rubric assessment is created before the grade transaction. If it fails, no grade is written.
+    // Validate rubric inputs before the transaction (reads only). The write goes inside.
+    let rubricPayload: RubricAssessmentPayload | null = null;
     if (lesson.rubricId && dto.rubricAnswers && dto.rubricAnswers.length > 0) {
-      await this.rubricsService.createAssessment(
+      rubricPayload = await this.rubricsService.prepareAssessmentValidation(
         lesson.module.courseId,
         lesson.rubricId,
         submissionId,
@@ -259,8 +261,12 @@ export class AssignmentsService {
       gradedAt,
     };
 
-    // Atomic: grade primary submission + group member submissions + lesson progress completions.
+    // Atomic: rubric assessment + grade primary submission + group member submissions + lesson progress.
     const updated = await this.assignmentsRepository.transaction(async (tx) => {
+      if (rubricPayload) {
+        await this.rubricsService.createAssessmentInTx(rubricPayload, tx);
+      }
+
       const graded = await this.assignmentsRepository.updateSubmission(
         submissionId,
         gradePayload,

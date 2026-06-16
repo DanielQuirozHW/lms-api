@@ -21,7 +21,9 @@ import type { AuthenticatedUser } from '../auth/auth.entity';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { CourseQueryDto } from './dto/course-query.dto';
 import { CourseDetailResponseDto, CourseResponseDto } from './dto/course-response.dto';
+import { CourseSettingsResponseDto } from './dto/course-settings-response.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import { UpdateCourseSettingsDto } from './dto/update-course-settings.dto';
 import { CourseOwnerGuard } from './guards/course-owner.guard';
 import { CoursesService } from './courses.service';
 
@@ -133,6 +135,23 @@ export class CoursesController {
   @ApiResponse({ status: 404, description: 'Course not found' })
   archive(@Param('id') id: string): Promise<CourseResponseDto> {
     return this.coursesService.archive(id);
+  }
+
+  @Patch(':id/settings')
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN)
+  @UseGuards(CourseOwnerGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update course settings (owner or admin only)' })
+  @ApiResponse({ status: 200, type: CourseSettingsResponseDto })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  @ApiResponse({ status: 403, description: 'Forbidden — must be course owner or admin' })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  updateSettings(
+    @Param('id') id: string,
+    @Body() dto: UpdateCourseSettingsDto,
+  ): Promise<CourseSettingsResponseDto> {
+    return this.coursesService.updateSettings(id, dto);
   }
 
   @Delete(':id')

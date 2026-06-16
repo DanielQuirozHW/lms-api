@@ -229,22 +229,37 @@ export class LessonsService {
     const enrollment = await this.lessonsRepository.findActiveEnrollmentId(user.id, courseId);
     if (!enrollment) throw new ForbiddenException('You are not enrolled in this course');
 
+    // Cap watchedSeconds at lesson duration to prevent inflated progress values
+    const watchedSeconds =
+      dto.watchedSeconds !== undefined && lesson.duration !== null
+        ? Math.min(dto.watchedSeconds, lesson.duration)
+        : dto.watchedSeconds;
+
     const now = new Date();
     const existing = await this.lessonsRepository.findLessonProgress(enrollment.id, lessonId);
     const isFirstCompletion = !!dto.completed && !existing?.completedAt;
 
+    // Enforce sequential ordering: a locked lesson cannot be marked complete
+    let isSequential = false;
+    if (isFirstCompletion) {
+      isSequential = await this.lessonsRepository.findCourseIsSequential(courseId);
+      if (isSequential && existing?.isLocked === true) {
+        throw new ForbiddenException('This lesson is locked. Complete previous lessons first');
+      }
+    }
+
     const createData = {
       startedAt: now,
-      ...(dto.watchedSeconds !== undefined && {
-        watchedSeconds: dto.watchedSeconds,
+      ...(watchedSeconds !== undefined && {
+        watchedSeconds,
         lastWatchedAt: now,
       }),
       ...(isFirstCompletion && { completedAt: now }),
     };
 
     const updateData = {
-      ...(dto.watchedSeconds !== undefined && {
-        watchedSeconds: dto.watchedSeconds,
+      ...(watchedSeconds !== undefined && {
+        watchedSeconds,
         lastWatchedAt: now,
       }),
       ...(isFirstCompletion && { completedAt: now }),
@@ -258,7 +273,6 @@ export class LessonsService {
     );
 
     if (isFirstCompletion) {
-      const isSequential = await this.lessonsRepository.findCourseIsSequential(courseId);
       if (isSequential) {
         const nextLesson = await this.lessonsRepository.findNextPublishedLesson(
           lessonId,

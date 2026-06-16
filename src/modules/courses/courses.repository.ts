@@ -3,6 +3,7 @@ import type {
   AssignmentSettings,
   Course,
   CourseModule,
+  CourseSettings,
   CourseStatus,
   Lesson,
   Prisma,
@@ -263,6 +264,17 @@ export class CoursesRepository {
       }
 
       return newCourse;
+    });
+  }
+
+  upsertSettings(
+    courseId: string,
+    data: Prisma.CourseSettingsUpdateInput,
+  ): Promise<CourseSettings> {
+    return this.prisma.courseSettings.upsert({
+      where: { courseId },
+      create: { courseId, ...data } as Prisma.CourseSettingsCreateInput,
+      update: data,
     });
   }
 

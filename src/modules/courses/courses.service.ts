@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Course, Prisma } from '@prisma/client';
+import type { Course, CourseSettings, Prisma } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { slugify } from '../../common/utils/slug.util';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
@@ -12,7 +12,9 @@ import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CreateCourseDto } from './dto/create-course.dto';
 import type { CourseQueryDto } from './dto/course-query.dto';
 import type { CourseDetailResponseDto, CourseResponseDto } from './dto/course-response.dto';
+import type { CourseSettingsResponseDto } from './dto/course-settings-response.dto';
 import type { UpdateCourseDto } from './dto/update-course.dto';
+import type { UpdateCourseSettingsDto } from './dto/update-course-settings.dto';
 import { type CourseWithCount, CoursesRepository } from './courses.repository';
 
 @Injectable()
@@ -132,6 +134,34 @@ export class CoursesService {
     return this.map(newCourse);
   }
 
+  /** Updates (or creates) the CourseSettings record. Ownership is enforced by CourseOwnerGuard upstream. */
+  async updateSettings(
+    courseId: string,
+    dto: UpdateCourseSettingsDto,
+  ): Promise<CourseSettingsResponseDto> {
+    const data: Prisma.CourseSettingsUpdateInput = {
+      ...(dto.enrollmentStartDate !== undefined && {
+        enrollmentStartDate: dto.enrollmentStartDate ? new Date(dto.enrollmentStartDate) : null,
+      }),
+      ...(dto.enrollmentEndDate !== undefined && {
+        enrollmentEndDate: dto.enrollmentEndDate ? new Date(dto.enrollmentEndDate) : null,
+      }),
+      ...(dto.courseStartDate !== undefined && {
+        courseStartDate: dto.courseStartDate ? new Date(dto.courseStartDate) : null,
+      }),
+      ...(dto.hasModules !== undefined && { hasModules: dto.hasModules }),
+      ...(dto.forumEnabled !== undefined && { forumEnabled: dto.forumEnabled }),
+      ...(dto.forumPublic !== undefined && { forumPublic: dto.forumPublic }),
+      ...(dto.certificateEnabled !== undefined && { certificateEnabled: dto.certificateEnabled }),
+      ...(dto.ratingEnabled !== undefined && { ratingEnabled: dto.ratingEnabled }),
+      ...(dto.ratingScale !== undefined && { ratingScale: dto.ratingScale }),
+      ...(dto.maxEnrollments !== undefined && { maxEnrollments: dto.maxEnrollments }),
+      ...(dto.isSequential !== undefined && { isSequential: dto.isSequential }),
+    };
+    const settings = await this.coursesRepository.upsertSettings(courseId, data);
+    return this.mapSettings(settings);
+  }
+
   /** Deletes the course. Throws 409 if the course has any non-cancelled enrollments (ACTIVE or COMPLETED). */
   async remove(courseId: string): Promise<void> {
     const enrollmentCount = await this.coursesRepository.countNonCancelledEnrollments(courseId);
@@ -167,6 +197,24 @@ export class CoursesService {
       enrollmentPeriodEnd: null,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
+    };
+  }
+
+  private mapSettings(s: CourseSettings): CourseSettingsResponseDto {
+    return {
+      id: s.id,
+      courseId: s.courseId,
+      enrollmentStartDate: s.enrollmentStartDate,
+      enrollmentEndDate: s.enrollmentEndDate,
+      courseStartDate: s.courseStartDate,
+      hasModules: s.hasModules,
+      forumEnabled: s.forumEnabled,
+      forumPublic: s.forumPublic,
+      certificateEnabled: s.certificateEnabled,
+      ratingEnabled: s.ratingEnabled,
+      ratingScale: s.ratingScale,
+      maxEnrollments: s.maxEnrollments,
+      isSequential: s.isSequential,
     };
   }
 

@@ -5,8 +5,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Rubric } from '@prisma/client';
+import type { Prisma, Rubric } from '@prisma/client';
 import { UserRole } from '@prisma/client';
+
+export interface RubricAssessmentPayload {
+  rubricId: string;
+  submissionId: string;
+  assessorId: string;
+  totalScore: number;
+  feedback?: string;
+  answers: Array<{
+    criterionId: string;
+    levelId?: string;
+    pointsAwarded: number;
+    feedback?: string;
+  }>;
+}
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import type { CourseDetailResponseDto } from '../courses/dto/course-response.dto';
 import { CoursesService } from '../courses/courses.service';
@@ -137,7 +151,29 @@ export class RubricsService {
     dto: CreateRubricAssessmentDto,
     user: AuthenticatedUser,
   ): Promise<RubricAssessmentResponseDto> {
-    // C-2: verify caller owns this course
+    const payload = await this.prepareAssessmentValidation(
+      courseId,
+      rubricId,
+      submissionId,
+      dto,
+      user,
+    );
+    const assessment = await this.rubricsRepository.createAssessment(payload);
+    return this.mapAssessment(assessment);
+  }
+
+  /**
+   * Validates all rubric assessment inputs and returns a write-ready payload.
+   * Does NOT write to the database — call this before a transaction.
+   * Throws NotFoundException / BadRequestException / ForbiddenException on invalid input.
+   */
+  async prepareAssessmentValidation(
+    courseId: string,
+    rubricId: string,
+    submissionId: string,
+    dto: CreateRubricAssessmentDto,
+    user: AuthenticatedUser,
+  ): Promise<RubricAssessmentPayload> {
     const course = await this.coursesService.findOne(courseId, user);
     this.verifyOwnership(course, user);
 
@@ -151,7 +187,6 @@ export class RubricsService {
       throw new NotFoundException('Submission not found');
     }
 
-    // M-6: validate all criterionIds belong to this rubric
     const validCriterionIds = new Set(rubric.criteria.map((c) => c.id));
     for (const answer of dto.answers) {
       if (!validCriterionIds.has(answer.criterionId)) {
@@ -162,8 +197,7 @@ export class RubricsService {
     }
 
     const totalScore = dto.answers.reduce((sum, a) => sum + a.pointsAwarded, 0);
-
-    const assessment = await this.rubricsRepository.createAssessment({
+    return {
       rubricId,
       submissionId,
       assessorId: user.id,
@@ -175,9 +209,15 @@ export class RubricsService {
         pointsAwarded: a.pointsAwarded,
         feedback: a.feedback,
       })),
-    });
+    };
+  }
 
-    return this.mapAssessment(assessment);
+  /** Writes an assessment record inside an external Prisma transaction. Call prepareAssessmentValidation() first. */
+  async createAssessmentInTx(
+    payload: RubricAssessmentPayload,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await this.rubricsRepository.createAssessment(payload, tx);
   }
 
   /**

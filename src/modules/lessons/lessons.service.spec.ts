@@ -410,6 +410,7 @@ describe('LessonsService', () => {
       completedAt: null,
       lastWatchedAt: null,
       watchedSeconds: null,
+      updatedAt: new Date('2026-01-01'),
     };
 
     it('throws NotFoundException when lesson does not belong to module/course', async () => {

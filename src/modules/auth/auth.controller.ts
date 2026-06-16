@@ -6,14 +6,17 @@ import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from './auth.entity';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { OAuthLoginDto } from './dto/oauth-login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 
 const STRICT_THROTTLE = { default: { limit: 5, ttl: 60000 } };
 const VERIFY_THROTTLE = { default: { limit: 3, ttl: 600000 } };
+const RESET_THROTTLE = { default: { limit: 3, ttl: 3600000 } }; // 3 per hour
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -113,5 +116,33 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   verifyEmail(@CurrentUser() user: AuthenticatedUser, @Body() dto: VerifyEmailDto): Promise<void> {
     return this.authService.verifyEmail(user.id, dto.code);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(RESET_THROTTLE)
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'Request a password reset link (returns token for dev/testing)' })
+  @ApiResponse({ status: 200, description: 'Reset token generated (if account exists)' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string; resetToken?: string }> {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(RESET_THROTTLE)
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'Reset password using a valid reset token' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Token invalid, expired, or password fails complexity' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }

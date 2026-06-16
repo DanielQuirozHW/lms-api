@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import type { AppConfig } from '../../config/configuration';
 import { RedisService } from '../../redis/redis.service';
 import type { JwtPayload, RefreshTokenPayload } from './auth.entity';
@@ -23,6 +23,9 @@ import type { RegisterDto } from './dto/register.dto';
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 const VERIFY_CODE_TTL = 900; // 15 minutes
+const RESET_TOKEN_TTL_SECS = 60 * 60; // 1 hour
+// Must exceed the longest valid access token lifetime to ensure in-flight tokens are revoked.
+const ACCESS_TOKEN_REVOCATION_TTL = 7 * 24 * 60 * 60;
 // Valid bcrypt hash used solely to equalise timing when email is not found.
 // Ensures bcrypt.compare always runs, preventing user enumeration via response-time differences.
 const DUMMY_HASH = '$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
@@ -159,6 +162,46 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
     return this.toUserResponse(user);
+  }
+
+  /**
+   * Generates a secure reset token stored in DB with a 1-hour TTL.
+   * Always returns the same message regardless of whether the email exists (prevents enumeration).
+   * Returns the token directly for dev/testing convenience — prod deployments should send email instead.
+   */
+  async forgotPassword(email: string): Promise<{ message: string; resetToken?: string }> {
+    const user = await this.authRepository.findByEmail(email);
+    const message = 'If an account with that email exists, a reset link has been sent';
+    if (!user) return { message };
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_SECS * 1000);
+    await this.authRepository.createResetToken(user.id, token, expiresAt);
+    return { message, resetToken: token };
+  }
+
+  /**
+   * Validates the reset token, updates the password, marks the token used, and revokes all sessions.
+   * Throws 400 if the token is invalid, already used, or expired.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const record = await this.authRepository.findValidResetToken(token);
+    if (!record) throw new BadRequestException('Reset token is invalid or has expired');
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const userId = record.userId;
+
+    await this.authRepository.updatePasswordHash(userId, passwordHash);
+    await this.authRepository.markResetTokenUsed(record.id);
+
+    // Revoke all active sessions — same pattern as changePassword (MISTAKES.md [002])
+    const jtis = await this.redisService.smembers(`rt-set:${userId}`);
+    if (jtis.length > 0) {
+      const rtKeys = jtis.map((jti) => `rt:${userId}:${jti}`);
+      await this.redisService.del(...rtKeys, `rt-set:${userId}`);
+    }
+    await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
+    this.logger.log(`Password reset for user ${userId} — all refresh tokens revoked`);
   }
 
   /** Finds a user by ID or throws 404. Used by AdminService for impersonation target lookup. */
