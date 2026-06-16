@@ -436,12 +436,14 @@ model LessonProgress {
   completedAt    DateTime? @map("completed_at")
   lastWatchedAt  DateTime? @map("last_watched_at")
   watchedSeconds Int?      @map("watched_seconds")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, lessonId])
   @@index([enrollmentId])
+  @@index([lessonId])
   @@map("lesson_progress")
 }
 
@@ -489,10 +491,12 @@ model ForumPost {
 }
 
 model ForumPostVote {
-  id     String @id @default(cuid())
-  postId String @map("post_id")
-  userId String @map("user_id")
-  value  Int
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  value     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -569,6 +573,7 @@ model Message {
   content    String
   readAt     DateTime? @map("read_at")
   createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
@@ -576,6 +581,7 @@ model Message {
   @@index([senderId])
   @@index([receiverId])
   @@index([senderId, receiverId])
+  @@index([readAt])
   @@map("messages")
 }
 
@@ -827,6 +833,7 @@ model Certificate {
   certificateCode String   @unique @default(cuid()) @map("certificate_code")
   issuedAt        DateTime @default(now()) @map("issued_at")
   finalGrade      Float?   @map("final_grade")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   course     Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
