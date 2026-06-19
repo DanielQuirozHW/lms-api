@@ -111,7 +111,9 @@
       "unrs-resolver"
     ],
     "overrides": {
-      "ws": ">=8.20.1"
+      "ws": ">=8.20.1",
+      "multer": ">=2.2.0",
+      "hono": ">=4.12.25"
     }
   },
   "lint-staged": {
