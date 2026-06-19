@@ -13,7 +13,7 @@ import type {
   Prisma,
   QuizSettings,
 } from '@prisma/client';
-import { UserRole } from '@prisma/client';
+import { LessonType, UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import type { CreateLessonDto } from './dto/create-lesson.dto';
@@ -51,6 +51,11 @@ export class LessonsService {
       const maxOrder = await this.lessonsRepository.getMaxOrder(moduleId);
       order = maxOrder + 1;
     }
+    const readingTime =
+      dto.type === LessonType.TEXT && dto.content
+        ? this.calculateReadingTime(dto.content)
+        : (dto.readingTime ?? null);
+
     const lesson = await this.lessonsRepository.create({
       title: dto.title,
       type: dto.type,
@@ -59,6 +64,7 @@ export class LessonsService {
       videoUrl: dto.videoUrl ?? null,
       duration: dto.duration ?? null,
       isPreview: dto.isPreview ?? false,
+      readingTime,
       module: { connect: { id: moduleId } },
     });
     return this.map(lesson);
@@ -133,6 +139,17 @@ export class LessonsService {
     if (!existing || existing.moduleId !== moduleId || existing.module.courseId !== courseId) {
       throw new NotFoundException('Lesson not found');
     }
+    let readingTimeUpdate: number | null | undefined;
+    if (dto.content !== undefined) {
+      const effectiveType = dto.type ?? existing.type;
+      readingTimeUpdate =
+        effectiveType === LessonType.TEXT && dto.content
+          ? this.calculateReadingTime(dto.content)
+          : null;
+    } else if (dto.readingTime !== undefined) {
+      readingTimeUpdate = dto.readingTime;
+    }
+
     const data: Prisma.LessonUpdateInput = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.type !== undefined && { type: dto.type }),
@@ -141,6 +158,7 @@ export class LessonsService {
       ...(dto.videoUrl !== undefined && { videoUrl: dto.videoUrl }),
       ...(dto.duration !== undefined && { duration: dto.duration }),
       ...(dto.isPreview !== undefined && { isPreview: dto.isPreview }),
+      ...(readingTimeUpdate !== undefined && { readingTime: readingTimeUpdate }),
     };
     const lesson = await this.lessonsRepository.update(lessonId, data);
     return this.map(lesson);
@@ -306,6 +324,7 @@ export class LessonsService {
       content: lesson.content,
       videoUrl: lesson.videoUrl,
       duration: lesson.duration,
+      readingTime: lesson.readingTime,
       isPreview: lesson.isPreview,
       isPublished: lesson.isPublished,
       createdAt: lesson.createdAt,
@@ -372,6 +391,7 @@ export class LessonsService {
       content: lesson.content,
       videoUrl: lesson.videoUrl,
       duration: lesson.duration,
+      readingTime: lesson.readingTime,
       isPreview: lesson.isPreview,
       isPublished: lesson.isPublished,
       createdAt: lesson.createdAt,
@@ -382,5 +402,15 @@ export class LessonsService {
         ? this.mapAssignmentSettings(lesson.assignmentSettings)
         : null,
     };
+  }
+
+  /** Strips HTML tags and returns ceil(wordCount / 200), minimum 1. */
+  private calculateReadingTime(html: string): number {
+    const text = html.replace(/<[^>]*>/g, ' ');
+    const words = text
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0);
+    return Math.max(1, Math.ceil(words.length / 200));
   }
 }

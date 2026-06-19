@@ -44,6 +44,13 @@ export class LessonResponseDto {
   videoUrl!: string | null;
   @ApiProperty({ type: Number, example: 480, nullable: true, description: 'Duration in seconds' })
   duration!: number | null;
+  @ApiProperty({
+    type: Number,
+    example: 5,
+    nullable: true,
+    description: 'Estimated reading time in minutes (TEXT lessons only)',
+  })
+  readingTime!: number | null;
   @ApiProperty({ example: false }) isPreview!: boolean;
   @ApiProperty({ example: false }) isPublished!: boolean;
   @ApiProperty() createdAt!: Date;

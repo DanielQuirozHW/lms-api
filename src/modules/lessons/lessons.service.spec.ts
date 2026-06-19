@@ -14,6 +14,7 @@ const mockLesson: Lesson = {
   content: null,
   videoUrl: 'https://cdn.example.com/video.mp4',
   duration: 480,
+  readingTime: null,
   isPreview: false,
   isPublished: false,
   rubricId: null,

@@ -57,4 +57,13 @@ export class CreateLessonDto {
   @IsOptional()
   @IsBoolean()
   isPreview?: boolean;
+
+  @ApiPropertyOptional({
+    example: 5,
+    description: 'Override auto-calculated reading time in minutes (TEXT lessons only)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  readingTime?: number;
 }

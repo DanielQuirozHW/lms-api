@@ -265,6 +265,7 @@ model Lesson {
   content     String?
   videoUrl    String?    @map("video_url")
   duration    Int?
+  readingTime Int?       @map("reading_time")
   isPreview   Boolean    @default(false) @map("is_preview")
   isPublished Boolean    @default(false) @map("is_published")
   rubricId    String?    @map("rubric_id")
