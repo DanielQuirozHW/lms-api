@@ -38,6 +38,7 @@ const mockLesson: LessonWithContext = {
   content: null,
   videoUrl: null,
   duration: null,
+  readingTime: null,
   isPreview: false,
   isPublished: true,
   rubricId: null,

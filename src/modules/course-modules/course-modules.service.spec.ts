@@ -25,6 +25,7 @@ const mockLesson: Lesson = {
   content: null,
   videoUrl: null,
   duration: null,
+  readingTime: null,
   isPreview: false,
   isPublished: true,
   rubricId: null,
