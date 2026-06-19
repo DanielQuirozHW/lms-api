@@ -14,6 +14,7 @@ const mockMessage: Message = {
   content: 'Hello',
   readAt: null,
   createdAt: now,
+  updatedAt: now,
 };
 
 const mockInboxRow: InboxRawRow = {
