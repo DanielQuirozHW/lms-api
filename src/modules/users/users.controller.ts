@@ -112,12 +112,11 @@ export class UsersController {
   @Get('me/stats/last-active-lesson')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get the most recently watched lesson across all enrollments' })
-  @ApiResponse({ status: 200, type: LastActiveLessonResponseDto })
+  @ApiResponse({ status: 200, type: LastActiveLessonResponseDto, nullable: true })
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-  @ApiResponse({ status: 404, description: 'No lesson activity found' })
   getLastActiveLesson(
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<LastActiveLessonResponseDto> {
+  ): Promise<LastActiveLessonResponseDto | null> {
     return this.usersService.getLastActiveLesson(user.id);
   }
 

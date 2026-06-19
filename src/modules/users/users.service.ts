@@ -188,18 +188,16 @@ export class UsersService {
     return { currentStreak, longestStreak };
   }
 
-  /** Returns the most recently watched lesson across all enrollments, or throws 404 if none. */
-  async getLastActiveLesson(userId: string): Promise<LastActiveLessonResponseDto> {
+  /** Returns the most recently watched lesson across all enrollments, or null if none. */
+  async getLastActiveLesson(userId: string): Promise<LastActiveLessonResponseDto | null> {
     const record = await this.usersRepository.findLastWatchedLesson(userId);
-    if (!record || !record.lastWatchedAt) {
-      throw new NotFoundException('No lesson activity found');
-    }
+    if (!record) return null;
     return {
       lessonId: record.lessonId,
       moduleId: record.lesson.moduleId,
       courseId: record.enrollment.courseId,
       courseSlug: record.enrollment.course.slug,
-      lastWatchedAt: record.lastWatchedAt,
+      lastWatchedAt: record.lastWatchedAt as Date,
     };
   }
 

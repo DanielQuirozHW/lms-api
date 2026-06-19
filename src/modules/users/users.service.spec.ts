@@ -315,6 +315,36 @@ describe('UsersService', () => {
     });
   });
 
+  describe('getLastActiveLesson', () => {
+    it('returns null when user has no lesson activity', async () => {
+      usersRepository.findLastWatchedLesson.mockResolvedValue(null);
+
+      const result = await service.getLastActiveLesson('user-123');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns lesson data when activity exists', async () => {
+      const watchedAt = new Date('2024-06-01T10:00:00Z');
+      usersRepository.findLastWatchedLesson.mockResolvedValue({
+        lessonId: 'lesson-123',
+        lastWatchedAt: watchedAt,
+        lesson: { moduleId: 'module-123' },
+        enrollment: { courseId: 'course-123', course: { slug: 'typescript-basics' } },
+      });
+
+      const result = await service.getLastActiveLesson('user-123');
+
+      expect(result).toEqual({
+        lessonId: 'lesson-123',
+        moduleId: 'module-123',
+        courseId: 'course-123',
+        courseSlug: 'typescript-basics',
+        lastWatchedAt: watchedAt,
+      });
+    });
+  });
+
   describe('getAllUsers', () => {
     it('returns paginated list with correct meta and without passwordHash', async () => {
       usersRepository.findAll.mockResolvedValue([[mockUser], 1]);
