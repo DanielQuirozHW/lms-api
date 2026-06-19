@@ -25,6 +25,10 @@ const mockStudent: User = {
   isVerified: true,
   passwordChangedAt: null,
   isActive: true,
+  phone: null,
+  birthDate: null,
+  location: null,
+  bio: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

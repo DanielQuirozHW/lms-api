@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Header, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -46,8 +47,11 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
-  login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.login(dto, ip, userAgent);
   }
 
   @Public()
@@ -59,8 +63,11 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Authenticated via OAuth', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
-  oauth(@Body() dto: OAuthLoginDto): Promise<AuthResponseDto> {
-    return this.authService.oauthLogin(dto);
+  oauth(@Body() dto: OAuthLoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.oauthLogin(dto, ip, userAgent);
   }
 
   @Public()

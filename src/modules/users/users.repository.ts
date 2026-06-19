@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, User } from '@prisma/client';
+import type { LoginEvent, Prisma, User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -35,5 +35,26 @@ export class UsersRepository {
 
   countAdmins(): Promise<number> {
     return this.prisma.user.count({ where: { roles: { has: UserRole.ADMIN }, isActive: true } });
+  }
+
+  findCompletedLessonsSince(
+    userId: string,
+    since: Date,
+  ): Promise<Array<{ completedAt: Date | null; watchedSeconds: number | null }>> {
+    return this.prisma.lessonProgress.findMany({
+      where: {
+        enrollment: { userId },
+        completedAt: { gte: since },
+      },
+      select: { completedAt: true, watchedSeconds: true },
+    });
+  }
+
+  findLoginHistory(userId: string): Promise<LoginEvent[]> {
+    return this.prisma.loginEvent.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
   }
 }

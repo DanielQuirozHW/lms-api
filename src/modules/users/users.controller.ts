@@ -18,9 +18,11 @@ import { type PaginatedResult, PaginationDto } from '../../common/dto/pagination
 import type { AuthenticatedUser } from '../auth/auth.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
+import { LoginEventResponseDto } from './dto/login-event-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-response.dto';
+import { WeeklyActivityResponseDto } from './dto/weekly-activity-response.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -75,6 +77,24 @@ export class UsersController {
     @Body() dto: DeleteAccountDto,
   ): Promise<void> {
     return this.usersService.deleteAccount(user.id, dto);
+  }
+
+  @Get('me/stats/weekly-activity')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get last 7 days of lesson completion activity' })
+  @ApiResponse({ status: 200, type: WeeklyActivityResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getWeeklyActivity(@CurrentUser() user: AuthenticatedUser): Promise<WeeklyActivityResponseDto> {
+    return this.usersService.getWeeklyActivity(user.id);
+  }
+
+  @Get('me/login-history')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get last 10 login events for the current user' })
+  @ApiResponse({ status: 200, type: LoginEventResponseDto, isArray: true })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getLoginHistory(@CurrentUser() user: AuthenticatedUser): Promise<LoginEventResponseDto[]> {
+    return this.usersService.getLoginHistory(user.id);
   }
 
   @Get()

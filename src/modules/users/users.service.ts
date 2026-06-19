@@ -13,7 +13,9 @@ import { RedisService } from '../../redis/redis.service';
 import type { ChangePasswordDto } from './dto/change-password.dto';
 import type { DeleteAccountDto } from './dto/delete-account.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
+import type { LoginEventResponseDto } from './dto/login-event-response.dto';
 import type { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-response.dto';
+import type { WeeklyActivityResponseDto } from './dto/weekly-activity-response.dto';
 import { UsersRepository } from './users.repository';
 
 const BCRYPT_ROUNDS = 12;
@@ -85,6 +87,62 @@ export class UsersService {
     await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
   }
 
+  /** Returns last 7 days of lesson completion activity grouped by day. Day labels in Spanish. */
+  async getWeeklyActivity(userId: string): Promise<WeeklyActivityResponseDto> {
+    const now = new Date();
+    const since = new Date(now);
+    since.setUTCDate(since.getUTCDate() - 6);
+    since.setUTCHours(0, 0, 0, 0);
+
+    const records = await this.usersRepository.findCompletedLessonsSince(userId, since);
+
+    // L M M J V S D — indexed by getUTCDay() where 0 = Sunday
+    const DAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+
+    // Build ordered 7-day array (oldest first)
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(since);
+      d.setUTCDate(d.getUTCDate() + i);
+      return {
+        date: d.toISOString().slice(0, 10),
+        dayLabel: DAY_LABELS[d.getUTCDay()],
+        completedLessons: 0,
+        minutesWatched: 0,
+      };
+    });
+
+    const dateIndex = new Map(days.map((day, i) => [day.date, i]));
+
+    for (const record of records) {
+      if (!record.completedAt) continue;
+      const dateStr = record.completedAt.toISOString().slice(0, 10);
+      const idx = dateIndex.get(dateStr);
+      if (idx !== undefined) {
+        days[idx].completedLessons++;
+        days[idx].minutesWatched += record.watchedSeconds
+          ? Math.floor(record.watchedSeconds / 60)
+          : 0;
+      }
+    }
+
+    return {
+      days,
+      totalMinutesThisWeek: days.reduce((sum, d) => sum + d.minutesWatched, 0),
+      totalLessonsThisWeek: days.reduce((sum, d) => sum + d.completedLessons, 0),
+    };
+  }
+
+  /** Returns the last 10 login events for the authenticated user. */
+  async getLoginHistory(userId: string): Promise<LoginEventResponseDto[]> {
+    const events = await this.usersRepository.findLoginHistory(userId);
+    return events.map((e) => ({
+      id: e.id,
+      ipAddress: e.ipAddress,
+      userAgent: e.userAgent,
+      createdAt: e.createdAt,
+    }));
+  }
+
   /** Returns the public profile of any user. Never includes email, passwordHash, roles, or isVerified. */
   async getPublicProfile(id: string): Promise<UserPublicResponseDto> {
     const user = await this.usersRepository.findById(id);
@@ -140,6 +198,10 @@ export class UsersService {
       roles: user.roles,
       avatarUrl: user.avatarUrl,
       isVerified: user.isVerified,
+      phone: user.phone,
+      birthDate: user.birthDate,
+      location: user.location,
+      bio: user.bio,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

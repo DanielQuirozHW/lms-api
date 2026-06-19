@@ -106,6 +106,10 @@ model User {
   isVerified        Boolean    @default(false) @map("is_verified")
   passwordChangedAt DateTime?  @map("password_changed_at")
   isActive          Boolean    @default(true) @map("is_active")
+  phone             String?    @map("phone")
+  birthDate         DateTime?  @map("birth_date")
+  location          String?    @map("location")
+  bio               String?    @map("bio")
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
@@ -132,6 +136,7 @@ model User {
   adminImpersonations   ImpersonationLog[]   @relation("AdminImpersonations")
   targetImpersonations  ImpersonationLog[]   @relation("TargetImpersonations")
   codeUsages            EnrollmentCodeUsage[]
+  loginEvents           LoginEvent[]
 
   @@map("users")
 }
@@ -933,6 +938,22 @@ model ImpersonationLog {
   @@index([adminId])
   @@index([targetUserId])
   @@map("impersonation_logs")
+}
+
+// ─── LoginEvent ───────────────────────────────────────────────────────────────
+
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_events")
 }
 
 // ─── SystemError ──────────────────────────────────────────────────────────────

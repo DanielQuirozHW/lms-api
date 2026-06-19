@@ -66,10 +66,16 @@ export class AuthService {
    * (the OAuth provider has already verified the email address).
    * Never throws 409 — OAuth is always "find-or-create".
    */
-  async oauthLogin(dto: OAuthLoginDto): Promise<AuthResponseDto> {
+  async oauthLogin(dto: OAuthLoginDto, ip?: string, userAgent?: string): Promise<AuthResponseDto> {
     const existing = await this.authRepository.findByEmail(dto.email);
     if (existing) {
-      return this.buildAuthResponse(existing);
+      const result = await this.buildAuthResponse(existing);
+      void this.authRepository
+        .createLoginEvent(existing.id, ip ?? null, userAgent ?? null)
+        .catch((err: unknown) => {
+          this.logger.warn(`Failed to record login event: ${String(err)}`);
+        });
+      return result;
     }
     // Store a bcrypt hash of a random UUID so the account exists in the DB but
     // can never be accessed via password login (bcrypt.compare always returns false).
@@ -81,11 +87,16 @@ export class AuthService {
       lastName: dto.lastName,
       avatarUrl: dto.avatarUrl ?? null,
     });
+    void this.authRepository
+      .createLoginEvent(user.id, ip ?? null, userAgent ?? null)
+      .catch((err: unknown) => {
+        this.logger.warn(`Failed to record login event: ${String(err)}`);
+      });
     return this.buildAuthResponse(user);
   }
 
   /** Validates credentials and returns a JWT token pair. Throws 401 on bad email or wrong password. */
-  async login(dto: LoginDto): Promise<AuthResponseDto> {
+  async login(dto: LoginDto, ip?: string, userAgent?: string): Promise<AuthResponseDto> {
     const user = await this.authRepository.findByEmail(dto.email);
     // Always run bcrypt regardless of whether the email exists to prevent
     // timing-based user enumeration (unknown email would otherwise return ~5ms vs ~300ms).
@@ -96,7 +107,13 @@ export class AuthService {
       );
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.buildAuthResponse(user);
+    const result = await this.buildAuthResponse(user);
+    void this.authRepository
+      .createLoginEvent(user.id, ip ?? null, userAgent ?? null)
+      .catch((err: unknown) => {
+        this.logger.warn(`Failed to record login event: ${String(err)}`);
+      });
+    return result;
   }
 
   /** Rotates the refresh token — revokes the old one and issues a new token pair. Throws 401 if revoked or expired. */

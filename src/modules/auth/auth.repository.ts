@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PasswordResetToken, User } from '@prisma/client';
+import type { LoginEvent, PasswordResetToken, User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 interface CreateUserInput {
@@ -74,5 +74,13 @@ export class AuthRepository {
       where: { id: userId },
       data: { passwordHash, passwordChangedAt: new Date() },
     });
+  }
+
+  createLoginEvent(
+    userId: string,
+    ipAddress: string | null,
+    userAgent: string | null,
+  ): Promise<LoginEvent> {
+    return this.prisma.loginEvent.create({ data: { userId, ipAddress, userAgent } });
   }
 }

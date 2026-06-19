@@ -27,6 +27,10 @@ const mockUser: User = {
   isVerified: false,
   passwordChangedAt: null,
   isActive: true,
+  phone: null,
+  birthDate: null,
+  location: null,
+  bio: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -40,7 +44,12 @@ describe('AuthService', () => {
   let authRepository: jest.Mocked<
     Pick<
       AuthRepository,
-      'findByEmail' | 'findById' | 'createUser' | 'createOAuthUser' | 'setVerified'
+      | 'findByEmail'
+      | 'findById'
+      | 'createUser'
+      | 'createOAuthUser'
+      | 'setVerified'
+      | 'createLoginEvent'
     >
   >;
   let jwtService: jest.Mocked<Pick<JwtService, 'signAsync' | 'verify'>>;
@@ -56,6 +65,7 @@ describe('AuthService', () => {
       createUser: jest.fn(),
       createOAuthUser: jest.fn(),
       setVerified: jest.fn(),
+      createLoginEvent: jest.fn().mockResolvedValue({}),
     };
 
     jwtService = {

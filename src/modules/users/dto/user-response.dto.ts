@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 export class UserPrivateResponseDto {
@@ -9,6 +9,10 @@ export class UserPrivateResponseDto {
   @ApiProperty({ enum: UserRole, isArray: true, example: [UserRole.STUDENT] }) roles!: UserRole[];
   @ApiProperty({ type: String, example: null, nullable: true }) avatarUrl!: string | null;
   @ApiProperty({ example: false }) isVerified!: boolean;
+  @ApiPropertyOptional({ type: String, example: null, nullable: true }) phone!: string | null;
+  @ApiPropertyOptional({ type: Date, example: null, nullable: true }) birthDate!: Date | null;
+  @ApiPropertyOptional({ type: String, example: null, nullable: true }) location!: string | null;
+  @ApiPropertyOptional({ type: String, example: null, nullable: true }) bio!: string | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
