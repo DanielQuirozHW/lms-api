@@ -57,4 +57,44 @@ export class UsersRepository {
       take: 10,
     });
   }
+
+  async findAllCompletedDates(userId: string): Promise<Date[]> {
+    const rows = await this.prisma.lessonProgress.findMany({
+      where: { enrollment: { userId }, completedAt: { not: null } },
+      select: { completedAt: true },
+    });
+    return rows.map((r) => r.completedAt as Date);
+  }
+
+  findLastWatchedLesson(userId: string): Promise<{
+    lessonId: string;
+    lastWatchedAt: Date | null;
+    lesson: { moduleId: string };
+    enrollment: { courseId: string; course: { slug: string } };
+  } | null> {
+    return this.prisma.lessonProgress.findFirst({
+      where: { enrollment: { userId }, lastWatchedAt: { not: null } },
+      orderBy: { lastWatchedAt: 'desc' },
+      select: {
+        lessonId: true,
+        lastWatchedAt: true,
+        lesson: { select: { moduleId: true } },
+        enrollment: { select: { courseId: true, course: { select: { slug: true } } } },
+      },
+    });
+  }
+
+  async findOverallProgressStats(
+    userId: string,
+  ): Promise<{ totalLessons: number; completedLessons: number }> {
+    const [totalLessons, completedLessons] = await this.prisma.$transaction([
+      this.prisma.lessonProgress.count({
+        where: { enrollment: { userId, status: 'ACTIVE' } },
+      }),
+      this.prisma.lessonProgress.count({
+        where: { enrollment: { userId, status: 'ACTIVE' }, completedAt: { not: null } },
+      }),
+    ]);
+    return { totalLessons, completedLessons };
+  }
 }

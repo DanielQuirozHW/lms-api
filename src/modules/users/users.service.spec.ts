@@ -34,7 +34,15 @@ describe('UsersService', () => {
   let usersRepository: jest.Mocked<
     Pick<
       UsersRepository,
-      'findById' | 'findByEmail' | 'update' | 'delete' | 'findAll' | 'countAdmins'
+      | 'findById'
+      | 'findByEmail'
+      | 'update'
+      | 'delete'
+      | 'findAll'
+      | 'countAdmins'
+      | 'findAllCompletedDates'
+      | 'findLastWatchedLesson'
+      | 'findOverallProgressStats'
     >
   >;
   let redisService: jest.Mocked<Pick<RedisService, 'smembers' | 'del' | 'set'>>;
@@ -47,6 +55,11 @@ describe('UsersService', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       countAdmins: jest.fn(),
+      findAllCompletedDates: jest.fn().mockResolvedValue([]),
+      findLastWatchedLesson: jest.fn().mockResolvedValue(null),
+      findOverallProgressStats: jest
+        .fn()
+        .mockResolvedValue({ totalLessons: 0, completedLessons: 0 }),
     };
 
     redisService = {
