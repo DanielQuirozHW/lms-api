@@ -4,6 +4,11 @@ import { CourseStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class CourseQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ example: 'typescript' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ example: 'category-uuid' })
   @IsOptional()
   @IsString()

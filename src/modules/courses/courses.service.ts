@@ -40,6 +40,7 @@ export class CoursesService {
     const [courses, total] = await this.coursesRepository.findMany({
       status: query.status ?? 'PUBLISHED',
       categoryId: query.categoryId,
+      search: query.search,
       skip: query.skip,
       take: query.limit ?? 20,
     });

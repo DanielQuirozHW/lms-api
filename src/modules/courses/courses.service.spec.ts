@@ -142,6 +142,17 @@ describe('CoursesService', () => {
       expect(result.meta.page).toBe(1);
       expect(result.meta.totalPages).toBe(1);
     });
+
+    it('passes search term to repository when provided', async () => {
+      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      const query = Object.assign(new CourseQueryDto(), { search: 'sql' });
+
+      await service.findAll(query);
+
+      expect(coursesRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'sql' }),
+      );
+    });
   });
 
   describe('findOne', () => {
