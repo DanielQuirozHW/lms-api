@@ -64,6 +64,8 @@ const baseSettings = {
   ratingScale: 'STARS_5' as const,
   maxEnrollments: null,
   isSequential: false,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 const mockAdmin: AuthenticatedUser = {
@@ -742,6 +744,7 @@ describe('EnrollmentsService', () => {
         expiresAt: null,
         isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       };
       repo.findByUserAndCourse.mockResolvedValue(null);
       repo.findCourseWithSettings.mockResolvedValue(codeCourse);
@@ -900,6 +903,8 @@ describe('EnrollmentsService', () => {
       ratingScale: 'STARS_5' as const,
       maxEnrollments: null,
       isSequential: false,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
     };
 
     beforeEach(() => {

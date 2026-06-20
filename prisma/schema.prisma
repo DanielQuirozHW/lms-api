@@ -186,12 +186,14 @@ model NotificationPreferences {
 }
 
 model NotificationSettings {
-  id                      String  @id @default(cuid())
-  userId                  String  @unique @map("user_id")
-  emailOnEnrollment       Boolean @default(true) @map("email_on_enrollment")
-  emailOnNewLesson        Boolean @default(true) @map("email_on_new_lesson")
-  emailOnForumReply       Boolean @default(true) @map("email_on_forum_reply")
-  emailOnAssignmentGraded Boolean @default(true) @map("email_on_assignment_graded")
+  id                      String   @id @default(cuid())
+  userId                  String   @unique @map("user_id")
+  emailOnEnrollment       Boolean  @default(true) @map("email_on_enrollment")
+  emailOnNewLesson        Boolean  @default(true) @map("email_on_new_lesson")
+  emailOnForumReply       Boolean  @default(true) @map("email_on_forum_reply")
+  emailOnAssignmentGraded Boolean  @default(true) @map("email_on_assignment_graded")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -201,11 +203,14 @@ model NotificationSettings {
 // ─── Course ───────────────────────────────────────────────────────────────────
 
 model Category {
-  id       String   @id @default(cuid())
-  name     String   @unique
-  slug     String   @unique
-  isActive Boolean  @default(true) @map("is_active")
-  courses  Course[]
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  courses Course[]
 
   @@map("categories")
 }
@@ -261,6 +266,8 @@ model CourseSettings {
   ratingScale         RatingScale @default(STARS_5) @map("rating_scale")
   maxEnrollments      Int?        @map("max_enrollments")
   isSequential        Boolean     @default(false) @map("is_sequential")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -339,12 +346,14 @@ model LessonResource {
 // ─── Quiz ─────────────────────────────────────────────────────────────────────
 
 model QuizSettings {
-  id               String  @id @default(cuid())
-  lessonId         String  @unique @map("lesson_id")
-  maxAttempts      Int?    @map("max_attempts")
-  passingScore     Int?    @map("passing_score")
-  blocksProgress   Boolean @default(false) @map("blocks_progress")
-  shuffleQuestions Boolean @default(false) @map("shuffle_questions")
+  id               String   @id @default(cuid())
+  lessonId         String   @unique @map("lesson_id")
+  maxAttempts      Int?     @map("max_attempts")
+  passingScore     Int?     @map("passing_score")
+  blocksProgress   Boolean  @default(false) @map("blocks_progress")
+  shuffleQuestions Boolean  @default(false) @map("shuffle_questions")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
@@ -352,12 +361,14 @@ model QuizSettings {
 }
 
 model Question {
-  id       String       @id @default(cuid())
-  lessonId String       @map("lesson_id")
-  text     String
-  type     QuestionType
-  order    Int
-  points   Int          @default(1)
+  id        String       @id @default(cuid())
+  lessonId  String       @map("lesson_id")
+  text      String
+  type      QuestionType
+  order     Int
+  points    Int          @default(1)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
 
   lesson  Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   options QuestionOption[]
@@ -369,11 +380,13 @@ model Question {
 }
 
 model QuestionOption {
-  id         String  @id @default(cuid())
-  questionId String  @map("question_id")
+  id         String   @id @default(cuid())
+  questionId String   @map("question_id")
   text       String
-  isCorrect  Boolean @default(false) @map("is_correct")
+  isCorrect  Boolean  @default(false) @map("is_correct")
   order      Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   question Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answers  QuizAnswer[]
@@ -391,6 +404,7 @@ model QuizAttempt {
   attemptNumber Int       @map("attempt_number")
   startedAt     DateTime  @default(now()) @map("started_at")
   completedAt   DateTime? @map("completed_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   enrollment Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   lesson     Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -403,11 +417,12 @@ model QuizAttempt {
 }
 
 model QuizAnswer {
-  id               String  @id @default(cuid())
-  attemptId        String  @map("attempt_id")
-  questionId       String  @map("question_id")
-  selectedOptionId String? @map("selected_option_id")
-  textAnswer       String? @map("text_answer")
+  id               String   @id @default(cuid())
+  attemptId        String   @map("attempt_id")
+  questionId       String   @map("question_id")
+  selectedOptionId String?  @map("selected_option_id")
+  textAnswer       String?  @map("text_answer")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   attempt        QuizAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
@@ -431,6 +446,8 @@ model AssignmentSettings {
   isGroupAssignment   Boolean     @default(false) @map("is_group_assignment")
   groupId             String?     @map("group_id")
   maxAttempts         Int?        @map("max_attempts")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
 
   lesson Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   group  CourseGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
@@ -453,6 +470,7 @@ model Submission {
   gradedById    String?          @map("graded_by_id")
   gradedAt      DateTime?        @map("graded_at")
   groupId       String?          @map("group_id")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   enrollment       Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   lesson           Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -503,6 +521,7 @@ model LessonProgress {
   completedAt    DateTime? @map("completed_at")
   lastWatchedAt  DateTime? @map("last_watched_at")
   watchedSeconds Int?      @map("watched_seconds")
+  createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -625,6 +644,7 @@ model Notification {
   referenceId   String?          @map("reference_id")
   referenceType String?          @map("reference_type")
   createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -657,12 +677,14 @@ model Message {
 // ─── Gradebook ────────────────────────────────────────────────────────────────
 
 model GradebookCategory {
-  id       String  @id @default(cuid())
-  courseId String  @map("course_id")
-  name     String
-  weight   Float
-  order    Int
-  isActive Boolean @default(true) @map("is_active")
+  id        String   @id @default(cuid())
+  courseId  String   @map("course_id")
+  name      String
+  weight    Float
+  order     Int
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   course Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   items  GradebookItem[]
@@ -673,13 +695,15 @@ model GradebookCategory {
 }
 
 model GradebookItem {
-  id           String  @id @default(cuid())
-  categoryId   String  @map("category_id")
-  lessonId     String  @unique @map("lesson_id")
-  weight       Float?
-  maxScore     Float   @map("max_score")
-  isExtraCredit Boolean @default(false) @map("is_extra_credit")
-  isActive      Boolean @default(true) @map("is_active")
+  id            String   @id @default(cuid())
+  categoryId    String   @map("category_id")
+  lessonId      String   @unique @map("lesson_id")
+  weight        Float?
+  maxScore      Float    @map("max_score")
+  isExtraCredit Boolean  @default(false) @map("is_extra_credit")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   category GradebookCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -710,12 +734,14 @@ model Rubric {
 }
 
 model RubricCriterion {
-  id          String  @id @default(cuid())
-  rubricId    String  @map("rubric_id")
+  id          String   @id @default(cuid())
+  rubricId    String   @map("rubric_id")
   title       String
   description String?
   order       Int
   points      Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   rubric  Rubric                   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
   levels  RubricLevel[]
@@ -726,12 +752,14 @@ model RubricCriterion {
 }
 
 model RubricLevel {
-  id          String  @id @default(cuid())
-  criterionId String  @map("criterion_id")
+  id          String   @id @default(cuid())
+  criterionId String   @map("criterion_id")
   title       String
   description String?
   points      Int
   order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   criterion RubricCriterion          @relation(fields: [criterionId], references: [id], onDelete: Cascade)
   answers   RubricAssessmentAnswer[]
@@ -748,6 +776,8 @@ model RubricAssessment {
   totalScore   Float    @map("total_score")
   feedback     String?
   assessedAt   DateTime @map("assessed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   rubric     Rubric                   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
   submission Submission               @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -760,12 +790,13 @@ model RubricAssessment {
 }
 
 model RubricAssessmentAnswer {
-  id             String  @id @default(cuid())
-  assessmentId   String  @map("assessment_id")
-  criterionId    String  @map("criterion_id")
-  levelId        String? @map("level_id")
-  pointsAwarded  Float   @map("points_awarded")
-  feedback       String?
+  id            String   @id @default(cuid())
+  assessmentId  String   @map("assessment_id")
+  criterionId   String   @map("criterion_id")
+  levelId       String?  @map("level_id")
+  pointsAwarded Float    @map("points_awarded")
+  feedback      String?
+  createdAt     DateTime @default(now()) @map("created_at")
 
   assessment RubricAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   criterion  RubricCriterion  @relation(fields: [criterionId], references: [id], onDelete: Cascade)
@@ -889,6 +920,7 @@ model LessonBookmark {
   lessonId  String   @map("lesson_id")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -932,6 +964,7 @@ model EnrollmentCode {
   expiresAt DateTime? @map("expires_at")
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   course  Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
   usages  EnrollmentCodeUsage[]
@@ -964,6 +997,7 @@ model ImpersonationLog {
   targetUserId String    @map("target_user_id")
   startedAt    DateTime  @default(now()) @map("started_at")
   endedAt      DateTime? @map("ended_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   admin      User @relation("AdminImpersonations", fields: [adminId], references: [id])
   targetUser User @relation("TargetImpersonations", fields: [targetUserId], references: [id])
