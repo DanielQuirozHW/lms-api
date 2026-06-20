@@ -45,6 +45,8 @@ const mockCourse: CourseWithSettings = {
   instructorId: 'instructor-1',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
+  level: 'BEGINNER',
+  whatYouWillLearn: [],
   settings: null,
 };
 

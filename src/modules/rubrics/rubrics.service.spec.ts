@@ -37,6 +37,9 @@ const mockCourse: CourseDetailResponseDto = {
   updatedAt: mockDate,
   lessonsCount: 5,
   enrollmentsCount: 10,
+  level: 'BEGINNER',
+  whatYouWillLearn: [],
+  totalDuration: 0,
 };
 
 const mockRubric: Rubric = {

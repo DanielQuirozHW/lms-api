@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsPositive, IsString, IsUrl, MinLength } from 'class-validator';
+import { CourseLevel } from '@prisma/client';
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUrl,
+  MinLength,
+} from 'class-validator';
 
 export class CreateCourseDto {
   @ApiProperty({ example: 'Introduction to TypeScript', minLength: 3 })
@@ -28,4 +38,18 @@ export class CreateCourseDto {
   @IsNumber()
   @IsPositive()
   price?: number;
+
+  @ApiPropertyOptional({ enum: CourseLevel, example: CourseLevel.BEGINNER })
+  @IsOptional()
+  @IsEnum(CourseLevel)
+  level?: CourseLevel;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Understand TypeScript basics', 'Build typed interfaces'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  whatYouWillLearn?: string[];
 }

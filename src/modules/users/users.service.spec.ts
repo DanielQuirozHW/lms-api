@@ -43,6 +43,12 @@ describe('UsersService', () => {
       | 'findAllCompletedDates'
       | 'findLastWatchedLesson'
       | 'findOverallProgressStats'
+      | 'findCompletedLessonsByDateRange'
+      | 'findRecentCompletedLessons'
+      | 'findRecentCertificates'
+      | 'findRecentBookmarks'
+      | 'findNotificationPreferences'
+      | 'upsertNotificationPreferences'
     >
   >;
   let redisService: jest.Mocked<Pick<RedisService, 'smembers' | 'del' | 'set'>>;
@@ -60,6 +66,12 @@ describe('UsersService', () => {
       findOverallProgressStats: jest
         .fn()
         .mockResolvedValue({ totalLessons: 0, completedLessons: 0 }),
+      findCompletedLessonsByDateRange: jest.fn().mockResolvedValue([]),
+      findRecentCompletedLessons: jest.fn().mockResolvedValue([]),
+      findRecentCertificates: jest.fn().mockResolvedValue([]),
+      findRecentBookmarks: jest.fn().mockResolvedValue([]),
+      findNotificationPreferences: jest.fn().mockResolvedValue(null),
+      upsertNotificationPreferences: jest.fn(),
     };
 
     redisService = {

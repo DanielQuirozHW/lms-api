@@ -31,6 +31,8 @@ export class CoursesService {
       price: dto.price ?? null,
       instructor: { connect: { id: instructorId } },
       ...(dto.categoryId && { category: { connect: { id: dto.categoryId } } }),
+      ...(dto.level !== undefined && { level: dto.level }),
+      whatYouWillLearn: dto.whatYouWillLearn ?? [],
     });
     return this.map(course);
   }
@@ -92,6 +94,8 @@ export class CoursesService {
       ...(dto.coverUrl !== undefined && { coverUrl: dto.coverUrl }),
       ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
       ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.level !== undefined && { level: dto.level }),
+      ...(dto.whatYouWillLearn !== undefined && { whatYouWillLearn: dto.whatYouWillLearn }),
     };
     const course = await this.coursesRepository.update(courseId, data);
     return this.map(course);
@@ -194,6 +198,8 @@ export class CoursesService {
       price: course.price !== null ? Number(course.price) : null,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      level: course.level,
+      whatYouWillLearn: course.whatYouWillLearn,
       enrollmentPeriodStart: null,
       enrollmentPeriodEnd: null,
       createdAt: course.createdAt,
@@ -231,12 +237,15 @@ export class CoursesService {
       price: course.price !== null ? Number(course.price) : null,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      level: course.level,
+      whatYouWillLearn: course.whatYouWillLearn,
       enrollmentPeriodStart: null,
       enrollmentPeriodEnd: null,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount: course.lessonsCount,
       enrollmentsCount: course.enrollmentsCount,
+      totalDuration: course.totalDuration,
     };
   }
 }

@@ -5,18 +5,25 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { User } from '@prisma/client';
+import type { NotificationPreferences, User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import { RedisService } from '../../redis/redis.service';
+import type {
+  ActivityHeatmapResponseDto,
+  HeatmapWeekDto,
+} from './dto/activity-heatmap-response.dto';
 import type { ChangePasswordDto } from './dto/change-password.dto';
 import type { DeleteAccountDto } from './dto/delete-account.dto';
-import type { UpdateProfileDto } from './dto/update-profile.dto';
 import type { LastActiveLessonResponseDto } from './dto/last-active-lesson-response.dto';
 import type { LoginEventResponseDto } from './dto/login-event-response.dto';
+import type { NotificationPreferencesResponseDto } from './dto/notification-preferences-response.dto';
 import type { OverallProgressResponseDto } from './dto/overall-progress-response.dto';
+import type { RecentActivityItemDto } from './dto/recent-activity-response.dto';
 import type { StreakResponseDto } from './dto/streak-response.dto';
+import type { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
+import type { UpdateProfileDto } from './dto/update-profile.dto';
 import type { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-response.dto';
 import type { WeeklyActivityResponseDto } from './dto/weekly-activity-response.dto';
 import { UsersRepository } from './users.repository';
@@ -210,6 +217,100 @@ export class UsersService {
     return { totalLessons, completedLessons, progressPercentage };
   }
 
+  /** Returns 84-day (12-week) lesson completion heatmap. Each day has a level 0–3. */
+  async getActivityHeatmap(userId: string): Promise<ActivityHeatmapResponseDto> {
+    const now = new Date();
+    const to = new Date(now);
+    to.setUTCHours(23, 59, 59, 999);
+    const from = new Date(to);
+    from.setUTCDate(from.getUTCDate() - 83);
+    from.setUTCHours(0, 0, 0, 0);
+
+    const records = await this.usersRepository.findCompletedLessonsByDateRange(userId, from, to);
+    const countByDate = new Map(records.map((r) => [r.date, r.count]));
+
+    const allDays = Array.from({ length: 84 }, (_, i) => {
+      const d = new Date(from);
+      d.setUTCDate(d.getUTCDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const count = countByDate.get(dateStr) ?? 0;
+      let level = 0;
+      if (count >= 5) level = 3;
+      else if (count >= 3) level = 2;
+      else if (count >= 1) level = 1;
+      return { date: dateStr, count, level };
+    });
+
+    const weeks: HeatmapWeekDto[] = Array.from({ length: 12 }, (_, w) => ({
+      days: allDays.slice(w * 7, (w + 1) * 7),
+    }));
+
+    return { weeks, totalDays: 84 };
+  }
+
+  /** Returns the most recent activity across completed lessons, earned certificates, and saved lessons. */
+  async getRecentActivity(userId: string, limit = 10): Promise<RecentActivityItemDto[]> {
+    const [lessons, certificates, bookmarks] = await Promise.all([
+      this.usersRepository.findRecentCompletedLessons(userId, limit),
+      this.usersRepository.findRecentCertificates(userId, limit),
+      this.usersRepository.findRecentBookmarks(userId, limit),
+    ]);
+
+    const items: RecentActivityItemDto[] = [
+      ...lessons.map((l) => ({
+        type: 'LESSON_COMPLETED' as const,
+        title: l.lesson.title,
+        subtitle: l.lesson.module.course.title,
+        date: l.completedAt as Date,
+      })),
+      ...certificates.map((c) => ({
+        type: 'CERTIFICATE_EARNED' as const,
+        title: c.course.title,
+        subtitle: 'Certificate earned',
+        date: c.issuedAt,
+      })),
+      ...bookmarks.map((b) => ({
+        type: 'LESSON_SAVED' as const,
+        title: b.lesson.title,
+        subtitle: b.lesson.module.course.title,
+        date: b.createdAt,
+      })),
+    ];
+
+    return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
+  }
+
+  /** Returns the user's notification preferences, or defaults if none have been set. */
+  async getNotificationPreferences(userId: string): Promise<NotificationPreferencesResponseDto> {
+    const prefs = await this.usersRepository.findNotificationPreferences(userId);
+    return this.mapPreferences(prefs);
+  }
+
+  /** Updates the user's notification preferences via upsert. */
+  async updateNotificationPreferences(
+    userId: string,
+    dto: UpdateNotificationPreferencesDto,
+  ): Promise<NotificationPreferencesResponseDto> {
+    const data = {
+      ...(dto.lessonRemindersEmail !== undefined && {
+        lessonRemindersEmail: dto.lessonRemindersEmail,
+      }),
+      ...(dto.lessonRemindersPush !== undefined && {
+        lessonRemindersPush: dto.lessonRemindersPush,
+      }),
+      ...(dto.newCoursesEmail !== undefined && { newCoursesEmail: dto.newCoursesEmail }),
+      ...(dto.newCoursesPush !== undefined && { newCoursesPush: dto.newCoursesPush }),
+      ...(dto.forumRepliesEmail !== undefined && { forumRepliesEmail: dto.forumRepliesEmail }),
+      ...(dto.forumRepliesPush !== undefined && { forumRepliesPush: dto.forumRepliesPush }),
+      ...(dto.achievementsEmail !== undefined && { achievementsEmail: dto.achievementsEmail }),
+      ...(dto.achievementsPush !== undefined && { achievementsPush: dto.achievementsPush }),
+      ...(dto.platformNewsEmail !== undefined && { platformNewsEmail: dto.platformNewsEmail }),
+      ...(dto.platformNewsPush !== undefined && { platformNewsPush: dto.platformNewsPush }),
+    };
+    const prefs = await this.usersRepository.upsertNotificationPreferences(userId, data);
+    return this.mapPreferences(prefs);
+  }
+
   /** Returns the public profile of any user. Never includes email, passwordHash, roles, or isVerified. */
   async getPublicProfile(id: string): Promise<UserPublicResponseDto> {
     const user = await this.usersRepository.findById(id);
@@ -254,6 +355,23 @@ export class UsersService {
       total,
       pagination,
     );
+  }
+
+  private mapPreferences(
+    prefs: NotificationPreferences | null,
+  ): NotificationPreferencesResponseDto {
+    return {
+      lessonRemindersEmail: prefs?.lessonRemindersEmail ?? true,
+      lessonRemindersPush: prefs?.lessonRemindersPush ?? true,
+      newCoursesEmail: prefs?.newCoursesEmail ?? false,
+      newCoursesPush: prefs?.newCoursesPush ?? true,
+      forumRepliesEmail: prefs?.forumRepliesEmail ?? true,
+      forumRepliesPush: prefs?.forumRepliesPush ?? true,
+      achievementsEmail: prefs?.achievementsEmail ?? true,
+      achievementsPush: prefs?.achievementsPush ?? true,
+      platformNewsEmail: prefs?.platformNewsEmail ?? false,
+      platformNewsPush: prefs?.platformNewsPush ?? false,
+    };
   }
 
   private toPrivate(user: User): UserPrivateResponseDto {

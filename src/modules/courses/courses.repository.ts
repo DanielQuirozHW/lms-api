@@ -25,6 +25,7 @@ export interface FindCoursesParams {
 export type CourseWithCount = Course & {
   lessonsCount: number;
   enrollmentsCount: number;
+  totalDuration: number;
 };
 
 export type CourseForDuplicate = Course & {
@@ -74,12 +75,16 @@ export class CoursesRepository {
   }
 
   async findByIdWithCount(id: string): Promise<CourseWithCount | null> {
-    const [course, lessonsCount] = await Promise.all([
+    const [course, lessonsCount, durationAgg] = await Promise.all([
       this.prisma.course.findUnique({
         where: { id },
         include: { _count: { select: { enrollments: true } } },
       }),
       this.prisma.lesson.count({ where: { module: { courseId: id } } }),
+      this.prisma.lesson.aggregate({
+        where: { module: { courseId: id } },
+        _sum: { duration: true },
+      }),
     ]);
     if (!course) return null;
     return {
@@ -93,10 +98,13 @@ export class CoursesRepository {
       price: course.price,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      level: course.level,
+      whatYouWillLearn: course.whatYouWillLearn,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount,
       enrollmentsCount: course._count.enrollments,
+      totalDuration: durationAgg._sum.duration ?? 0,
     };
   }
 
@@ -105,12 +113,16 @@ export class CoursesRepository {
   }
 
   async findBySlugWithCount(slug: string): Promise<CourseWithCount | null> {
-    const [course, lessonsCount] = await Promise.all([
+    const [course, lessonsCount, durationAgg] = await Promise.all([
       this.prisma.course.findUnique({
         where: { slug },
         include: { _count: { select: { enrollments: true } } },
       }),
       this.prisma.lesson.count({ where: { module: { course: { slug } } } }),
+      this.prisma.lesson.aggregate({
+        where: { module: { course: { slug } } },
+        _sum: { duration: true },
+      }),
     ]);
     if (!course) return null;
     return {
@@ -124,10 +136,13 @@ export class CoursesRepository {
       price: course.price,
       instructorId: course.instructorId,
       categoryId: course.categoryId,
+      level: course.level,
+      whatYouWillLearn: course.whatYouWillLearn,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount,
       enrollmentsCount: course._count.enrollments,
+      totalDuration: durationAgg._sum.duration ?? 0,
     };
   }
 

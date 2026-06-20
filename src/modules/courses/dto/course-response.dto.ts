@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CourseStatus, EnrollmentType } from '@prisma/client';
+import { CourseLevel, CourseStatus, EnrollmentType } from '@prisma/client';
 
 export class CourseResponseDto {
   @ApiProperty({ example: 'clxyz123' })
@@ -37,6 +37,15 @@ export class CourseResponseDto {
   @ApiProperty({ type: String, nullable: true, example: 'category-uuid' })
   categoryId!: string | null;
 
+  @ApiProperty({ enum: CourseLevel, example: CourseLevel.BEGINNER })
+  level!: CourseLevel;
+
+  @ApiProperty({
+    type: [String],
+    example: ['Understand TypeScript basics', 'Build typed interfaces'],
+  })
+  whatYouWillLearn!: string[];
+
   @ApiProperty({
     type: Date,
     nullable: true,
@@ -66,4 +75,7 @@ export class CourseDetailResponseDto extends CourseResponseDto {
 
   @ApiProperty({ example: 340 })
   enrollmentsCount!: number;
+
+  @ApiProperty({ example: 14400, description: 'Sum of all lesson durations in seconds' })
+  totalDuration!: number;
 }

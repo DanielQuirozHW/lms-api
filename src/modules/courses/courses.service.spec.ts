@@ -22,6 +22,8 @@ const mockCourse: Course = {
   price: null,
   instructorId: 'instructor-123',
   categoryId: null,
+  level: 'BEGINNER',
+  whatYouWillLearn: [],
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -30,6 +32,7 @@ const mockCourseWithCount: CourseWithCount = {
   ...mockCourse,
   lessonsCount: 5,
   enrollmentsCount: 10,
+  totalDuration: 0,
 };
 
 describe('CoursesService', () => {

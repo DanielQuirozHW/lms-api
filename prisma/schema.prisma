@@ -86,6 +86,12 @@ enum EnrollmentType {
   PAID
 }
 
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
 enum SubmissionStatus {
   SUBMITTED
   GRADING
@@ -113,8 +119,9 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  notificationSettings  NotificationSettings?
-  taughtCourses         Course[]              @relation("CourseInstructor")
+  notificationSettings      NotificationSettings?
+  notificationPreferences   NotificationPreferences?
+  taughtCourses             Course[]              @relation("CourseInstructor")
   enrollments           Enrollment[]
   notifications         Notification[]
   threads               ForumThread[]
@@ -155,6 +162,27 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model NotificationPreferences {
+  id                   String   @id @default(cuid())
+  userId               String   @unique @map("user_id")
+  lessonRemindersEmail Boolean  @default(true)  @map("lesson_reminders_email")
+  lessonRemindersPush  Boolean  @default(true)  @map("lesson_reminders_push")
+  newCoursesEmail      Boolean  @default(false) @map("new_courses_email")
+  newCoursesPush       Boolean  @default(true)  @map("new_courses_push")
+  forumRepliesEmail    Boolean  @default(true)  @map("forum_replies_email")
+  forumRepliesPush     Boolean  @default(true)  @map("forum_replies_push")
+  achievementsEmail    Boolean  @default(true)  @map("achievements_email")
+  achievementsPush     Boolean  @default(true)  @map("achievements_push")
+  platformNewsEmail    Boolean  @default(false) @map("platform_news_email")
+  platformNewsPush     Boolean  @default(false) @map("platform_news_push")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt      @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
 model NotificationSettings {
   id                      String  @id @default(cuid())
   userId                  String  @unique @map("user_id")
@@ -186,13 +214,15 @@ model Course {
   slug         String       @unique
   description  String?
   coverUrl     String?      @map("cover_url")
-  status          CourseStatus   @default(DRAFT)
-  enrollmentType  EnrollmentType @default(FREE)  @map("enrollment_type")
-  price           Decimal?       @db.Decimal(10, 2)
-  instructorId    String         @map("instructor_id")
-  categoryId   String?      @map("category_id")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  status             CourseStatus   @default(DRAFT)
+  enrollmentType     EnrollmentType @default(FREE)  @map("enrollment_type")
+  price              Decimal?       @db.Decimal(10, 2)
+  instructorId       String         @map("instructor_id")
+  categoryId         String?        @map("category_id")
+  level              CourseLevel    @default(BEGINNER) @map("level")
+  whatYouWillLearn   String[]       @map("what_you_will_learn")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
   instructor          User                @relation("CourseInstructor", fields: [instructorId], references: [id])
   category            Category?           @relation(fields: [categoryId], references: [id])

@@ -16,12 +16,17 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../auth/auth.entity';
+import { ActivityHeatmapResponseDto } from './dto/activity-heatmap-response.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { LastActiveLessonResponseDto } from './dto/last-active-lesson-response.dto';
 import { LoginEventResponseDto } from './dto/login-event-response.dto';
+import { NotificationPreferencesResponseDto } from './dto/notification-preferences-response.dto';
 import { OverallProgressResponseDto } from './dto/overall-progress-response.dto';
+import { RecentActivityItemDto } from './dto/recent-activity-response.dto';
+import { RecentActivityQueryDto } from './dto/recent-activity-query.dto';
 import { StreakResponseDto } from './dto/streak-response.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { UserPrivateResponseDto, UserPublicResponseDto } from './dto/user-response.dto';
@@ -127,6 +132,55 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
   getOverallProgress(@CurrentUser() user: AuthenticatedUser): Promise<OverallProgressResponseDto> {
     return this.usersService.getOverallProgress(user.id);
+  }
+
+  @Get('me/stats/activity-heatmap')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get 84-day (12-week) lesson completion heatmap' })
+  @ApiResponse({ status: 200, type: ActivityHeatmapResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getActivityHeatmap(@CurrentUser() user: AuthenticatedUser): Promise<ActivityHeatmapResponseDto> {
+    return this.usersService.getActivityHeatmap(user.id);
+  }
+
+  @Get('me/activity/recent')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get recent activity across completed lessons, certificates, and saved lessons',
+  })
+  @ApiResponse({ status: 200, type: RecentActivityItemDto, isArray: true })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getRecentActivity(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: RecentActivityQueryDto,
+  ): Promise<RecentActivityItemDto[]> {
+    return this.usersService.getRecentActivity(user.id, query.limit);
+  }
+
+  @Get('me/notification-preferences')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get notification preferences (returns defaults if not yet configured)',
+  })
+  @ApiResponse({ status: 200, type: NotificationPreferencesResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getNotificationPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<NotificationPreferencesResponseDto> {
+    return this.usersService.getNotificationPreferences(user.id);
+  }
+
+  @Patch('me/notification-preferences')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update notification preferences' })
+  @ApiResponse({ status: 200, type: NotificationPreferencesResponseDto })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  updateNotificationPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ): Promise<NotificationPreferencesResponseDto> {
+    return this.usersService.updateNotificationPreferences(user.id, dto);
   }
 
   @Get()

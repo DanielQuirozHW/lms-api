@@ -1,7 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import type { LoginEvent, Prisma, User } from '@prisma/client';
+import type { LoginEvent, NotificationPreferences, Prisma, User } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+
+interface NotificationPreferencesData {
+  lessonRemindersEmail?: boolean;
+  lessonRemindersPush?: boolean;
+  newCoursesEmail?: boolean;
+  newCoursesPush?: boolean;
+  forumRepliesEmail?: boolean;
+  forumRepliesPush?: boolean;
+  achievementsEmail?: boolean;
+  achievementsPush?: boolean;
+  platformNewsEmail?: boolean;
+  platformNewsPush?: boolean;
+}
 
 @Injectable()
 export class UsersRepository {
@@ -96,5 +109,115 @@ export class UsersRepository {
       }),
     ]);
     return { totalLessons, completedLessons };
+  }
+
+  async findCompletedLessonsByDateRange(
+    userId: string,
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ date: string; count: number }>> {
+    const rows = await this.prisma.lessonProgress.findMany({
+      where: {
+        enrollment: { userId },
+        completedAt: { gte: from, lte: to },
+      },
+      select: { completedAt: true },
+    });
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      if (!row.completedAt) continue;
+      const dateStr = row.completedAt.toISOString().slice(0, 10);
+      counts.set(dateStr, (counts.get(dateStr) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
+  }
+
+  findRecentCompletedLessons(
+    userId: string,
+    limit: number,
+  ): Promise<
+    Array<{
+      completedAt: Date | null;
+      lesson: { title: string; module: { course: { title: string } } };
+    }>
+  > {
+    return this.prisma.lessonProgress.findMany({
+      where: { enrollment: { userId }, completedAt: { not: null } },
+      orderBy: { completedAt: 'desc' },
+      take: limit,
+      select: {
+        completedAt: true,
+        lesson: {
+          select: {
+            title: true,
+            module: { select: { course: { select: { title: true } } } },
+          },
+        },
+      },
+    });
+  }
+
+  findRecentCertificates(
+    userId: string,
+    limit: number,
+  ): Promise<Array<{ issuedAt: Date; course: { title: string } }>> {
+    return this.prisma.certificate.findMany({
+      where: { userId },
+      orderBy: { issuedAt: 'desc' },
+      take: limit,
+      select: { issuedAt: true, course: { select: { title: true } } },
+    });
+  }
+
+  findRecentBookmarks(
+    userId: string,
+    limit: number,
+  ): Promise<
+    Array<{
+      createdAt: Date;
+      lesson: { title: string; module: { course: { title: string } } };
+    }>
+  > {
+    return this.prisma.lessonBookmark.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        createdAt: true,
+        lesson: {
+          select: {
+            title: true,
+            module: { select: { course: { select: { title: true } } } },
+          },
+        },
+      },
+    });
+  }
+
+  findNotificationPreferences(userId: string): Promise<NotificationPreferences | null> {
+    return this.prisma.notificationPreferences.findUnique({ where: { userId } });
+  }
+
+  upsertNotificationPreferences(
+    userId: string,
+    data: NotificationPreferencesData,
+  ): Promise<NotificationPreferences> {
+    const defaults: NotificationPreferencesData = {
+      lessonRemindersEmail: true,
+      lessonRemindersPush: true,
+      newCoursesEmail: false,
+      newCoursesPush: true,
+      forumRepliesEmail: true,
+      forumRepliesPush: true,
+      achievementsEmail: true,
+      achievementsPush: true,
+      platformNewsEmail: false,
+      platformNewsPush: false,
+    };
+    return this.prisma.notificationPreferences.upsert({
+      where: { userId },
+      update: data,
+      create: { userId, ...defaults, ...data },
+    });
   }
 }

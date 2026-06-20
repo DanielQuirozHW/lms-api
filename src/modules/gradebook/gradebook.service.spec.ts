@@ -60,6 +60,9 @@ const mockCourseDetail: CourseDetailResponseDto = {
   updatedAt: new Date('2024-01-01'),
   lessonsCount: 3,
   enrollmentsCount: 10,
+  level: 'BEGINNER',
+  whatYouWillLearn: [],
+  totalDuration: 0,
 };
 
 const mockCategory: GradebookCategory = {
