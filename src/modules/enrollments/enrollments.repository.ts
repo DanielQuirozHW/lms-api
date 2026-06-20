@@ -44,6 +44,7 @@ export type EnrollmentForUserView = Enrollment & {
     title: string;
     coverUrl: string | null;
     enrollmentType: EnrollmentType;
+    category: { name: string } | null;
   };
   progress: { completedAt: Date | null }[];
 };
@@ -274,14 +275,21 @@ export class EnrollmentsRepository {
     userId: string,
     pagination: PaginationDto,
   ): Promise<[EnrollmentForUserView[], number]> {
-    const [data, total] = await this.prisma.$transaction([
+    const [data, total] = await Promise.all([
       this.prisma.enrollment.findMany({
         where: { userId },
         skip: pagination.skip,
         take: pagination.limit ?? 20,
         orderBy: { enrolledAt: 'desc' },
         include: {
-          course: { select: { title: true, coverUrl: true, enrollmentType: true } },
+          course: {
+            select: {
+              title: true,
+              coverUrl: true,
+              enrollmentType: true,
+              category: { select: { name: true } },
+            },
+          },
           progress: { select: { completedAt: true } },
         },
       }),

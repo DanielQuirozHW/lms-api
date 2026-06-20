@@ -23,6 +23,15 @@ export class UserEnrollmentItemDto {
   @ApiProperty({ example: 66.7 })
   progressPercentage!: number;
 
+  @ApiProperty({ example: 8 })
+  completedLessons!: number;
+
+  @ApiProperty({ example: 12 })
+  totalLessons!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: 'Programación' })
+  categoryName!: string | null;
+
   @ApiProperty()
   enrolledAt!: Date;
 }

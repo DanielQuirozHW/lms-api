@@ -413,6 +413,9 @@ export class EnrollmentsService {
       enrollmentType: e.course.enrollmentType,
       status: e.status,
       progressPercentage,
+      completedLessons: completed,
+      totalLessons: total,
+      categoryName: e.course.category?.name ?? null,
       enrolledAt: e.enrolledAt,
     };
   }

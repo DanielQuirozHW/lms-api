@@ -837,7 +837,7 @@ describe('EnrollmentsService', () => {
     it('should return paginated enrollments with course details', async () => {
       const mockView = {
         ...mockEnrollment,
-        course: { title: 'Test Course', coverUrl: null, enrollmentType: 'FREE' },
+        course: { title: 'Test Course', coverUrl: null, enrollmentType: 'FREE', category: null },
         progress: [],
       };
       repo.findManyByUserIdWithCourse.mockResolvedValue([[mockView as never], 1]);
