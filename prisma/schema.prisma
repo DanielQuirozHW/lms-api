@@ -116,6 +116,8 @@ model User {
   birthDate         DateTime?  @map("birth_date")
   location          String?    @map("location")
   bio               String?    @map("bio")
+  preferredLanguage String     @default("es") @map("preferred_language")
+  preferredTheme    String     @default("dark") @map("preferred_theme")
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 

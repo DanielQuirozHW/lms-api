@@ -13,6 +13,8 @@ export class UserPrivateResponseDto {
   @ApiPropertyOptional({ type: Date, example: null, nullable: true }) birthDate!: Date | null;
   @ApiPropertyOptional({ type: String, example: null, nullable: true }) location!: string | null;
   @ApiPropertyOptional({ type: String, example: null, nullable: true }) bio!: string | null;
+  @ApiProperty({ example: 'es' }) preferredLanguage!: string;
+  @ApiProperty({ example: 'dark' }) preferredTheme!: string;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

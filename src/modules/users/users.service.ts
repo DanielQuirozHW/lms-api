@@ -18,6 +18,7 @@ import type { ChangePasswordDto } from './dto/change-password.dto';
 import type { DeleteAccountDto } from './dto/delete-account.dto';
 import type { LastActiveLessonResponseDto } from './dto/last-active-lesson-response.dto';
 import type { LoginEventResponseDto } from './dto/login-event-response.dto';
+import type { SessionResponseDto } from './dto/session-response.dto';
 import type { NotificationPreferencesResponseDto } from './dto/notification-preferences-response.dto';
 import type { OverallProgressResponseDto } from './dto/overall-progress-response.dto';
 import type { RecentActivityItemDto } from './dto/recent-activity-response.dto';
@@ -95,6 +96,18 @@ export class UsersService {
     }
 
     await this.redisService.set(`revoked:user:${userId}`, '1', 'EX', ACCESS_TOKEN_REVOCATION_TTL);
+  }
+
+  /** Returns last 10 active sessions. The most recent session is marked isCurrent: true. */
+  async getSessions(userId: string): Promise<SessionResponseDto[]> {
+    const events = await this.usersRepository.findLoginHistory(userId);
+    return events.map((e, i) => ({
+      id: e.id,
+      ipAddress: e.ipAddress,
+      userAgent: e.userAgent,
+      createdAt: e.createdAt,
+      isCurrent: i === 0,
+    }));
   }
 
   /** Returns last 7 days of lesson completion activity grouped by day. Day labels in Spanish. */
@@ -387,6 +400,8 @@ export class UsersService {
       birthDate: user.birthDate,
       location: user.location,
       bio: user.bio,
+      preferredLanguage: user.preferredLanguage,
+      preferredTheme: user.preferredTheme,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

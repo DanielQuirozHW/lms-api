@@ -21,6 +21,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { LastActiveLessonResponseDto } from './dto/last-active-lesson-response.dto';
 import { LoginEventResponseDto } from './dto/login-event-response.dto';
+import { SessionResponseDto } from './dto/session-response.dto';
 import { NotificationPreferencesResponseDto } from './dto/notification-preferences-response.dto';
 import { OverallProgressResponseDto } from './dto/overall-progress-response.dto';
 import { RecentActivityItemDto } from './dto/recent-activity-response.dto';
@@ -85,6 +86,15 @@ export class UsersController {
     @Body() dto: DeleteAccountDto,
   ): Promise<void> {
     return this.usersService.deleteAccount(user.id, dto);
+  }
+
+  @Get('me/sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get last 10 active sessions for the current user' })
+  @ApiResponse({ status: 200, type: SessionResponseDto, isArray: true })
+  @ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+  getSessions(@CurrentUser() user: AuthenticatedUser): Promise<SessionResponseDto[]> {
+    return this.usersService.getSessions(user.id);
   }
 
   @Get('me/stats/weekly-activity')

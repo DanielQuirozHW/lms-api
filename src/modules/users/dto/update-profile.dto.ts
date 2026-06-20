@@ -43,4 +43,18 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(500)
   bio?: string;
+
+  @ApiPropertyOptional({ example: 'es', description: 'BCP 47 language code e.g. "es", "en"' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(10)
+  preferredLanguage?: string;
+
+  @ApiPropertyOptional({ example: 'dark', description: '"light", "dark", or "system"' })
+  @IsOptional()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(20)
+  preferredTheme?: string;
 }

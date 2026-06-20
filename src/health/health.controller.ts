@@ -5,6 +5,11 @@ import type { Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { version as pkgVersion } from '../../package.json';
+
+interface VersionResponse {
+  version: string;
+}
 
 type ServiceStatus = 'ok' | 'error';
 type HealthStatus = 'ok' | 'degraded' | 'error';
@@ -25,6 +30,15 @@ export class HealthController {
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
   ) {}
+
+  @Public()
+  @Get('version')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @ApiOperation({ summary: 'Get API version' })
+  @ApiResponse({ status: 200, description: 'Current API version' })
+  getVersion(): VersionResponse {
+    return { version: process.env['APP_VERSION'] ?? pkgVersion };
+  }
 
   @Public()
   @Get()
