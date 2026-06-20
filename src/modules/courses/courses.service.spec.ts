@@ -7,6 +7,7 @@ import { CourseQueryDto } from './dto/course-query.dto';
 import {
   type CourseForDuplicate,
   type CourseWithCount,
+  type CourseWithDuration,
   CoursesRepository,
 } from './courses.repository';
 import { CoursesService } from './courses.service';
@@ -26,6 +27,11 @@ const mockCourse: Course = {
   whatYouWillLearn: [],
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
+};
+
+const mockCourseWithDuration: CourseWithDuration = {
+  ...mockCourse,
+  totalDuration: 0,
 };
 
 const mockCourseWithCount: CourseWithCount = {
@@ -49,6 +55,7 @@ describe('CoursesService', () => {
       | 'duplicateCourse'
       | 'countNonCancelledEnrollments'
       | 'countLessons'
+      | 'findTotalDuration'
       | 'create'
       | 'update'
       | 'delete'
@@ -66,6 +73,7 @@ describe('CoursesService', () => {
       duplicateCourse: jest.fn(),
       countNonCancelledEnrollments: jest.fn(),
       countLessons: jest.fn(),
+      findTotalDuration: jest.fn().mockResolvedValue(0),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -116,7 +124,7 @@ describe('CoursesService', () => {
 
   describe('findAll', () => {
     it('defaults to PUBLISHED status when no status filter is provided', async () => {
-      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      coursesRepository.findMany.mockResolvedValue([[mockCourseWithDuration], 1]);
 
       await service.findAll(new CourseQueryDto());
 
@@ -126,7 +134,7 @@ describe('CoursesService', () => {
     });
 
     it('always uses PUBLISHED status regardless of any query filter', async () => {
-      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      coursesRepository.findMany.mockResolvedValue([[mockCourseWithDuration], 1]);
 
       await service.findAll(new CourseQueryDto());
 
@@ -136,7 +144,7 @@ describe('CoursesService', () => {
     });
 
     it('returns paginated result with correct meta', async () => {
-      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      coursesRepository.findMany.mockResolvedValue([[mockCourseWithDuration], 1]);
 
       const result = await service.findAll(new CourseQueryDto());
 
@@ -147,7 +155,7 @@ describe('CoursesService', () => {
     });
 
     it('passes search term to repository when provided', async () => {
-      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      coursesRepository.findMany.mockResolvedValue([[mockCourseWithDuration], 1]);
       const query = Object.assign(new CourseQueryDto(), { search: 'sql' });
 
       await service.findAll(query);
@@ -207,7 +215,7 @@ describe('CoursesService', () => {
 
   describe('findMyCourses', () => {
     it('filters by instructorId without restricting status', async () => {
-      coursesRepository.findMany.mockResolvedValue([[mockCourse], 1]);
+      coursesRepository.findMany.mockResolvedValue([[mockCourseWithDuration], 1]);
 
       await service.findMyCourses('instructor-123', new PaginationDto());
 

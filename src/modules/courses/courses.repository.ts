@@ -22,6 +22,8 @@ export interface FindCoursesParams {
   take?: number;
 }
 
+export type CourseWithDuration = Course & { totalDuration: number };
+
 export type CourseWithCount = Course & {
   lessonsCount: number;
   enrollmentsCount: number;
@@ -46,7 +48,7 @@ export type CourseForDuplicate = Course & {
 export class CoursesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(params: FindCoursesParams): Promise<[Course[], number]> {
+  async findMany(params: FindCoursesParams): Promise<[CourseWithDuration[], number]> {
     const where: Prisma.CourseWhereInput = {
       ...(params.status && { status: params.status }),
       ...(params.instructorId && { instructorId: params.instructorId }),
@@ -58,7 +60,7 @@ export class CoursesRepository {
         ],
       }),
     };
-    const [data, total] = await this.prisma.$transaction([
+    const [courses, total] = await this.prisma.$transaction([
       this.prisma.course.findMany({
         where,
         skip: params.skip,
@@ -67,7 +69,20 @@ export class CoursesRepository {
       }),
       this.prisma.course.count({ where }),
     ]);
-    return [data, total];
+    const durations = await Promise.all(
+      courses.map((c) =>
+        this.prisma.lesson
+          .aggregate({ where: { module: { courseId: c.id } }, _sum: { duration: true } })
+          .then((agg) => agg._sum.duration ?? 0),
+      ),
+    );
+    return [courses.map((c, i) => ({ ...c, totalDuration: durations[i] ?? 0 })), total];
+  }
+
+  findTotalDuration(courseId: string): Promise<number> {
+    return this.prisma.lesson
+      .aggregate({ where: { module: { courseId } }, _sum: { duration: true } })
+      .then((agg) => agg._sum.duration ?? 0);
   }
 
   findById(id: string): Promise<Course | null> {

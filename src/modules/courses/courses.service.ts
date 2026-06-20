@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Course, CourseSettings, Prisma } from '@prisma/client';
+import type { CourseSettings, Prisma } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { slugify } from '../../common/utils/slug.util';
 import { paginate, type PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
@@ -15,7 +15,11 @@ import type { CourseDetailResponseDto, CourseResponseDto } from './dto/course-re
 import type { CourseSettingsResponseDto } from './dto/course-settings-response.dto';
 import type { UpdateCourseDto } from './dto/update-course.dto';
 import type { UpdateCourseSettingsDto } from './dto/update-course-settings.dto';
-import { type CourseWithCount, CoursesRepository } from './courses.repository';
+import {
+  type CourseWithCount,
+  type CourseWithDuration,
+  CoursesRepository,
+} from './courses.repository';
 
 @Injectable()
 export class CoursesService {
@@ -34,7 +38,7 @@ export class CoursesService {
       ...(dto.level !== undefined && { level: dto.level }),
       whatYouWillLearn: dto.whatYouWillLearn ?? [],
     });
-    return this.map(course);
+    return this.map({ ...course, totalDuration: 0 });
   }
 
   /** Returns a paginated list of courses filtered by status (defaults to PUBLISHED when omitted). */
@@ -97,8 +101,11 @@ export class CoursesService {
       ...(dto.level !== undefined && { level: dto.level }),
       ...(dto.whatYouWillLearn !== undefined && { whatYouWillLearn: dto.whatYouWillLearn }),
     };
-    const course = await this.coursesRepository.update(courseId, data);
-    return this.map(course);
+    const [course, totalDuration] = await Promise.all([
+      this.coursesRepository.update(courseId, data),
+      this.coursesRepository.findTotalDuration(courseId),
+    ]);
+    return this.map({ ...course, totalDuration });
   }
 
   /** Transitions the course to PUBLISHED status. Throws 404 if not found, 400 if no lessons. */
@@ -107,14 +114,20 @@ export class CoursesService {
     if (!existing) throw new NotFoundException('Course not found');
     const lessonCount = await this.coursesRepository.countLessons(courseId);
     if (lessonCount === 0) throw new BadRequestException('Cannot publish a course with no lessons');
-    const course = await this.coursesRepository.update(courseId, { status: 'PUBLISHED' });
-    return this.map(course);
+    const [course, totalDuration] = await Promise.all([
+      this.coursesRepository.update(courseId, { status: 'PUBLISHED' }),
+      this.coursesRepository.findTotalDuration(courseId),
+    ]);
+    return this.map({ ...course, totalDuration });
   }
 
   /** Transitions the course to ARCHIVED status. */
   async archive(courseId: string): Promise<CourseResponseDto> {
-    const course = await this.coursesRepository.update(courseId, { status: 'ARCHIVED' });
-    return this.map(course);
+    const [course, totalDuration] = await Promise.all([
+      this.coursesRepository.update(courseId, { status: 'ARCHIVED' }),
+      this.coursesRepository.findTotalDuration(courseId),
+    ]);
+    return this.map({ ...course, totalDuration });
   }
 
   /**
@@ -136,7 +149,8 @@ export class CoursesService {
       slug,
       instructorId,
     });
-    return this.map(newCourse);
+    const totalDuration = await this.coursesRepository.findTotalDuration(newCourse.id);
+    return this.map({ ...newCourse, totalDuration });
   }
 
   /** Updates (or creates) the CourseSettings record. Ownership is enforced by CourseOwnerGuard upstream. */
@@ -186,7 +200,7 @@ export class CoursesService {
     }
   }
 
-  private map(course: Course): CourseResponseDto {
+  private map(course: CourseWithDuration): CourseResponseDto {
     return {
       id: course.id,
       title: course.title,
@@ -200,6 +214,7 @@ export class CoursesService {
       categoryId: course.categoryId,
       level: course.level,
       whatYouWillLearn: course.whatYouWillLearn,
+      totalDuration: course.totalDuration,
       enrollmentPeriodStart: null,
       enrollmentPeriodEnd: null,
       createdAt: course.createdAt,

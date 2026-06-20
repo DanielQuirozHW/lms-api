@@ -62,6 +62,9 @@ export class CourseResponseDto {
   })
   enrollmentPeriodEnd!: Date | null;
 
+  @ApiProperty({ example: 14400, description: 'Sum of all lesson durations in seconds' })
+  totalDuration!: number;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -75,7 +78,4 @@ export class CourseDetailResponseDto extends CourseResponseDto {
 
   @ApiProperty({ example: 340 })
   enrollmentsCount!: number;
-
-  @ApiProperty({ example: 14400, description: 'Sum of all lesson durations in seconds' })
-  totalDuration!: number;
 }
