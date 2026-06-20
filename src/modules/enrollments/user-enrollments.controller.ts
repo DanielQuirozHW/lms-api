@@ -1,8 +1,11 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { PaginatedResult, PaginationDto } from '../../common/dto/pagination.dto';
+import type { AuthenticatedUser } from '../auth/auth.entity';
+import { type PaginatedResult } from '../../common/dto/pagination.dto';
+import { UserEnrollmentQueryDto } from './dto/user-enrollment-query.dto';
 import { UserEnrollmentItemDto } from './dto/user-enrollment-response.dto';
 import { EnrollmentsService } from './enrollments.service';
 
@@ -13,15 +16,15 @@ export class UserEnrollmentsController {
   constructor(private readonly enrollmentsService: EnrollmentsService) {}
 
   @Get()
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get all enrollments for a user — admin only' })
+  @ApiOperation({ summary: 'Get enrollments for a user — own data or admin' })
   @ApiResponse({ status: 200, type: UserEnrollmentItemDto, isArray: true })
-  @ApiResponse({ status: 403, description: 'Admin only' })
-  getAdminUserEnrollments(
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  getUserEnrollments(
     @Param('userId') userId: string,
-    @Query() pagination: PaginationDto,
+    @Query() query: UserEnrollmentQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedResult<UserEnrollmentItemDto>> {
-    return this.enrollmentsService.getAdminUserEnrollments(userId, pagination);
+    return this.enrollmentsService.getUserEnrollments(userId, user, query);
   }
 
   @Delete(':courseId')

@@ -26,6 +26,7 @@ import type {
 import type { BulkEnrollDto } from './dto/bulk-enroll.dto';
 import type { BulkEnrollResultDto } from './dto/bulk-enroll-result.dto';
 import type { UserEnrollmentItemDto } from './dto/user-enrollment-response.dto';
+import type { UserEnrollmentQueryDto } from './dto/user-enrollment-query.dto';
 import type { CourseEnrollmentItemDto } from './dto/enrollment-response.dto';
 import { EnrollmentCodesRepository } from './enrollment-codes.repository';
 import {
@@ -358,19 +359,24 @@ export class EnrollmentsService {
     });
   }
 
-  /** Returns all enrollments for a specific user with course details. Admin only. */
-  async getAdminUserEnrollments(
+  /** Returns enrollments for a user. Allowed when requestingUser.id === userId OR requestingUser is ADMIN. */
+  async getUserEnrollments(
     userId: string,
-    pagination: PaginationDto,
+    requestingUser: AuthenticatedUser,
+    query: UserEnrollmentQueryDto,
   ): Promise<PaginatedResult<UserEnrollmentItemDto>> {
+    if (requestingUser.id !== userId && !requestingUser.roles.includes(UserRole.ADMIN)) {
+      throw new ForbiddenException('Access denied');
+    }
     const [enrollments, total] = await this.enrollmentsRepository.findManyByUserIdWithCourse(
       userId,
-      pagination,
+      query,
+      query.status,
     );
     return paginate(
       enrollments.map((e) => this.mapUserEnrollment(e)),
       total,
-      pagination,
+      query,
     );
   }
 

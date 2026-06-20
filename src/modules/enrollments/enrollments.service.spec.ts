@@ -836,8 +836,16 @@ describe('EnrollmentsService', () => {
     });
   });
 
-  describe('getAdminUserEnrollments', () => {
-    it('should return paginated enrollments with course details', async () => {
+  describe('getUserEnrollments', () => {
+    const pagination = {
+      page: 1,
+      limit: 20,
+      get skip(): number {
+        return 0;
+      },
+    };
+
+    it('should return paginated enrollments when admin requests any user data', async () => {
       const mockView = {
         ...mockEnrollment,
         course: { title: 'Test Course', coverUrl: null, enrollmentType: 'FREE', category: null },
@@ -845,17 +853,32 @@ describe('EnrollmentsService', () => {
       };
       repo.findManyByUserIdWithCourse.mockResolvedValue([[mockView as never], 1]);
 
-      const result = await service.getAdminUserEnrollments('user-1', {
-        page: 1,
-        limit: 20,
-        get skip() {
-          return 0;
-        },
-      });
+      const result = await service.getUserEnrollments('user-1', mockAdmin, pagination);
 
       expect(result.data).toHaveLength(1);
       expect(result.meta.total).toBe(1);
       expect(result.data[0].courseTitle).toBe('Test Course');
+    });
+
+    it('should allow a student to access their own enrollments', async () => {
+      const mockView = {
+        ...mockEnrollment,
+        course: { title: 'Test Course', coverUrl: null, enrollmentType: 'FREE', category: null },
+        progress: [],
+      };
+      repo.findManyByUserIdWithCourse.mockResolvedValue([[mockView as never], 1]);
+
+      const result = await service.getUserEnrollments('user-1', mockStudent, pagination);
+
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('should throw ForbiddenException when student accesses another user data', async () => {
+      await expect(
+        service.getUserEnrollments('other-user-id', mockStudent, pagination),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(repo.findManyByUserIdWithCourse).not.toHaveBeenCalled();
     });
   });
 
