@@ -31,6 +31,8 @@ const mockUser: User = {
   birthDate: null,
   location: null,
   bio: null,
+  preferredLanguage: 'es',
+  preferredTheme: 'dark',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
