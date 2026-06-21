@@ -318,6 +318,8 @@ describe('CoursesService', () => {
         passingScore: 70,
         blocksProgress: true,
         shuffleQuestions: false,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       },
       questions: [
         {
@@ -327,6 +329,8 @@ describe('CoursesService', () => {
           type: 'SINGLE_CHOICE' as const,
           order: 1,
           points: 10,
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-01'),
           options: [
             {
               id: 'opt-1',
@@ -334,8 +338,18 @@ describe('CoursesService', () => {
               text: 'A typed superset of JS',
               order: 1,
               isCorrect: true,
+              createdAt: new Date('2024-01-01'),
+              updatedAt: new Date('2024-01-01'),
             },
-            { id: 'opt-2', questionId: 'q-001', text: 'A database', order: 2, isCorrect: false },
+            {
+              id: 'opt-2',
+              questionId: 'q-001',
+              text: 'A database',
+              order: 2,
+              isCorrect: false,
+              createdAt: new Date('2024-01-01'),
+              updatedAt: new Date('2024-01-01'),
+            },
           ],
         },
       ],
@@ -359,6 +373,8 @@ describe('CoursesService', () => {
         isGroupAssignment: false,
         groupId: 'group-original',
         maxAttempts: 2,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       },
     };
 

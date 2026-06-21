@@ -11,6 +11,7 @@ const rawBookmark: LessonBookmark = {
   lessonId: 'lesson-789',
   isActive: true,
   createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 const mockBookmarkWithLesson: BookmarkWithLesson = {

@@ -28,6 +28,8 @@ const mockSettings: AssignmentSettings = {
   isGroupAssignment: false,
   groupId: null,
   maxAttempts: null,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 const mockLessonWithContext: LessonWithAssignmentContext = {
@@ -67,6 +69,7 @@ const mockSubmission: Submission = {
   gradedById: null,
   gradedAt: null,
   groupId: null,
+  updatedAt: new Date('2024-01-01'),
 };
 
 const mockSubmissionWithContext: SubmissionWithContext = {

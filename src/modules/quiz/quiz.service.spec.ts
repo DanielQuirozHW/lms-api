@@ -27,6 +27,8 @@ const mockSettings: QuizSettings = {
   passingScore: 70,
   blocksProgress: true,
   shuffleQuestions: false,
+  createdAt: now,
+  updatedAt: now,
 };
 
 const mockLesson: LessonWithContext = {
@@ -58,6 +60,8 @@ const mockOption = (id: string, isCorrect: boolean, order = 1): QuestionOption =
   text: 'Option text',
   isCorrect,
   order,
+  createdAt: now,
+  updatedAt: now,
 });
 
 const mockQuestion: QuestionWithOptions = {
@@ -67,6 +71,8 @@ const mockQuestion: QuestionWithOptions = {
   type: QuestionType.SINGLE_CHOICE,
   order: 1,
   points: 10,
+  createdAt: now,
+  updatedAt: now,
   options: [mockOption('opt-correct', true, 1), mockOption('opt-wrong', false, 2)],
 };
 
@@ -78,6 +84,7 @@ const mockAttempt: QuizAttempt = {
   attemptNumber: 1,
   startedAt: now,
   completedAt: null,
+  updatedAt: now,
 };
 
 const mockAttemptWithAnswers: AttemptWithAnswers = {
@@ -90,6 +97,7 @@ const mockAttemptWithAnswers: AttemptWithAnswers = {
       questionId: 'q-123',
       selectedOptionId: 'opt-correct',
       textAnswer: null,
+      createdAt: now,
       question: { type: QuestionType.SINGLE_CHOICE, points: 10 },
       selectedOption: { isCorrect: true },
     },
@@ -414,6 +422,7 @@ describe('QuizService', () => {
             questionId: 'q-123',
             selectedOptionId: 'opt-wrong',
             textAnswer: null,
+            createdAt: now,
             question: { type: QuestionType.SINGLE_CHOICE, points: 10 },
             selectedOption: { isCorrect: false },
           },

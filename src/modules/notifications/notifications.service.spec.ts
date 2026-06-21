@@ -16,6 +16,7 @@ const mockNotification: Notification = {
   referenceId: 'course-1',
   referenceType: 'course',
   createdAt: now,
+  updatedAt: now,
 };
 
 const mockSettings: NotificationSettings = {
@@ -25,6 +26,8 @@ const mockSettings: NotificationSettings = {
   emailOnNewLesson: true,
   emailOnForumReply: true,
   emailOnAssignmentGraded: true,
+  createdAt: now,
+  updatedAt: now,
 };
 
 const pagination = {

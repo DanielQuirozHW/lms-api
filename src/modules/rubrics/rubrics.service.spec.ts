@@ -60,6 +60,8 @@ const mockLevel: RubricLevel = {
   description: null,
   points: 20,
   order: 1,
+  createdAt: mockDate,
+  updatedAt: mockDate,
 };
 
 const mockCriterion: RubricCriterion & { levels: RubricLevel[] } = {
@@ -69,6 +71,8 @@ const mockCriterion: RubricCriterion & { levels: RubricLevel[] } = {
   description: null,
   order: 1,
   points: 20,
+  createdAt: mockDate,
+  updatedAt: mockDate,
   levels: [mockLevel],
 };
 
@@ -84,6 +88,7 @@ const mockAnswer: RubricAssessmentAnswer = {
   levelId: 'level-123',
   pointsAwarded: 18,
   feedback: null,
+  createdAt: mockDate,
 };
 
 const mockAssessment: RubricAssessmentWithAnswers = {
@@ -94,6 +99,8 @@ const mockAssessment: RubricAssessmentWithAnswers = {
   totalScore: 18,
   feedback: null,
   assessedAt: mockDate,
+  createdAt: mockDate,
+  updatedAt: mockDate,
   answers: [mockAnswer],
 };
 

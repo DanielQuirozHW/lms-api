@@ -9,6 +9,8 @@ const mockCategory: Category = {
   name: 'Web Development',
   slug: 'web-development',
   isActive: true,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 describe('CategoriesService', () => {
@@ -68,6 +70,8 @@ describe('CategoriesService', () => {
         name: 'Data Science',
         slug: 'data-science',
         isActive: true,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
       repo.create.mockResolvedValue(category);
 
@@ -85,6 +89,8 @@ describe('CategoriesService', () => {
         name: 'Frontend Dev',
         slug: 'frontend-dev',
         isActive: true,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
       repo.findById.mockResolvedValue(mockCategory);
       repo.update.mockResolvedValue(updated);
