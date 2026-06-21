@@ -46,6 +46,9 @@ export class CourseResponseDto {
   })
   whatYouWillLearn!: string[];
 
+  @ApiProperty({ type: [String], example: ['typescript', 'backend', 'api'] })
+  tags!: string[];
+
   @ApiProperty({
     type: Date,
     nullable: true,

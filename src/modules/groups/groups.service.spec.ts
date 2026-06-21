@@ -33,6 +33,7 @@ const mockCourseDetail: CourseDetailResponseDto = {
   enrollmentsCount: 10,
   level: 'BEGINNER',
   whatYouWillLearn: [],
+  tags: [],
   totalDuration: 0,
 };
 

@@ -18,6 +18,7 @@ export interface FindCoursesParams {
   instructorId?: string;
   categoryId?: string;
   search?: string;
+  tags?: string[];
   skip?: number;
   take?: number;
 }
@@ -59,6 +60,7 @@ export class CoursesRepository {
           { description: { contains: params.search, mode: 'insensitive' } },
         ],
       }),
+      ...(params.tags && params.tags.length > 0 && { tags: { hasSome: params.tags } }),
     };
     const [courses, total] = await this.prisma.$transaction([
       this.prisma.course.findMany({
@@ -115,6 +117,7 @@ export class CoursesRepository {
       categoryId: course.categoryId,
       level: course.level,
       whatYouWillLearn: course.whatYouWillLearn,
+      tags: course.tags,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount,
@@ -153,6 +156,7 @@ export class CoursesRepository {
       categoryId: course.categoryId,
       level: course.level,
       whatYouWillLearn: course.whatYouWillLearn,
+      tags: course.tags,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       lessonsCount,

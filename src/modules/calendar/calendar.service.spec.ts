@@ -160,6 +160,7 @@ describe('CalendarService', () => {
         enrollmentsCount: 10,
         level: 'BEGINNER' as const,
         whatYouWillLearn: [],
+        tags: [],
         totalDuration: 0,
       });
       calendarRepository.findByCourseId.mockResolvedValue([mockCourseEvent]);
@@ -233,6 +234,7 @@ describe('CalendarService', () => {
         enrollmentsCount: 10,
         level: 'BEGINNER' as const,
         whatYouWillLearn: [],
+        tags: [],
         totalDuration: 0,
       });
       calendarRepository.create.mockResolvedValue(mockCourseEvent);
@@ -271,6 +273,7 @@ describe('CalendarService', () => {
         enrollmentsCount: 10,
         level: 'BEGINNER' as const,
         whatYouWillLearn: [],
+        tags: [],
         totalDuration: 0,
       });
 
@@ -307,6 +310,7 @@ describe('CalendarService', () => {
         enrollmentsCount: 10,
         level: 'BEGINNER' as const,
         whatYouWillLearn: [],
+        tags: [],
         totalDuration: 0,
       });
       calendarRepository.create.mockResolvedValue(mockCourseEvent);

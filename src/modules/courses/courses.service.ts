@@ -37,6 +37,7 @@ export class CoursesService {
       ...(dto.categoryId && { category: { connect: { id: dto.categoryId } } }),
       ...(dto.level !== undefined && { level: dto.level }),
       whatYouWillLearn: dto.whatYouWillLearn ?? [],
+      tags: dto.tags ?? [],
     });
     return this.map({ ...course, totalDuration: 0 });
   }
@@ -47,6 +48,7 @@ export class CoursesService {
       status: query.status ?? 'PUBLISHED',
       categoryId: query.categoryId,
       search: query.search,
+      tags: query.tags,
       skip: query.skip,
       take: query.limit ?? 20,
     });
@@ -100,6 +102,7 @@ export class CoursesService {
       ...(dto.price !== undefined && { price: dto.price }),
       ...(dto.level !== undefined && { level: dto.level }),
       ...(dto.whatYouWillLearn !== undefined && { whatYouWillLearn: dto.whatYouWillLearn }),
+      ...(dto.tags !== undefined && { tags: dto.tags }),
     };
     const [course, totalDuration] = await Promise.all([
       this.coursesRepository.update(courseId, data),
@@ -214,6 +217,7 @@ export class CoursesService {
       categoryId: course.categoryId,
       level: course.level,
       whatYouWillLearn: course.whatYouWillLearn,
+      tags: course.tags,
       totalDuration: course.totalDuration,
       enrollmentPeriodStart: null,
       enrollmentPeriodEnd: null,
@@ -254,6 +258,7 @@ export class CoursesService {
       categoryId: course.categoryId,
       level: course.level,
       whatYouWillLearn: course.whatYouWillLearn,
+      tags: course.tags,
       enrollmentPeriodStart: null,
       enrollmentPeriodEnd: null,
       createdAt: course.createdAt,

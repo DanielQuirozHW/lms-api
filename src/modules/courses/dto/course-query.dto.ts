@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { CourseStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -19,4 +19,14 @@ export class CourseQueryDto extends PaginationDto {
   @IsOptional()
   @IsEnum(CourseStatus)
   status?: CourseStatus;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['typescript', 'backend'],
+    description: 'Filter courses where ANY of the provided tags match',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

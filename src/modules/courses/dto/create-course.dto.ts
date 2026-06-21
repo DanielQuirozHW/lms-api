@@ -52,4 +52,14 @@ export class CreateCourseDto {
   @IsArray()
   @IsString({ each: true })
   whatYouWillLearn?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['typescript', 'backend', 'api'],
+    description: 'Tags for discoverability',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

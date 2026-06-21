@@ -25,6 +25,7 @@ const mockCourse: Course = {
   categoryId: null,
   level: 'BEGINNER',
   whatYouWillLearn: [],
+  tags: [],
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
