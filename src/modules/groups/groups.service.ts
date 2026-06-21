@@ -162,7 +162,7 @@ export class GroupsService {
       id: member.id,
       groupId: member.groupId,
       userId: member.userId,
-      joinedAt: member.joinedAt,
+      joinedAt: member.createdAt,
     };
   }
 }

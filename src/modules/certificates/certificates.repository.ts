@@ -9,6 +9,9 @@ export type CertificateWithDetails = Certificate & {
     instructor: { firstName: string; lastName: string };
   };
   user: { firstName: string; lastName: string };
+  isActive: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
 };
 
 interface EnrollmentProgress {
@@ -91,7 +94,7 @@ export class CertificatesRepository {
         },
         user: { select: { firstName: true, lastName: true } },
       },
-      orderBy: { issuedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

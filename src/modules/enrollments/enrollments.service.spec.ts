@@ -26,10 +26,13 @@ const mockEnrollment: Enrollment = {
   courseId: 'course-1',
   status: EnrollmentStatus.ACTIVE,
   completedAt: null,
-  enrolledAt: new Date('2026-01-01'),
+  createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
   finalGrade: null,
   gradedAt: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
 };
 
 const mockCourse: CourseWithSettings = {
@@ -48,6 +51,9 @@ const mockCourse: CourseWithSettings = {
   level: 'BEGINNER',
   whatYouWillLearn: [],
   tags: [],
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   settings: null,
 };
 
@@ -65,6 +71,9 @@ const baseSettings = {
   ratingScale: 'STARS_5' as const,
   maxEnrollments: null,
   isSequential: false,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -744,6 +753,8 @@ describe('EnrollmentsService', () => {
         usedCount: 5,
         expiresAt: null,
         isActive: true,
+        createdBy: null,
+        updatedBy: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -927,6 +938,9 @@ describe('EnrollmentsService', () => {
       ratingScale: 'STARS_5' as const,
       maxEnrollments: null,
       isSequential: false,
+      isActive: true,
+      createdBy: null,
+      updatedBy: null,
       createdAt: new Date('2024-01-01'),
       updatedAt: new Date('2024-01-01'),
     };

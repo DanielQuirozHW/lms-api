@@ -29,7 +29,7 @@ export class DripService {
     let unlockedTotal = 0;
 
     for (const enrollment of enrollments) {
-      const msEnrolled = now.getTime() - enrollment.enrolledAt.getTime();
+      const msEnrolled = now.getTime() - enrollment.createdAt.getTime();
       const daysEnrolled = msEnrolled / (1000 * 60 * 60 * 24);
 
       // M-7: collect all ready modules for this enrollment in one pass, then issue a single updateMany

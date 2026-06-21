@@ -19,6 +19,8 @@ const mockAnnouncement: Announcement = {
   isActive: true,
   createdAt: now,
   updatedAt: now,
+  createdBy: null,
+  updatedBy: null,
 };
 
 const privateCourse: CourseAccessSettings = {

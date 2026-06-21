@@ -14,6 +14,9 @@ export type LessonWithAssignmentContext = Lesson & {
 
 export type SubmissionWithContext = Submission & {
   enrollment: { userId: string; courseId: string };
+  isActive: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
 };
 
 @Injectable()
@@ -111,7 +114,7 @@ export class AssignmentsRepository {
     return this.prisma.submission.findMany({
       where: { lessonId },
       include: { enrollment: { select: { userId: true, courseId: true } } },
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -166,7 +169,7 @@ export class AssignmentsRepository {
     return this.prisma.submission.findMany({
       where: { lessonId, grade: null },
       include: { enrollment: { select: { userId: true, courseId: true } } },
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

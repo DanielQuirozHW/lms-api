@@ -74,7 +74,7 @@ export class CertificatesService {
       courseTitle: cert.course.title,
       instructorName: `${cert.course.instructor.firstName} ${cert.course.instructor.lastName}`,
       finalGrade: cert.finalGrade,
-      issuedAt: cert.issuedAt,
+      issuedAt: cert.createdAt,
       certificateCode: cert.certificateCode,
       courseSlug: cert.course.slug,
     });
@@ -89,7 +89,7 @@ export class CertificatesService {
       userId: cert.userId,
       courseId: cert.courseId,
       enrollmentId: cert.enrollmentId,
-      issuedAt: cert.issuedAt,
+      issuedAt: cert.createdAt,
       finalGrade: cert.finalGrade,
       course: { title: cert.course.title, slug: cert.course.slug },
       instructor: {

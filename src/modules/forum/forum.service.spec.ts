@@ -22,6 +22,9 @@ const mockThread: ForumThread = {
   authorId: 'user-1',
   isPinned: false,
   isClosed: false,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: now,
   updatedAt: now,
 };
@@ -34,6 +37,8 @@ const mockPost: ForumPost = {
   parentId: null,
   isAcceptedAnswer: false,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: now,
   updatedAt: now,
 };
@@ -206,6 +211,7 @@ describe('ForumService', () => {
         postId: 'post-1',
         userId: 'user-1',
         value: 1,
+        createdBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -225,6 +231,7 @@ describe('ForumService', () => {
         postId: 'post-1',
         userId: 'user-1',
         value: 1,
+        createdBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };

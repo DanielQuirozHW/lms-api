@@ -29,6 +29,9 @@ export type CourseWithCount = Course & {
   lessonsCount: number;
   enrollmentsCount: number;
   totalDuration: number;
+  isActive: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
 };
 
 export type CourseForDuplicate = Course & {
@@ -120,6 +123,9 @@ export class CoursesRepository {
       tags: course.tags,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
+      isActive: course.isActive,
+      createdBy: course.createdBy,
+      updatedBy: course.updatedBy,
       lessonsCount,
       enrollmentsCount: course._count.enrollments,
       totalDuration: durationAgg._sum.duration ?? 0,
@@ -159,6 +165,9 @@ export class CoursesRepository {
       tags: course.tags,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
+      isActive: course.isActive,
+      createdBy: course.createdBy,
+      updatedBy: course.updatedBy,
       lessonsCount,
       enrollmentsCount: course._count.enrollments,
       totalDuration: durationAgg._sum.duration ?? 0,

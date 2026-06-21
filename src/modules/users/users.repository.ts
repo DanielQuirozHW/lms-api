@@ -160,12 +160,12 @@ export class UsersRepository {
   findRecentCertificates(
     userId: string,
     limit: number,
-  ): Promise<Array<{ issuedAt: Date; course: { title: string } }>> {
+  ): Promise<Array<{ createdAt: Date; course: { title: string } }>> {
     return this.prisma.certificate.findMany({
       where: { userId },
-      orderBy: { issuedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: limit,
-      select: { issuedAt: true, course: { select: { title: true } } },
+      select: { createdAt: true, course: { select: { title: true } } },
     });
   }
 

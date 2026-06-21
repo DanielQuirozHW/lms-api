@@ -12,7 +12,7 @@ export type DripEnrollment = {
   id: string;
   userId: string;
   courseId: string;
-  enrolledAt: Date;
+  createdAt: Date;
   course: {
     modules: DripModuleInfo[];
   };
@@ -29,7 +29,7 @@ export class DripRepository {
         id: true,
         userId: true,
         courseId: true,
-        enrolledAt: true,
+        createdAt: true,
         course: {
           select: {
             modules: {

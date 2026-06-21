@@ -28,6 +28,9 @@ const mockSettings: AssignmentSettings = {
   isGroupAssignment: false,
   groupId: null,
   maxAttempts: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -45,6 +48,9 @@ const mockLessonWithContext: LessonWithAssignmentContext = {
   isPreview: false,
   isPublished: true,
   rubricId: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
   module: {
@@ -61,7 +67,7 @@ const mockSubmission: Submission = {
   lessonId: 'lesson-123',
   content: 'My answer',
   fileUrl: null,
-  submittedAt: new Date('2024-01-01'),
+  createdAt: new Date('2024-01-01'),
   attemptNumber: 1,
   status: SubmissionStatus.SUBMITTED,
   grade: null,
@@ -69,6 +75,9 @@ const mockSubmission: Submission = {
   gradedById: null,
   gradedAt: null,
   groupId: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   updatedAt: new Date('2024-01-01'),
 };
 

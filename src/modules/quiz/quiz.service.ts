@@ -385,7 +385,7 @@ export class QuizService {
       enrollmentId: attempt.enrollmentId,
       attemptNumber: attempt.attemptNumber,
       score: attempt.score,
-      startedAt: attempt.startedAt,
+      startedAt: attempt.createdAt,
       completedAt: attempt.completedAt,
       passed,
     };

@@ -9,6 +9,8 @@ const mockCategory: Category = {
   name: 'Web Development',
   slug: 'web-development',
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -70,6 +72,8 @@ describe('CategoriesService', () => {
         name: 'Data Science',
         slug: 'data-science',
         isActive: true,
+        createdBy: null,
+        updatedBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -89,6 +93,8 @@ describe('CategoriesService', () => {
         name: 'Frontend Dev',
         slug: 'frontend-dev',
         isActive: true,
+        createdBy: null,
+        updatedBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };

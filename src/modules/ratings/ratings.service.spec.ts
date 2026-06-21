@@ -20,6 +20,9 @@ const mockRating: CourseRating = {
   courseId: 'course-1',
   score: 4,
   review: 'Great course!',
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: now,
   updatedAt: now,
 };

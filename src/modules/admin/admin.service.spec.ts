@@ -33,6 +33,8 @@ const mockStudent: User = {
   preferredTheme: 'dark',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
+  createdBy: null,
+  updatedBy: null,
 };
 
 const mockAdminUser: User = {

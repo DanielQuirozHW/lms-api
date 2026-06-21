@@ -44,6 +44,8 @@ const mockGroup: CourseGroup = {
   description: null,
   maxMembers: 5,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -57,7 +59,11 @@ const mockMember: CourseGroupMember = {
   id: 'member-123',
   groupId: 'group-123',
   userId: 'user-456',
-  joinedAt: new Date('2024-01-01'),
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 const instructorUser: AuthenticatedUser = {

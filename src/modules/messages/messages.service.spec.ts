@@ -13,8 +13,11 @@ const mockMessage: Message = {
   receiverId: 'user-2',
   content: 'Hello',
   readAt: null,
+  isActive: true,
   createdAt: now,
   updatedAt: now,
+  createdBy: null,
+  updatedBy: null,
 };
 
 const mockInboxRow: InboxRawRow = {

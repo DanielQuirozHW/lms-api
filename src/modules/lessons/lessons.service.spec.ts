@@ -18,6 +18,9 @@ const mockLesson: Lesson = {
   isPreview: false,
   isPublished: false,
   rubricId: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -28,7 +31,11 @@ const mockResource: LessonResource = {
   title: 'Course Slides',
   url: 'https://example.com/slides.pdf',
   type: 'pdf',
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 const mockLessonWithDetails: LessonWithDetails = {
@@ -411,6 +418,9 @@ describe('LessonsService', () => {
       completedAt: null,
       lastWatchedAt: null,
       watchedSeconds: null,
+      isActive: true,
+      createdBy: null,
+      updatedBy: null,
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
     };

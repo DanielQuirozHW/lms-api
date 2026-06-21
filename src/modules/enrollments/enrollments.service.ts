@@ -207,7 +207,7 @@ export class EnrollmentsService {
       courseId: enrollment.courseId,
       status: enrollment.status,
       completedAt: enrollment.completedAt,
-      enrolledAt: enrollment.enrolledAt,
+      enrolledAt: enrollment.createdAt,
       updatedAt: enrollment.updatedAt,
       progress: this.buildProgress(enrollment),
     };
@@ -402,7 +402,7 @@ export class EnrollmentsService {
       email: e.user.email,
       avatarUrl: e.user.avatarUrl,
       status: e.status,
-      enrolledAt: e.enrolledAt,
+      enrolledAt: e.createdAt,
       progressPercentage,
     };
   }
@@ -422,7 +422,7 @@ export class EnrollmentsService {
       completedLessons: completed,
       totalLessons: total,
       categoryName: e.course.category?.name ?? null,
-      enrolledAt: e.enrolledAt,
+      enrolledAt: e.createdAt,
     };
   }
 
@@ -497,7 +497,7 @@ export class EnrollmentsService {
       courseId: enrollment.courseId,
       status: enrollment.status,
       completedAt: enrollment.completedAt,
-      enrolledAt: enrollment.enrolledAt,
+      enrolledAt: enrollment.createdAt,
       updatedAt: enrollment.updatedAt,
     };
   }

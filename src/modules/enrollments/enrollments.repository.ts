@@ -6,9 +6,9 @@ import type {
   CourseSettings,
   Enrollment,
   EnrollmentStatus,
-  EnrollmentType,
   Lesson,
   LessonProgress,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { type PaginationDto } from '../../common/dto/pagination.dto';
@@ -17,37 +17,44 @@ export type CourseWithSettings = Course & { settings: CourseSettings | null };
 export type EnrollmentWithProgress = Enrollment & {
   progress: Pick<LessonProgress, 'completedAt' | 'lessonId'>[];
 };
-export type GradebookCategoryRow = {
-  weight: number;
-  items: {
-    weight: number | null;
-    maxScore: number;
-    lesson: {
-      quizAttempts: { score: number | null }[];
-      submissions: { grade: number | null }[];
+export type GradebookCategoryRow = Prisma.GradebookCategoryGetPayload<{
+  select: {
+    weight: true;
+    items: {
+      select: {
+        weight: true;
+        maxScore: true;
+        lesson: {
+          select: {
+            quizAttempts: { select: { score: true } };
+            submissions: { select: { grade: true } };
+          };
+        };
+      };
     };
-  }[];
-};
-
-export type EnrollmentForCourseView = Enrollment & {
-  user: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatarUrl: string | null;
   };
-  progress: { completedAt: Date | null }[];
-};
+}>;
 
-export type EnrollmentForUserView = Enrollment & {
-  course: {
-    title: string;
-    coverUrl: string | null;
-    enrollmentType: EnrollmentType;
-    category: { name: string } | null;
+export type EnrollmentForCourseView = Prisma.EnrollmentGetPayload<{
+  include: {
+    user: { select: { firstName: true; lastName: true; email: true; avatarUrl: true } };
+    progress: { select: { completedAt: true } };
   };
-  progress: { completedAt: Date | null }[];
-};
+}>;
+
+export type EnrollmentForUserView = Prisma.EnrollmentGetPayload<{
+  include: {
+    course: {
+      select: {
+        title: true;
+        coverUrl: true;
+        enrollmentType: true;
+        category: { select: { name: true } };
+      };
+    };
+    progress: { select: { completedAt: true } };
+  };
+}>;
 
 @Injectable()
 export class EnrollmentsRepository {
@@ -65,7 +72,7 @@ export class EnrollmentsRepository {
         where,
         skip: pagination.skip,
         take: pagination.limit ?? 20,
-        orderBy: { enrolledAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.enrollment.count({ where }),
     ]);
@@ -81,7 +88,7 @@ export class EnrollmentsRepository {
         where: { courseId },
         skip: pagination.skip,
         take: pagination.limit ?? 20,
-        orderBy: { enrolledAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.enrollment.count({ where: { courseId } }),
     ]);
@@ -154,7 +161,7 @@ export class EnrollmentsRepository {
     return this.prisma.$transaction(async (tx) => {
       const enrollment = await tx.enrollment.update({
         where: { id: enrollmentId },
-        data: { status: 'ACTIVE', completedAt: null, enrolledAt: new Date() },
+        data: { status: 'ACTIVE', completedAt: null, createdAt: new Date() },
       });
       await tx.lessonProgress.deleteMany({ where: { enrollmentId } });
       if (lessons.length > 0) {
@@ -210,7 +217,7 @@ export class EnrollmentsRepository {
                 },
                 submissions: {
                   where: { enrollmentId, grade: { not: null } },
-                  orderBy: { submittedAt: 'desc' },
+                  orderBy: { createdAt: 'desc' },
                   take: 1,
                   select: { grade: true },
                 },
@@ -260,7 +267,7 @@ export class EnrollmentsRepository {
         where: { courseId },
         skip: pagination.skip,
         take: pagination.limit ?? 20,
-        orderBy: { enrolledAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { firstName: true, lastName: true, email: true, avatarUrl: true } },
           progress: { select: { completedAt: true } },
@@ -282,7 +289,7 @@ export class EnrollmentsRepository {
         where,
         skip: pagination.skip,
         take: pagination.limit ?? 20,
-        orderBy: { enrolledAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         include: {
           course: {
             select: {

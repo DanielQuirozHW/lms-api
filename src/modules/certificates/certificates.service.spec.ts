@@ -33,10 +33,12 @@ const rawCert: Certificate = {
   userId: 'student-001',
   courseId: 'course-111',
   enrollmentId: 'enrollment-222',
-  issuedAt: new Date('2024-06-01'),
   finalGrade: 92.5,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-06-01'),
+  updatedAt: new Date('2024-06-01'),
 };
 
 const mockCert: CertificateWithDetails = {

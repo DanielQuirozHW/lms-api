@@ -50,6 +50,8 @@ const mockRubric: Rubric = {
   description: null,
   totalPoints: 100,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: mockDate,
   updatedAt: mockDate,
 };
@@ -61,6 +63,9 @@ const mockLevel: RubricLevel = {
   description: null,
   points: 20,
   order: 1,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: mockDate,
   updatedAt: mockDate,
 };
@@ -72,6 +77,9 @@ const mockCriterion: RubricCriterion & { levels: RubricLevel[] } = {
   description: null,
   order: 1,
   points: 20,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: mockDate,
   updatedAt: mockDate,
   levels: [mockLevel],
@@ -89,7 +97,11 @@ const mockAnswer: RubricAssessmentAnswer = {
   levelId: 'level-123',
   pointsAwarded: 18,
   feedback: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: mockDate,
+  updatedAt: mockDate,
 };
 
 const mockAssessment: RubricAssessmentWithAnswers = {
@@ -100,6 +112,9 @@ const mockAssessment: RubricAssessmentWithAnswers = {
   totalScore: 18,
   feedback: null,
   assessedAt: mockDate,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: mockDate,
   updatedAt: mockDate,
   answers: [mockAnswer],

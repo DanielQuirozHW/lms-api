@@ -27,6 +27,8 @@ const mockEvent: CalendarEvent = {
   isActive: true,
   createdAt: now,
   updatedAt: now,
+  createdBy: null,
+  updatedBy: null,
 };
 
 const mockCourseEvent: CalendarEvent = {

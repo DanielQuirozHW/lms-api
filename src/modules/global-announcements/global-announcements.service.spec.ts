@@ -17,6 +17,7 @@ const mockAnnouncement: GlobalAnnouncement = {
   startsAt: null,
   endsAt: null,
   createdBy: 'admin-1',
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

@@ -280,7 +280,7 @@ export class UsersService {
         type: 'CERTIFICATE_EARNED' as const,
         title: c.course.title,
         subtitle: 'Certificate earned',
-        date: c.issuedAt,
+        date: c.createdAt,
       })),
       ...bookmarks.map((b) => ({
         type: 'LESSON_SAVED' as const,

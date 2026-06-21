@@ -397,7 +397,7 @@ export class AssignmentsService {
       lessonId: submission.lessonId,
       content: submission.content,
       fileUrl: submission.fileUrl,
-      submittedAt: submission.submittedAt,
+      submittedAt: submission.createdAt,
       attemptNumber: submission.attemptNumber,
       status: submission.status,
       grade: submission.grade,

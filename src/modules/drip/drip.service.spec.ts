@@ -13,7 +13,7 @@ const makeEnrollment = (
   id: 'enr-1',
   userId: 'user-1',
   courseId: 'course-1',
-  enrolledAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+  createdAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
   course: {
     modules: [
       { id: 'mod-1', title: 'Module 1', unlockAfterDays, lessons: lessonIds.map((id) => ({ id })) },

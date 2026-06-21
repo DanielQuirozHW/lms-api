@@ -357,6 +357,71 @@ After any schema change: `pnpm prisma:migrate` (dev) or `pnpm prisma:generate` (
 
 ---
 
+## Schema standards
+
+Every model in this schema follows Dataverse-style audit conventions. These rules are enforced across all models unless explicitly listed as exceptions below.
+
+### Standard fields — required on every model
+
+```prisma
+id        String   @id @default(cuid())
+isActive  Boolean  @default(true)  @map("is_active")
+createdBy String?  @map("created_by")
+updatedBy String?  @map("updated_by")
+createdAt DateTime @default(now()) @map("created_at")
+updatedAt DateTime @updatedAt      @map("updated_at")
+```
+
+### Soft-delete — never hard-delete
+
+The portal never issues `DELETE` SQL on user-facing records. Removal is always `UPDATE … SET is_active = false`. Hard deletes are reserved for cascade cleanup defined at the DB constraint level (e.g. `onDelete: Cascade` on child FK relations when the parent is removed).
+
+### createdBy / updatedBy population
+
+- **User-initiated actions**: set to the authenticated user's id from the JWT payload (`@CurrentUser()`).
+- **Automated processes** (cron jobs, background workers, system events): set to the system user email `system@nexuslms.internal`.
+- Both fields are `String?` (nullable) in the schema — `null` means the record predates this convention; treat it as unknown, not as a bug.
+
+### Exception models — immutable audit records
+
+The following models are append-only event logs. They must **not** have `isActive` or `updatedBy` because they are never modified after creation:
+
+| Model | Reason |
+|---|---|
+| `SystemError` | Immutable error log |
+| `LoginEvent` | Immutable auth audit trail |
+| `PasswordResetToken` | Single-use token, never updated |
+| `ImpersonationLog` | Immutable admin audit trail |
+| `EnrollmentCodeUsage` | Immutable redemption record |
+| `QuizAnswer` | Immutable student answer record |
+| `ForumPostVote` | Immutable vote record |
+
+Exception models still receive `createdBy` and `createdAt`. They do **not** get `updatedAt`, `updatedBy`, or `isActive`.
+
+### Semantic date fields — keep as business events
+
+Some fields represent domain events, not schema timestamps. Do **not** rename or remove them:
+
+| Field | Model | Meaning |
+|---|---|---|
+| `completedAt` | `Enrollment`, `QuizAttempt` | When the work was finished |
+| `gradedAt` | `Enrollment`, `Submission` | When a grade was assigned |
+| `assessedAt` | `RubricAssessment` | When the rubric was scored |
+| `startedAt` | `LessonProgress`, `ImpersonationLog` | When the activity began |
+| `lastWatchedAt` | `LessonProgress` | Last video resume point |
+| `endedAt` | `ImpersonationLog` | When impersonation ended |
+
+These coexist with `createdAt`/`updatedAt` — they are not replacements for those fields.
+
+### Adding a new model — schema checklist
+
+1. Add the six standard fields in the order shown above (id → isActive → createdBy → updatedBy → createdAt → updatedAt).
+2. If the model is an append-only event log, omit `isActive` and `updatedBy` and document the exception in this file.
+3. Use `@map` on every field and `@@map` on the model for `snake_case` column names.
+4. If the model records a domain event (started, completed, graded…), add the semantic date field **in addition to** `createdAt`.
+
+---
+
 ## Code conventions
 
 - All code, comments, variable names, function names, and class names in **English**

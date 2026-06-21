@@ -73,6 +73,8 @@ const mockCategory: GradebookCategory = {
   weight: 40,
   order: 1,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -85,6 +87,8 @@ const mockItem: GradebookItem = {
   maxScore: 100,
   isExtraCredit: false,
   isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -395,6 +399,8 @@ describe('GradebookService', () => {
         maxScore: 100,
         isExtraCredit: false,
         isActive: true,
+        createdBy: null,
+        updatedBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -406,6 +412,8 @@ describe('GradebookService', () => {
         maxScore: 50,
         isExtraCredit: false,
         isActive: true,
+        createdBy: null,
+        updatedBy: null,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01'),
       };

@@ -12,6 +12,9 @@ const mockModule: CourseModule = {
   order: 1,
   isPublished: false,
   unlockAfterDays: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -29,6 +32,9 @@ const mockLesson: Lesson = {
   isPreview: false,
   isPublished: true,
   rubricId: null,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

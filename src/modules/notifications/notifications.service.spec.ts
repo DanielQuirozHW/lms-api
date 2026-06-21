@@ -15,6 +15,9 @@ const mockNotification: Notification = {
   isRead: false,
   referenceId: 'course-1',
   referenceType: 'course',
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: now,
   updatedAt: now,
 };
@@ -26,6 +29,9 @@ const mockSettings: NotificationSettings = {
   emailOnNewLesson: true,
   emailOnForumReply: true,
   emailOnAssignmentGraded: true,
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
   createdAt: now,
   updatedAt: now,
 };
