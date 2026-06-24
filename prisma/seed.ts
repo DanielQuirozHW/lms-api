@@ -4,6 +4,7 @@ import {
   PrismaClient,
   UserRole,
   CourseStatus,
+  CourseLevel,
   EnrollmentType,
   LessonType,
   QuestionType,
@@ -118,7 +119,19 @@ async function main(): Promise<void> {
     // Course 1 — TypeScript → PAID
     const c1 = await prisma.course.upsert({
       where: { slug: 'typescript-de-cero-a-experto' },
-      update: { enrollmentType: EnrollmentType.PAID, status: CourseStatus.PUBLISHED },
+      update: {
+        enrollmentType: EnrollmentType.PAID,
+        status: CourseStatus.PUBLISHED,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Fundamentos de tipos en TypeScript',
+          'Interfaces, genéricos y tipos avanzados',
+          'Decoradores y metadatos',
+          'Integración con frameworks modernos',
+          'Mejores prácticas y patrones de TypeScript',
+        ],
+        tags: ['typescript', 'javascript', 'programación', 'backend', 'frontend'],
+      },
       create: {
         title: 'TypeScript de Cero a Experto',
         slug: 'typescript-de-cero-a-experto',
@@ -127,6 +140,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.PAID,
         price: '29.99',
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Fundamentos de tipos en TypeScript',
+          'Interfaces, genéricos y tipos avanzados',
+          'Decoradores y metadatos',
+          'Integración con frameworks modernos',
+          'Mejores prácticas y patrones de TypeScript',
+        ],
+        tags: ['typescript', 'javascript', 'programación', 'backend', 'frontend'],
         instructorId: adminUser.id,
         categoryId: categories['desarrollo-web'] ?? null,
       },
@@ -136,13 +158,34 @@ async function main(): Promise<void> {
     // Course 2 — Python → FREE
     const c2 = await prisma.course.upsert({
       where: { slug: 'python-para-data-science' },
-      update: { enrollmentType: EnrollmentType.FREE, status: CourseStatus.PUBLISHED },
+      update: {
+        enrollmentType: EnrollmentType.FREE,
+        status: CourseStatus.PUBLISHED,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Variables, tipos de datos y control de flujo en Python',
+          'Operaciones vectoriales con NumPy',
+          'Manipulación de datos con Pandas',
+          'Limpieza y preparación de datasets',
+          'Análisis exploratorio de datos',
+        ],
+        tags: ['python', 'data-science', 'pandas', 'numpy', 'análisis'],
+      },
       create: {
         title: 'Python para Data Science',
         slug: 'python-para-data-science',
         description: 'Domina Python y las principales librerías para ciencia de datos.',
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.FREE,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Variables, tipos de datos y control de flujo en Python',
+          'Operaciones vectoriales con NumPy',
+          'Manipulación de datos con Pandas',
+          'Limpieza y preparación de datasets',
+          'Análisis exploratorio de datos',
+        ],
+        tags: ['python', 'data-science', 'pandas', 'numpy', 'análisis'],
         instructorId: adminUser.id,
         categoryId: categories['ciencia-de-datos'] ?? null,
       },
@@ -152,7 +195,19 @@ async function main(): Promise<void> {
     // Course 3 — Figma → ASSIGNED
     const c3 = await prisma.course.upsert({
       where: { slug: 'diseno-de-interfaces-con-figma' },
-      update: { enrollmentType: EnrollmentType.ASSIGNED, status: CourseStatus.PUBLISHED },
+      update: {
+        enrollmentType: EnrollmentType.ASSIGNED,
+        status: CourseStatus.PUBLISHED,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Interfaz y herramientas esenciales de Figma',
+          'Componentes, variantes y sistemas de diseño',
+          'Auto Layout y diseño responsivo',
+          'Prototipado interactivo y animaciones',
+          'Entrega de assets al equipo de desarrollo',
+        ],
+        tags: ['figma', 'diseño-ux', 'ui', 'prototipado', 'diseño'],
+      },
       create: {
         title: 'Diseño de Interfaces con Figma',
         slug: 'diseno-de-interfaces-con-figma',
@@ -160,6 +215,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.ASSIGNED,
         price: '19.99',
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Interfaz y herramientas esenciales de Figma',
+          'Componentes, variantes y sistemas de diseño',
+          'Auto Layout y diseño responsivo',
+          'Prototipado interactivo y animaciones',
+          'Entrega de assets al equipo de desarrollo',
+        ],
+        tags: ['figma', 'diseño-ux', 'ui', 'prototipado', 'diseño'],
         instructorId: adminUser.id,
         categoryId: categories['diseno-ux-ui'] ?? null,
       },
@@ -169,7 +233,19 @@ async function main(): Promise<void> {
     // Course 4 — Machine Learning → CODE
     const c4 = await prisma.course.upsert({
       where: { slug: 'machine-learning-practico' },
-      update: { enrollmentType: EnrollmentType.CODE, status: CourseStatus.PUBLISHED },
+      update: {
+        enrollmentType: EnrollmentType.CODE,
+        status: CourseStatus.PUBLISHED,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Fundamentos y tipos de algoritmos de ML',
+          'Preparación y limpieza de datos',
+          'Algoritmos supervisados con scikit-learn',
+          'Árboles de decisión y Random Forest',
+          'Redes neuronales básicas con TensorFlow',
+        ],
+        tags: ['machine-learning', 'python', 'scikit-learn', 'tensorflow', 'ia'],
+      },
       create: {
         title: 'Machine Learning Práctico',
         slug: 'machine-learning-practico',
@@ -177,6 +253,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.CODE,
         price: '49.99',
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Fundamentos y tipos de algoritmos de ML',
+          'Preparación y limpieza de datos',
+          'Algoritmos supervisados con scikit-learn',
+          'Árboles de decisión y Random Forest',
+          'Redes neuronales básicas con TensorFlow',
+        ],
+        tags: ['machine-learning', 'python', 'scikit-learn', 'tensorflow', 'ia'],
         instructorId: adminUser.id,
         categoryId: categories['inteligencia-artificial'] ?? null,
       },
@@ -186,7 +271,19 @@ async function main(): Promise<void> {
     // Course 5 — SEO → FREE, now PUBLISHED
     const c5 = await prisma.course.upsert({
       where: { slug: 'seo-y-marketing-de-contenidos' },
-      update: { enrollmentType: EnrollmentType.FREE, status: CourseStatus.PUBLISHED },
+      update: {
+        enrollmentType: EnrollmentType.FREE,
+        status: CourseStatus.PUBLISHED,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Principios fundamentales del SEO',
+          'Investigación y selección de palabras clave',
+          'Estrategias de marketing de contenidos',
+          'Optimización on-page y off-page',
+          'Métricas y análisis de resultados',
+        ],
+        tags: ['seo', 'marketing', 'contenidos', 'digital', 'google'],
+      },
       create: {
         title: 'SEO y Marketing de Contenidos',
         slug: 'seo-y-marketing-de-contenidos',
@@ -195,6 +292,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.FREE,
         price: '24.99',
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Principios fundamentales del SEO',
+          'Investigación y selección de palabras clave',
+          'Estrategias de marketing de contenidos',
+          'Optimización on-page y off-page',
+          'Métricas y análisis de resultados',
+        ],
+        tags: ['seo', 'marketing', 'contenidos', 'digital', 'google'],
         instructorId: adminUser.id,
         categoryId: categories['marketing-digital'] ?? null,
       },
@@ -204,13 +310,33 @@ async function main(): Promise<void> {
     // Course 6 — React con Next.js → FREE
     const c6 = await prisma.course.upsert({
       where: { slug: 'react-con-nextjs' },
-      update: { enrollmentType: EnrollmentType.FREE },
+      update: {
+        enrollmentType: EnrollmentType.FREE,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Componentes, props y hooks de React',
+          'App Router y Server Components de Next.js',
+          'Gestión de estado y Context API',
+          'Data fetching y optimización de rendimiento',
+          'Despliegue en producción con Vercel',
+        ],
+        tags: ['react', 'nextjs', 'javascript', 'frontend', 'web'],
+      },
       create: {
         title: 'React con Next.js',
         slug: 'react-con-nextjs',
         description: 'Construye aplicaciones web modernas con React y Next.js desde cero.',
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.FREE,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Componentes, props y hooks de React',
+          'App Router y Server Components de Next.js',
+          'Gestión de estado y Context API',
+          'Data fetching y optimización de rendimiento',
+          'Despliegue en producción con Vercel',
+        ],
+        tags: ['react', 'nextjs', 'javascript', 'frontend', 'web'],
         instructorId: adminUser.id,
         categoryId: categories['desarrollo-web'] ?? null,
       },
@@ -220,7 +346,18 @@ async function main(): Promise<void> {
     // Course 7 — SQL y Bases de Datos → FREE
     const c7 = await prisma.course.upsert({
       where: { slug: 'sql-y-bases-de-datos' },
-      update: { enrollmentType: EnrollmentType.FREE },
+      update: {
+        enrollmentType: EnrollmentType.FREE,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Fundamentos de bases de datos relacionales',
+          'Consultas SELECT, JOIN y subconsultas',
+          'Agrupaciones y funciones de agregado',
+          'CTEs e índices para optimización',
+          'Diseño y normalización de esquemas',
+        ],
+        tags: ['sql', 'bases-de-datos', 'postgresql', 'backend', 'datos'],
+      },
       create: {
         title: 'SQL y Bases de Datos',
         slug: 'sql-y-bases-de-datos',
@@ -228,6 +365,15 @@ async function main(): Promise<void> {
           'Aprende SQL desde los fundamentos y domina el diseño de bases de datos relacionales.',
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.FREE,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Fundamentos de bases de datos relacionales',
+          'Consultas SELECT, JOIN y subconsultas',
+          'Agrupaciones y funciones de agregado',
+          'CTEs e índices para optimización',
+          'Diseño y normalización de esquemas',
+        ],
+        tags: ['sql', 'bases-de-datos', 'postgresql', 'backend', 'datos'],
         instructorId: adminUser.id,
         categoryId: categories['desarrollo-web'] ?? null,
       },
@@ -237,7 +383,18 @@ async function main(): Promise<void> {
     // Course 8 — Docker y DevOps → ASSIGNED
     const c8 = await prisma.course.upsert({
       where: { slug: 'docker-y-devops' },
-      update: { enrollmentType: EnrollmentType.ASSIGNED },
+      update: {
+        enrollmentType: EnrollmentType.ASSIGNED,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Contenedores Docker e imágenes',
+          'Orquestación con Docker Compose',
+          'Pipelines de CI/CD automatizados',
+          'Kubernetes básico para orquestación',
+          'Mejores prácticas de DevOps',
+        ],
+        tags: ['docker', 'devops', 'kubernetes', 'cicd', 'backend'],
+      },
       create: {
         title: 'Docker y DevOps',
         slug: 'docker-y-devops',
@@ -245,6 +402,15 @@ async function main(): Promise<void> {
           'Domina Docker, Kubernetes y las prácticas DevOps para despliegue de aplicaciones.',
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.ASSIGNED,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Contenedores Docker e imágenes',
+          'Orquestación con Docker Compose',
+          'Pipelines de CI/CD automatizados',
+          'Kubernetes básico para orquestación',
+          'Mejores prácticas de DevOps',
+        ],
+        tags: ['docker', 'devops', 'kubernetes', 'cicd', 'backend'],
         instructorId: adminUser.id,
         categoryId: categories['desarrollo-web'] ?? null,
       },
@@ -254,7 +420,18 @@ async function main(): Promise<void> {
     // Course 9 — Diseño Gráfico con Adobe XD → PAID
     const c9 = await prisma.course.upsert({
       where: { slug: 'diseno-grafico-con-adobe-xd' },
-      update: { enrollmentType: EnrollmentType.PAID },
+      update: {
+        enrollmentType: EnrollmentType.PAID,
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Interfaz y herramientas de Adobe XD',
+          'Wireframing y mockups profesionales',
+          'Sistemas de diseño y componentes reutilizables',
+          'Animaciones y transiciones interactivas',
+          'Exportación y entrega de assets al equipo',
+        ],
+        tags: ['adobe-xd', 'diseño', 'ux', 'prototipado', 'ui'],
+      },
       create: {
         title: 'Diseño Gráfico con Adobe XD',
         slug: 'diseno-grafico-con-adobe-xd',
@@ -262,6 +439,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.PAID,
         price: '24.99',
+        level: CourseLevel.BEGINNER,
+        whatYouWillLearn: [
+          'Interfaz y herramientas de Adobe XD',
+          'Wireframing y mockups profesionales',
+          'Sistemas de diseño y componentes reutilizables',
+          'Animaciones y transiciones interactivas',
+          'Exportación y entrega de assets al equipo',
+        ],
+        tags: ['adobe-xd', 'diseño', 'ux', 'prototipado', 'ui'],
         instructorId: adminUser.id,
         categoryId: categories['diseno-ux-ui'] ?? null,
       },
@@ -271,7 +457,18 @@ async function main(): Promise<void> {
     // Course 10 — Estadística para Data Science → CODE
     const c10 = await prisma.course.upsert({
       where: { slug: 'estadistica-para-data-science' },
-      update: { enrollmentType: EnrollmentType.CODE },
+      update: {
+        enrollmentType: EnrollmentType.CODE,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Estadística descriptiva: medidas de tendencia y dispersión',
+          'Distribuciones de probabilidad',
+          'Pruebas de hipótesis estadísticas',
+          'Regresión estadística aplicada a ML',
+          'Análisis bayesiano para ciencia de datos',
+        ],
+        tags: ['estadística', 'data-science', 'python', 'matemáticas', 'machine-learning'],
+      },
       create: {
         title: 'Estadística para Data Science',
         slug: 'estadistica-para-data-science',
@@ -279,6 +476,15 @@ async function main(): Promise<void> {
           'Fundamentos estadísticos esenciales para ciencia de datos y machine learning.',
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.CODE,
+        level: CourseLevel.INTERMEDIATE,
+        whatYouWillLearn: [
+          'Estadística descriptiva: medidas de tendencia y dispersión',
+          'Distribuciones de probabilidad',
+          'Pruebas de hipótesis estadísticas',
+          'Regresión estadística aplicada a ML',
+          'Análisis bayesiano para ciencia de datos',
+        ],
+        tags: ['estadística', 'data-science', 'python', 'matemáticas', 'machine-learning'],
         instructorId: adminUser.id,
         categoryId: categories['ciencia-de-datos'] ?? null,
       },
@@ -288,7 +494,18 @@ async function main(): Promise<void> {
     // Course 11 — Redes Neuronales Avanzadas → PAID
     const c11 = await prisma.course.upsert({
       where: { slug: 'redes-neuronales-avanzadas' },
-      update: { enrollmentType: EnrollmentType.PAID },
+      update: {
+        enrollmentType: EnrollmentType.PAID,
+        level: CourseLevel.ADVANCED,
+        whatYouWillLearn: [
+          'Redes convolucionales (CNN) para visión por computadora',
+          'LSTMs y GRUs para datos secuenciales',
+          'Mecanismo de atención y arquitectura Transformer',
+          'Fine-tuning de modelos de lenguaje grandes (LLMs)',
+          'Despliegue de modelos de deep learning en producción',
+        ],
+        tags: ['deep-learning', 'pytorch', 'transformers', 'llm', 'ia'],
+      },
       create: {
         title: 'Redes Neuronales Avanzadas',
         slug: 'redes-neuronales-avanzadas',
@@ -296,6 +513,15 @@ async function main(): Promise<void> {
         status: CourseStatus.PUBLISHED,
         enrollmentType: EnrollmentType.PAID,
         price: '59.99',
+        level: CourseLevel.ADVANCED,
+        whatYouWillLearn: [
+          'Redes convolucionales (CNN) para visión por computadora',
+          'LSTMs y GRUs para datos secuenciales',
+          'Mecanismo de atención y arquitectura Transformer',
+          'Fine-tuning de modelos de lenguaje grandes (LLMs)',
+          'Despliegue de modelos de deep learning en producción',
+        ],
+        tags: ['deep-learning', 'pytorch', 'transformers', 'llm', 'ia'],
         instructorId: adminUser.id,
         categoryId: categories['inteligencia-artificial'] ?? null,
       },
@@ -324,6 +550,7 @@ async function main(): Promise<void> {
       title: string;
       order: number;
       type: LessonType;
+      duration: number;
       isPreview?: boolean;
       isPublished?: boolean;
     };
@@ -345,12 +572,13 @@ async function main(): Promise<void> {
         for (const les of mod.lessons) {
           const l = await prisma.lesson.upsert({
             where: { moduleId_order: { moduleId: m.id, order: les.order } },
-            update: { type: les.type, title: les.title },
+            update: { type: les.type, title: les.title, duration: les.duration },
             create: {
               moduleId: m.id,
               title: les.title,
               order: les.order,
               type: les.type,
+              duration: les.duration,
               isPreview: les.isPreview ?? false,
               isPublished: les.isPublished ?? true,
               content: `Contenido de la lección: ${les.title}`,
@@ -368,27 +596,33 @@ async function main(): Promise<void> {
           title: 'Fundamentos',
           order: 1,
           lessons: [
-            { title: '¿Qué es TypeScript?', order: 1, type: LessonType.TEXT, isPreview: true },
-            { title: 'Tipos básicos', order: 2, type: LessonType.TEXT },
-            { title: 'Funciones tipadas', order: 3, type: LessonType.VIDEO },
+            {
+              title: '¿Qué es TypeScript?',
+              order: 1,
+              type: LessonType.TEXT,
+              duration: 420,
+              isPreview: true,
+            },
+            { title: 'Tipos básicos', order: 2, type: LessonType.TEXT, duration: 480 },
+            { title: 'Funciones tipadas', order: 3, type: LessonType.VIDEO, duration: 900 },
           ],
         },
         {
           title: 'Tipos Avanzados',
           order: 2,
           lessons: [
-            { title: 'Interfaces y Types', order: 1, type: LessonType.TEXT },
-            { title: 'Genéricos', order: 2, type: LessonType.VIDEO },
-            { title: 'Decoradores', order: 3, type: LessonType.TEXT },
+            { title: 'Interfaces y Types', order: 1, type: LessonType.TEXT, duration: 450 },
+            { title: 'Genéricos', order: 2, type: LessonType.VIDEO, duration: 1200 },
+            { title: 'Decoradores', order: 3, type: LessonType.TEXT, duration: 390 },
           ],
         },
         {
           title: 'Proyecto Final',
           order: 3,
           lessons: [
-            { title: 'Arquitectura del proyecto', order: 1, type: LessonType.TEXT },
-            { title: 'Implementación', order: 2, type: LessonType.VIDEO },
-            { title: 'Evaluación final', order: 3, type: LessonType.QUIZ },
+            { title: 'Arquitectura del proyecto', order: 1, type: LessonType.TEXT, duration: 360 },
+            { title: 'Implementación', order: 2, type: LessonType.VIDEO, duration: 1500 },
+            { title: 'Evaluación final', order: 3, type: LessonType.QUIZ, duration: 450 },
           ],
         },
       ]);
@@ -402,22 +636,23 @@ async function main(): Promise<void> {
           title: 'Introducción a Python',
           order: 1,
           lessons: [
-            { title: 'Variables y tipos de datos', order: 1, type: LessonType.TEXT },
-            { title: 'Control de flujo', order: 2, type: LessonType.TEXT },
-            { title: 'Funciones en Python', order: 3, type: LessonType.VIDEO },
+            { title: 'Variables y tipos de datos', order: 1, type: LessonType.TEXT, duration: 420 },
+            { title: 'Control de flujo', order: 2, type: LessonType.TEXT, duration: 360 },
+            { title: 'Funciones en Python', order: 3, type: LessonType.VIDEO, duration: 900 },
           ],
         },
         {
           title: 'Pandas y NumPy',
           order: 2,
           lessons: [
-            { title: 'NumPy arrays', order: 1, type: LessonType.TEXT },
-            { title: 'DataFrames con Pandas', order: 2, type: LessonType.VIDEO },
+            { title: 'NumPy arrays', order: 1, type: LessonType.TEXT, duration: 480 },
+            { title: 'DataFrames con Pandas', order: 2, type: LessonType.VIDEO, duration: 1200 },
             // index [5]: ASSIGNMENT lesson for Fix 3
             {
               title: 'Proyecto: Análisis de datos con Pandas',
               order: 3,
               type: LessonType.ASSIGNMENT,
+              duration: 2700,
             },
           ],
         },
@@ -431,18 +666,18 @@ async function main(): Promise<void> {
           title: 'Fundamentos de Figma',
           order: 1,
           lessons: [
-            { title: 'Interfaz de Figma', order: 1, type: LessonType.TEXT },
-            { title: 'Componentes y variantes', order: 2, type: LessonType.VIDEO },
-            { title: 'Auto Layout', order: 3, type: LessonType.TEXT },
+            { title: 'Interfaz de Figma', order: 1, type: LessonType.TEXT, duration: 420 },
+            { title: 'Componentes y variantes', order: 2, type: LessonType.VIDEO, duration: 1200 },
+            { title: 'Auto Layout', order: 3, type: LessonType.TEXT, duration: 360 },
           ],
         },
         {
           title: 'Prototipado',
           order: 2,
           lessons: [
-            { title: 'Conexiones de prototipo', order: 1, type: LessonType.TEXT },
-            { title: 'Animaciones en Figma', order: 2, type: LessonType.VIDEO },
-            { title: 'Entrega al desarrollador', order: 3, type: LessonType.TEXT },
+            { title: 'Conexiones de prototipo', order: 1, type: LessonType.TEXT, duration: 390 },
+            { title: 'Animaciones en Figma', order: 2, type: LessonType.VIDEO, duration: 1500 },
+            { title: 'Entrega al desarrollador', order: 3, type: LessonType.TEXT, duration: 300 },
           ],
         },
       ]);
@@ -455,27 +690,32 @@ async function main(): Promise<void> {
           title: 'Fundamentos de ML',
           order: 1,
           lessons: [
-            { title: '¿Qué es el Machine Learning?', order: 1, type: LessonType.TEXT },
-            { title: 'Tipos de algoritmos', order: 2, type: LessonType.TEXT },
-            { title: 'Preparación de datos', order: 3, type: LessonType.VIDEO },
+            {
+              title: '¿Qué es el Machine Learning?',
+              order: 1,
+              type: LessonType.TEXT,
+              duration: 480,
+            },
+            { title: 'Tipos de algoritmos', order: 2, type: LessonType.TEXT, duration: 420 },
+            { title: 'Preparación de datos', order: 3, type: LessonType.VIDEO, duration: 1200 },
           ],
         },
         {
           title: 'Algoritmos Supervisados',
           order: 2,
           lessons: [
-            { title: 'Regresión lineal', order: 1, type: LessonType.TEXT },
-            { title: 'Árboles de decisión', order: 2, type: LessonType.VIDEO },
-            { title: 'Random Forest', order: 3, type: LessonType.TEXT },
+            { title: 'Regresión lineal', order: 1, type: LessonType.TEXT, duration: 450 },
+            { title: 'Árboles de decisión', order: 2, type: LessonType.VIDEO, duration: 1500 },
+            { title: 'Random Forest', order: 3, type: LessonType.TEXT, duration: 390 },
           ],
         },
         {
           title: 'Deep Learning',
           order: 3,
           lessons: [
-            { title: 'Redes neuronales', order: 1, type: LessonType.TEXT },
-            { title: 'TensorFlow básico', order: 2, type: LessonType.VIDEO },
-            { title: 'Proyecto final de ML', order: 3, type: LessonType.TEXT },
+            { title: 'Redes neuronales', order: 1, type: LessonType.TEXT, duration: 480 },
+            { title: 'TensorFlow básico', order: 2, type: LessonType.VIDEO, duration: 1800 },
+            { title: 'Proyecto final de ML', order: 3, type: LessonType.TEXT, duration: 360 },
           ],
         },
       ]);
@@ -487,8 +727,13 @@ async function main(): Promise<void> {
           title: 'Introducción al SEO',
           order: 1,
           lessons: [
-            { title: '¿Qué es el SEO?', order: 1, type: LessonType.TEXT },
-            { title: 'Investigación de palabras clave', order: 2, type: LessonType.TEXT },
+            { title: '¿Qué es el SEO?', order: 1, type: LessonType.TEXT, duration: 420 },
+            {
+              title: 'Investigación de palabras clave',
+              order: 2,
+              type: LessonType.TEXT,
+              duration: 480,
+            },
           ],
         },
       ]);
@@ -502,21 +747,37 @@ async function main(): Promise<void> {
           title: 'Fundamentos de React',
           order: 1,
           lessons: [
-            { title: 'Introducción a React', order: 1, type: LessonType.TEXT, isPreview: true },
-            { title: 'Componentes y props', order: 2, type: LessonType.VIDEO },
-            { title: 'Estado y hooks', order: 3, type: LessonType.TEXT },
-            { title: 'React Router', order: 4, type: LessonType.VIDEO },
+            {
+              title: 'Introducción a React',
+              order: 1,
+              type: LessonType.TEXT,
+              duration: 420,
+              isPreview: true,
+            },
+            { title: 'Componentes y props', order: 2, type: LessonType.VIDEO, duration: 900 },
+            { title: 'Estado y hooks', order: 3, type: LessonType.TEXT, duration: 480 },
+            { title: 'React Router', order: 4, type: LessonType.VIDEO, duration: 1200 },
           ],
         },
         {
           title: 'Next.js en Profundidad',
           order: 2,
           lessons: [
-            { title: 'App Router y Server Components', order: 1, type: LessonType.TEXT },
-            { title: 'Data fetching en Next.js', order: 2, type: LessonType.VIDEO },
-            { title: 'Optimización y despliegue', order: 3, type: LessonType.TEXT },
+            {
+              title: 'App Router y Server Components',
+              order: 1,
+              type: LessonType.TEXT,
+              duration: 450,
+            },
+            { title: 'Data fetching en Next.js', order: 2, type: LessonType.VIDEO, duration: 1500 },
+            { title: 'Optimización y despliegue', order: 3, type: LessonType.TEXT, duration: 390 },
             // index [7]: QUIZ lesson for Fix 2
-            { title: 'Evaluación: React y Next.js', order: 4, type: LessonType.QUIZ },
+            {
+              title: 'Evaluación: React y Next.js',
+              order: 4,
+              type: LessonType.QUIZ,
+              duration: 480,
+            },
           ],
         },
       ]);
@@ -534,20 +795,21 @@ async function main(): Promise<void> {
               title: 'Introducción a las bases de datos',
               order: 1,
               type: LessonType.TEXT,
+              duration: 420,
               isPreview: true,
             },
-            { title: 'SELECT, FROM y WHERE', order: 2, type: LessonType.TEXT },
-            { title: 'JOINs y relaciones', order: 3, type: LessonType.VIDEO },
+            { title: 'SELECT, FROM y WHERE', order: 2, type: LessonType.TEXT, duration: 480 },
+            { title: 'JOINs y relaciones', order: 3, type: LessonType.VIDEO, duration: 1200 },
           ],
         },
         {
           title: 'SQL Avanzado',
           order: 2,
           lessons: [
-            { title: 'Subconsultas y CTEs', order: 1, type: LessonType.TEXT },
-            { title: 'Índices y optimización', order: 2, type: LessonType.VIDEO },
+            { title: 'Subconsultas y CTEs', order: 1, type: LessonType.TEXT, duration: 450 },
+            { title: 'Índices y optimización', order: 2, type: LessonType.VIDEO, duration: 1500 },
             // index [5]: QUIZ lesson for Fix 2
-            { title: 'Evaluación final: SQL', order: 3, type: LessonType.QUIZ },
+            { title: 'Evaluación final: SQL', order: 3, type: LessonType.QUIZ, duration: 420 },
           ],
         },
       ]);
@@ -561,19 +823,24 @@ async function main(): Promise<void> {
           title: 'Docker Esencial',
           order: 1,
           lessons: [
-            { title: '¿Qué es Docker?', order: 1, type: LessonType.TEXT },
-            { title: 'Imágenes y contenedores', order: 2, type: LessonType.VIDEO },
-            { title: 'Docker Compose', order: 3, type: LessonType.TEXT },
+            { title: '¿Qué es Docker?', order: 1, type: LessonType.TEXT, duration: 420 },
+            { title: 'Imágenes y contenedores', order: 2, type: LessonType.VIDEO, duration: 1200 },
+            { title: 'Docker Compose', order: 3, type: LessonType.TEXT, duration: 480 },
           ],
         },
         {
           title: 'DevOps y CI/CD',
           order: 2,
           lessons: [
-            { title: 'Pipelines de CI/CD', order: 1, type: LessonType.TEXT },
-            { title: 'Kubernetes básico', order: 2, type: LessonType.VIDEO },
+            { title: 'Pipelines de CI/CD', order: 1, type: LessonType.TEXT, duration: 450 },
+            { title: 'Kubernetes básico', order: 2, type: LessonType.VIDEO, duration: 1800 },
             // index [5]: ASSIGNMENT lesson for Fix 3
-            { title: 'Proyecto práctico DevOps', order: 3, type: LessonType.ASSIGNMENT },
+            {
+              title: 'Proyecto práctico DevOps',
+              order: 3,
+              type: LessonType.ASSIGNMENT,
+              duration: 3600,
+            },
           ],
         },
       ]);
@@ -586,18 +853,23 @@ async function main(): Promise<void> {
           title: 'Diseño con Adobe XD',
           order: 1,
           lessons: [
-            { title: 'Interfaz de Adobe XD', order: 1, type: LessonType.TEXT },
-            { title: 'Wireframing y mockups', order: 2, type: LessonType.VIDEO },
-            { title: 'Sistemas de diseño', order: 3, type: LessonType.TEXT },
+            { title: 'Interfaz de Adobe XD', order: 1, type: LessonType.TEXT, duration: 420 },
+            { title: 'Wireframing y mockups', order: 2, type: LessonType.VIDEO, duration: 1200 },
+            { title: 'Sistemas de diseño', order: 3, type: LessonType.TEXT, duration: 390 },
           ],
         },
         {
           title: 'Prototipado Avanzado',
           order: 2,
           lessons: [
-            { title: 'Animaciones y transiciones', order: 1, type: LessonType.VIDEO },
-            { title: 'Pruebas de usabilidad', order: 2, type: LessonType.TEXT },
-            { title: 'Exportar y entregar assets', order: 3, type: LessonType.TEXT },
+            {
+              title: 'Animaciones y transiciones',
+              order: 1,
+              type: LessonType.VIDEO,
+              duration: 1500,
+            },
+            { title: 'Pruebas de usabilidad', order: 2, type: LessonType.TEXT, duration: 360 },
+            { title: 'Exportar y entregar assets', order: 3, type: LessonType.TEXT, duration: 300 },
           ],
         },
       ]);
@@ -609,18 +881,23 @@ async function main(): Promise<void> {
           title: 'Estadística Descriptiva',
           order: 1,
           lessons: [
-            { title: 'Media, mediana y moda', order: 1, type: LessonType.TEXT },
-            { title: 'Distribuciones de probabilidad', order: 2, type: LessonType.VIDEO },
-            { title: 'Visualización estadística', order: 3, type: LessonType.TEXT },
+            { title: 'Media, mediana y moda', order: 1, type: LessonType.TEXT, duration: 450 },
+            {
+              title: 'Distribuciones de probabilidad',
+              order: 2,
+              type: LessonType.VIDEO,
+              duration: 1200,
+            },
+            { title: 'Visualización estadística', order: 3, type: LessonType.TEXT, duration: 390 },
           ],
         },
         {
           title: 'Estadística Inferencial',
           order: 2,
           lessons: [
-            { title: 'Pruebas de hipótesis', order: 1, type: LessonType.TEXT },
-            { title: 'Regresión estadística', order: 2, type: LessonType.VIDEO },
-            { title: 'Análisis bayesiano', order: 3, type: LessonType.TEXT },
+            { title: 'Pruebas de hipótesis', order: 1, type: LessonType.TEXT, duration: 480 },
+            { title: 'Regresión estadística', order: 2, type: LessonType.VIDEO, duration: 1500 },
+            { title: 'Análisis bayesiano', order: 3, type: LessonType.TEXT, duration: 420 },
           ],
         },
       ]);
@@ -632,27 +909,42 @@ async function main(): Promise<void> {
           title: 'Redes Convolucionales',
           order: 1,
           lessons: [
-            { title: 'CNNs y visión por computadora', order: 1, type: LessonType.TEXT },
-            { title: 'Implementación con PyTorch', order: 2, type: LessonType.VIDEO },
-            { title: 'Transfer Learning', order: 3, type: LessonType.TEXT },
+            {
+              title: 'CNNs y visión por computadora',
+              order: 1,
+              type: LessonType.TEXT,
+              duration: 480,
+            },
+            {
+              title: 'Implementación con PyTorch',
+              order: 2,
+              type: LessonType.VIDEO,
+              duration: 1800,
+            },
+            { title: 'Transfer Learning', order: 3, type: LessonType.TEXT, duration: 420 },
           ],
         },
         {
           title: 'Redes Recurrentes',
           order: 2,
           lessons: [
-            { title: 'LSTMs y GRUs', order: 1, type: LessonType.TEXT },
-            { title: 'NLP con redes recurrentes', order: 2, type: LessonType.VIDEO },
-            { title: 'Generación de texto', order: 3, type: LessonType.TEXT },
+            { title: 'LSTMs y GRUs', order: 1, type: LessonType.TEXT, duration: 450 },
+            {
+              title: 'NLP con redes recurrentes',
+              order: 2,
+              type: LessonType.VIDEO,
+              duration: 1500,
+            },
+            { title: 'Generación de texto', order: 3, type: LessonType.TEXT, duration: 390 },
           ],
         },
         {
           title: 'Transformers y Atención',
           order: 3,
           lessons: [
-            { title: 'Mecanismo de atención', order: 1, type: LessonType.TEXT },
-            { title: 'Fine-tuning de LLMs', order: 2, type: LessonType.VIDEO },
-            { title: 'Proyecto final', order: 3, type: LessonType.TEXT },
+            { title: 'Mecanismo de atención', order: 1, type: LessonType.TEXT, duration: 480 },
+            { title: 'Fine-tuning de LLMs', order: 2, type: LessonType.VIDEO, duration: 1800 },
+            { title: 'Proyecto final', order: 3, type: LessonType.TEXT, duration: 360 },
           ],
         },
       ]);
